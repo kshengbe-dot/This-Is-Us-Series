@@ -98,6 +98,7 @@
       margin:0 0 14px;
       color:var(--ink);
       font-size:16px;
+      white-space:normal;
     }
     .inner .muted{color:var(--muted)}
     .inner hr{border:0;border-top:1px solid var(--stroke);margin:14px 0}
@@ -107,16 +108,24 @@
       font-size:12px; color:var(--muted);
     }
 
-    /* Flip animation (desktop) */
+    /* =======================
+       Flip Layer (bidirectional)
+       ======================= */
     .flip{
       position:absolute;
       top:0; bottom:0;
-      left:50%;
       width:50%;
-      transform-origin:left;
       transform-style:preserve-3d;
       pointer-events:none;
       opacity:0;
+    }
+    .flip.fromRight{
+      left:50%;
+      transform-origin:left;
+    }
+    .flip.fromLeft{
+      left:0;
+      transform-origin:right;
     }
     .flip .front, .flip .back{
       position:absolute; inset:0;
@@ -131,8 +140,23 @@
       padding:26px 24px; height:100%; overflow:hidden;
     }
     .flip .back{transform: rotateY(180deg)}
-    .flip.anim{opacity:1; animation: flip .55s ease-in-out forwards;}
-    @keyframes flip{ 0%{transform:rotateY(0deg)} 100%{transform:rotateY(-180deg)} }
+
+    @keyframes flipForward{
+      0%{transform:rotateY(0deg)}
+      100%{transform:rotateY(-180deg)}
+    }
+    @keyframes flipBackward{
+      0%{transform:rotateY(0deg)}
+      100%{transform:rotateY(180deg)}
+    }
+    .flip.animForward{
+      opacity:1;
+      animation: flipForward .55s ease-in-out forwards;
+    }
+    .flip.animBackward{
+      opacity:1;
+      animation: flipBackward .55s ease-in-out forwards;
+    }
 
     .navHint{
       position:fixed; left:50%; transform:translateX(-50%);
@@ -177,7 +201,6 @@
        Cinematic Novel Formatting
        (book content classes)
     ================================ */
-
     .chapter-cover{
       padding: 18px 0 10px;
       text-align:center;
@@ -341,9 +364,10 @@
     const bookId = params.get("book") || "book1";
     document.getElementById("bookTitle").textContent = bookId;
 
-    // Map bookId -> content file (you can add book2, book3 later)
+    // Map bookId -> content file
     const BOOK_FILES = {
-      book1: "./books/book1.html"
+      book1: "./books/book1.html",
+      coming: "./books/coming-soon.html"
     };
     const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
 
@@ -450,25 +474,42 @@
       saveProgress();
     }
 
+    // ✅ Bidirectional flip:
+    // - Forward flip uses RIGHT page (i+1) flipping leftward
+    // - Backward flip uses LEFT page (i) flipping rightward
     function animateFlip(nextIndex){
       if (matchMedia("(max-width: 720px)").matches){
         i = nextIndex; render(); return;
       }
+
       const total = PAGES.length;
       if(nextIndex < 0 || nextIndex > total - 1) return;
 
-      const rightIdx = i + 1;
-      flipFront.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
-      flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>End.</p>";
+      const goingForward = nextIndex > i;
 
-      flip.classList.remove("anim");
+      // Reset classes
+      flip.classList.remove("animForward","animBackward","fromLeft","fromRight");
       void flip.offsetWidth;
-      flip.classList.add("anim");
+
+      if(goingForward){
+        // flip right page -> reveals next left page
+        flip.classList.add("fromRight","animForward");
+        const currentRight = i + 1;
+        flipFront.innerHTML = PAGES[currentRight] || "<p class='muted'>End.</p>";
+        flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>End.</p>";
+      } else {
+        // flip left page -> reveals previous right page
+        flip.classList.add("fromLeft","animBackward");
+        const currentLeft = i;
+        const prevRight = nextIndex + 1; // i-1
+        flipFront.innerHTML = PAGES[currentLeft] || "<p class='muted'>Start.</p>";
+        flipBack.innerHTML  = PAGES[prevRight] || "<p class='muted'>Start.</p>";
+      }
 
       setTimeout(()=>{
         i = nextIndex;
         render();
-        flip.classList.remove("anim");
+        flip.classList.remove("animForward","animBackward","fromLeft","fromRight");
       }, 560);
     }
 
@@ -520,6 +561,8 @@
 
     function paginateAndRender(){
       PAGES = paginate(BOOK_HTML);
+      // Ensure i is even (left page index)
+      if(i % 2 !== 0) i = Math.max(0, i - 1);
       render();
     }
 
