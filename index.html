@@ -8,14 +8,14 @@
 <style>
 body{
   margin:0;
-  font-family: system-ui;
+  font-family: system-ui, -apple-system;
   background:#0b1020;
   color:white;
   text-align:center;
 }
 
 header{
-  padding:20px;
+  padding:30px;
   font-size:22px;
   letter-spacing:2px;
 }
@@ -23,13 +23,14 @@ header{
 .grid{
   display:flex;
   justify-content:center;
-  margin-top:40px;
+  margin-top:50px;
 }
 
 .book{
   width:260px;
   transition:0.3s;
   cursor:pointer;
+  border-radius:10px;
 }
 
 .book:hover{
@@ -43,6 +44,10 @@ button{
   border-radius:20px;
   cursor:pointer;
 }
+
+.authBox{
+  margin-top:20px;
+}
 </style>
 </head>
 
@@ -50,38 +55,85 @@ button{
 
 <header>THIS IS US — by Shengbe Koker</header>
 
-<button id="loginBtn">Login</button>
+<div class="authBox">
+  <button id="signupBtn">Sign Up</button>
+  <button id="loginBtn">Login</button>
+  <button id="logoutBtn">Logout</button>
+  <p id="status">Not logged in</p>
+</div>
 
 <div class="grid">
   <img src="assets/cover-book1.png" class="book" id="book1">
 </div>
 
 <script type="module">
-import { firebaseConfig } from "./firebase-config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
+// Import config
+import { firebaseConfig } from "./firebase-config.js";
+
+// Import Firebase SDKs
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-document.getElementById("loginBtn").onclick = async ()=>{
-  const email = prompt("Email:");
-  const pass = prompt("Password:");
+// Elements
+const status = document.getElementById("status");
+
+// Auth state listener
+onAuthStateChanged(auth, (user)=>{
+  if(user){
+    status.textContent = "Logged in as: " + user.email;
+  } else {
+    status.textContent = "Not logged in";
+  }
+});
+
+// Sign Up
+document.getElementById("signupBtn").onclick = async ()=>{
+  const email = prompt("Enter email:");
+  const password = prompt("Enter password (min 6 chars):");
+
   try{
-    await signInWithEmailAndPassword(auth,email,pass);
-    alert("Logged in!");
-  }catch(e){
-    alert("Login failed");
+    await createUserWithEmailAndPassword(auth, email, password);
+    alert("Account created!");
+  }catch(error){
+    alert(error.message);
   }
 };
 
+// Login
+document.getElementById("loginBtn").onclick = async ()=>{
+  const email = prompt("Enter email:");
+  const password = prompt("Enter password:");
+
+  try{
+    await signInWithEmailAndPassword(auth, email, password);
+    alert("Logged in!");
+  }catch(error){
+    alert(error.message);
+  }
+};
+
+// Logout
+document.getElementById("logoutBtn").onclick = async ()=>{
+  await signOut(auth);
+  alert("Logged out");
+};
+
+// Open book only if logged in
 document.getElementById("book1").onclick = ()=>{
   if(!auth.currentUser){
-    alert("Please login first");
+    alert("Please login first to read.");
     return;
   }
-  location.href="read.html";
+
+  location.href = "read.html";
 };
+
 </script>
 
 </body>
