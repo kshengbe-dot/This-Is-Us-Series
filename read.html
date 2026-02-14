@@ -1,685 +1,279 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>THIS IS US — Reader</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>THIS IS US — Reader</title>
 
-  <style>
-    :root{
-      --bg:#0B1020; --paper:#121A33; --ink:#EAF0FF; --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12);
-      --shadow: 0 26px 80px rgba(0,0,0,.55);
-      --bar: rgba(10,14,28,.88);
-      --chip: rgba(255,255,255,.06);
-      --sheet: rgba(15,20,40,.94);
-      --safeTop: env(safe-area-inset-top);
-      --safeBot: env(safe-area-inset-bottom);
+<style>
+:root{
+  --bg:#0B1020;
+  --paper:#121A33;
+  --ink:#EAF0FF;
+  --muted:#9FB0D6;
+  --stroke:rgba(255,255,255,.12);
+}
 
-      /* reserve space so last line never clips */
-      --footerSpace: 74px;
-      --gap: 14px;
-    }
-    [data-theme="light"]{
-      --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
-      --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.12);
-      --bar: rgba(255,255,255,.92);
-      --chip: rgba(2,6,23,.04);
-      --sheet: rgba(255,255,255,.96);
-    }
+*{box-sizing:border-box}
 
-    *{box-sizing:border-box}
-    body{
-      margin:0; height:100vh; overflow:hidden;
-      background:
-        radial-gradient(1200px 900px at 30% 10%, rgba(124,92,255,.22), transparent 60%),
-        var(--bg);
-      color:var(--ink);
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+body{
+  margin:0;
+  height:100vh;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Georgia, serif;
+}
 
-    .top{
-      position:fixed; left:0; right:0; top:0;
-      z-index:40;
-      border-bottom:1px solid var(--stroke);
-      background: var(--bar);
-      backdrop-filter: blur(12px);
-      padding: calc(10px + var(--safeTop)) 12px 10px;
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .chip{
-      border:1px solid var(--stroke);
-      background: var(--chip);
-      padding:8px 10px;
-      border-radius:999px;
-      font-size:12px;
-      color:var(--muted);
-      cursor:pointer;
-      user-select:none;
-      display:inline-flex; align-items:center; gap:8px;
-      white-space:nowrap;
-    }
-    .chip strong{color:var(--ink); font-weight:900}
-    select{
-      background: var(--chip);
-      border:1px solid var(--stroke);
-      color:var(--ink);
-      padding:8px 10px;
-      border-radius:12px;
-      font-size:12px;
-      max-width: 260px;
-    }
+.top{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:60px;
+  background:#0e1428;
+  border-bottom:1px solid var(--stroke);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
+  z-index:50;
+}
 
-    .stage{
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 78px 12px 16px;
-    }
-    .book{
-      width:min(1120px, 98vw);
-      height:min(740px, 84vh);
-      position:relative;
-      perspective: 1800px;
-    }
+.btn{
+  padding:8px 12px;
+  border:1px solid var(--stroke);
+  border-radius:10px;
+  cursor:pointer;
+  background:#1a2242;
+}
 
-    .spread{
-      position:absolute; inset:0;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--gap);
-    }
-    .single{ position:absolute; inset:0; display:none; }
+.stage{
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding-top:70px;
+}
 
-    .page{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-      position:relative;
-    }
-    .inner{
-      height:100%;
-      padding:26px 22px calc(18px + var(--footerSpace));
-      overflow:hidden;
-    }
+.book{
+  width:min(1100px,95vw);
+  height:min(720px,85vh);
+  position:relative;
+}
 
-    .inner h1,.inner h2,.inner h3,.inner h4{
-      font-family: ui-sans-serif, system-ui;
-      margin:0 0 10px;
-      line-height:1.15;
-      letter-spacing:.02em;
-    }
-    .inner h2{font-size:30px}
-    .inner h3{font-size:18px}
-    .inner h4{font-size:20px}
-    .inner p{
-      line-height:1.78;
-      margin:0 0 14px;
-      font-size:16px;
-      color:var(--ink);
-    }
-    .muted{color:var(--muted)}
+.spread{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  height:100%;
+}
 
-    .pageNum{
-      position:absolute;
-      bottom:16px;
-      right:16px;
-      font-size:12px;
-      color:var(--muted);
-      pointer-events:none;
-    }
+.page{
+  background:var(--paper);
+  border-radius:14px;
+  padding:28px 24px 60px;
+  overflow:hidden;
+  border:1px solid var(--stroke);
+  position:relative;
+}
 
-    .flip{
-      position:absolute; top:0; bottom:0;
-      width:50%;
-      transform-style:preserve-3d;
-      pointer-events:none;
-      opacity:0;
-      z-index:30;
-    }
-    .flip.fromRight{ left:50%; transform-origin:left; }
-    .flip.fromLeft{ left:0; transform-origin:right; }
-    .flip.full{ width:100%; left:0; }
-    .flip .front, .flip .back{
-      position:absolute; inset:0;
-      border-radius:18px;
-      overflow:hidden;
-      background: var(--paper);
-      border:1px solid var(--stroke);
-      box-shadow:var(--shadow);
-      backface-visibility:hidden;
-    }
-    .flip .front .inner, .flip .back .inner{
-      padding:26px 22px calc(18px + var(--footerSpace));
-      height:100%;
-      overflow:hidden;
-    }
-    .flip .back{ transform: rotateY(180deg); }
-    @keyframes flipForward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(-180deg)} }
-    @keyframes flipBackward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(180deg)} }
-    .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
-    .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
+.pageNum{
+  position:absolute;
+  bottom:16px;
+  right:18px;
+  font-size:12px;
+  color:var(--muted);
+}
 
-    .chapter-cover{ text-align:center; padding: 18px 0 10px; }
-    .chapter-cover h2{
-      margin:0 0 8px; font-size:44px; font-weight:900;
-      letter-spacing:.10em; text-transform:uppercase;
-    }
-    .series-sub{
-      margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
-      font-size:14px; letter-spacing:.05em;
-    }
-    .author{
-      margin:10px 0 0; font-family: ui-sans-serif, system-ui;
-      font-size:14px; opacity:.92;
-    }
-    .chapter-title{ text-align:center; padding:10px 0 6px; }
-    .chapter-title h3{
-      margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
-      color:var(--muted); font-family: ui-sans-serif, system-ui;
-    }
-    .chapter-title h4{
-      margin:10px 0 0; font-size:30px; font-weight:900;
-      font-family: ui-sans-serif, system-ui;
-    }
-    hr.ornament{
-      border:0; border-top:1px solid var(--stroke);
-      margin:18px auto; width:66%; position:relative;
-    }
-    hr.ornament:after{
-      content:"✦"; position:absolute; left:50%;
-      transform:translate(-50%,-50%); top:0;
-      color:var(--muted); font-size:13px; padding:0 10px;
-      background: transparent;
-    }
-    .scene-break{
-      text-align:center; color:var(--muted);
-      letter-spacing:.35em; margin:16px 0 18px;
-      font-size:14px; user-select:none;
-    }
-    .dropcap:first-letter{
-      float:left; font-size:56px; line-height:.92;
-      padding-right:10px; padding-top:6px; font-weight:800;
-    }
+.single{
+  display:none;
+  height:100%;
+}
 
-    .mTop, .mBottom{ display:none; }
-    @media (max-width:720px){
-      .top{ display:none; }
+.inner{
+  height:100%;
+  overflow:hidden;
+}
 
-      .mTop{
-        display:flex;
-        position:fixed; left:0; right:0; top:0;
-        z-index:60;
-        padding: calc(10px + var(--safeTop)) 12px 10px;
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-bottom:1px solid var(--stroke);
-        align-items:center; justify-content:space-between; gap:10px;
-      }
-      .mTitle{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
-      .mTitle .t1{
-        font-family: ui-sans-serif, system-ui; font-weight:900; font-size:14px;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:52vw;
-      }
-      .mTitle .t2{ font-family: ui-sans-serif, system-ui; font-size:12px; color:var(--muted); }
-      .mBtn{
-        border:1px solid var(--stroke);
-        background: rgba(0,0,0,.18);
-        color:var(--ink);
-        padding:10px 12px;
-        border-radius:999px;
-        font-family: ui-sans-serif, system-ui;
-        font-size:13px;
-        font-weight:800;
-        cursor:pointer;
-        user-select:none;
-        white-space:nowrap;
-      }
-      [data-theme="light"] .mBtn{ background: rgba(2,6,23,.06); }
+.inner p{
+  line-height:1.75;
+  margin:0 0 14px;
+  font-size:16px;
+}
 
-      .mBottom{
-        display:flex;
-        position:fixed; left:0; right:0; bottom:0;
-        z-index:60;
-        padding:10px 12px calc(10px + var(--safeBot));
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-top:1px solid var(--stroke);
-        gap:10px;
-      }
-      .mBottom .mBtn{ flex:1; text-align:center; }
+.inner h3{
+  text-transform:uppercase;
+  letter-spacing:.2em;
+  font-size:12px;
+  color:var(--muted);
+}
 
-      .stage{ padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot)); }
-      .book{
-        width:98vw;
-        height: calc(100vh - (58px + var(--safeTop)) - (74px + var(--safeBot)) - 18px);
-      }
+.inner h4{
+  font-size:28px;
+  margin:8px 0 20px;
+}
 
-      .spread{ display:none; }
-      .single{ display:block; }
-      .flip{ width:100%; left:0; }
-      .flip.fromRight{ left:0; transform-origin:left; }
-      .flip.fromLeft{ left:0; transform-origin:right; }
-
-      .inner{ padding:22px 18px calc(18px + var(--footerSpace)); }
-      .flip .front .inner, .flip .back .inner{ padding:22px 18px calc(18px + var(--footerSpace)); }
-      .inner p{ font-size:16px; line-height:1.82; }
-    }
-
-    /* Offscreen measurer (we force real page width/height in JS) */
-    .measureHost{
-      position:fixed;
-      left:-99999px; top:0;
-      visibility:hidden;
-      z-index:-1;
-    }
-    .measureBox{
-      border:1px solid transparent;
-      border-radius:18px;
-      overflow:hidden;
-      background: transparent;
-    }
-    .measureInner{
-      height:100%;
-      padding:26px 22px calc(18px + var(--footerSpace));
-      overflow:hidden;
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-    }
-    .measureInner p{ font-size:16px; line-height:1.78; margin:0 0 14px; }
-    @media (max-width:720px){
-      .measureInner{ padding:22px 18px calc(18px + var(--footerSpace)); }
-      .measureInner p{ line-height:1.82; }
-    }
-  </style>
+@media(max-width:720px){
+  .spread{display:none}
+  .single{display:block}
+}
+</style>
 </head>
 
 <body>
-  <div class="mTop">
-    <div class="mBtn" id="mBack">← Library</div>
-    <div class="mTitle">
-      <div class="t1" id="mBookTitle">book1</div>
-      <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
-    </div>
-    <div class="mBtn" id="mThemeBtn">Theme</div>
-  </div>
 
-  <div class="top">
-    <div class="row">
-      <div class="chip" id="backBtn">← <strong>Library</strong></div>
-      <div class="chip">Book: <strong id="bookTitle">book1</strong></div>
-      <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
-      <div class="chip" id="themeBtn">Theme</div>
-    </div>
-    <div class="row">
-      <div class="chip" id="prevBtn">Prev</div>
-      <div class="chip" id="nextBtn">Next</div>
-    </div>
+<div class="top">
+  <div class="btn" onclick="location.href='./'">← Library</div>
+  <div>
+    <span id="pageLabel">1</span> / <span id="pageTotal">1</span>
   </div>
-
-  <div class="mBottom">
-    <div class="mBtn" id="mPrev">Prev</div>
-    <div class="mBtn" id="mNext">Next</div>
+  <div>
+    <button class="btn" onclick="prev()">Prev</button>
+    <button class="btn" onclick="next()">Next</button>
   </div>
+</div>
 
-  <div class="stage">
-    <div class="book" id="bookBox">
-      <div class="spread" id="spread">
-        <div class="page"><div class="inner" id="leftPage"></div><div class="pageNum" id="leftNum"></div></div>
-        <div class="page"><div class="inner" id="rightPage"></div><div class="pageNum" id="rightNum"></div></div>
+<div class="stage">
+  <div class="book">
+
+    <div class="spread">
+      <div class="page">
+        <div class="inner" id="leftPage"></div>
+        <div class="pageNum" id="leftNum"></div>
       </div>
-
-      <div class="single" id="single">
-        <div class="page"><div class="inner" id="singlePage"></div><div class="pageNum" id="singleNum"></div></div>
-      </div>
-
-      <div class="flip" id="flip">
-        <div class="front"><div class="inner" id="flipFront"></div></div>
-        <div class="back"><div class="inner" id="flipBack"></div></div>
+      <div class="page">
+        <div class="inner" id="rightPage"></div>
+        <div class="pageNum" id="rightNum"></div>
       </div>
     </div>
-  </div>
 
-  <div class="measureHost">
-    <div class="measureBox" id="measureBox">
-      <div class="measureInner" id="measureInner"></div>
+    <div class="single">
+      <div class="page">
+        <div class="inner" id="singlePage"></div>
+        <div class="pageNum" id="singleNum"></div>
+      </div>
     </div>
+
   </div>
+</div>
 
-  <script type="module">
-    // Your repo uses /books/
-    const BOOK_FILES = {
-      book1: "./books/book1.html",
-      coming: "./books/coming-soon.html"
-    };
+<script>
+const BOOK_FILES = {
+  book1:"./books/book1.html",
+  coming:"./books/coming-soon.html"
+};
 
-    const params = new URLSearchParams(location.search);
-    const bookId = params.get("book") || "book1";
-    const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
+const params = new URLSearchParams(location.search);
+const bookId = params.get("book") || "book1";
+const file = BOOK_FILES[bookId];
 
-    const $ = (id)=>document.getElementById(id);
-    const bookBox = $("bookBox");
+let PAGES = [];
+let i = 0;
 
-    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
+function isMobile(){
+  return window.innerWidth <= 720;
+}
 
-    $("bookTitle").textContent = bookId;
-    $("mBookTitle").textContent = bookId;
+async function loadBook(){
+  const res = await fetch(file);
+  const html = await res.text();
+  paginate(html);
+  render();
+}
 
-    // Theme
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-    function toggleTheme(){
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      paginateAndRender();
-    }
-    $("themeBtn").addEventListener("click", toggleTheme);
-    $("mThemeBtn").addEventListener("click", toggleTheme);
+function paginate(html){
 
-    // Nav
-    function goLibrary(){ location.href = "./"; }
-    $("backBtn").addEventListener("click", goLibrary);
-    $("mBack").addEventListener("click", goLibrary);
+  const container = document.createElement("div");
+  container.innerHTML = html;
 
-    // DOM
-    const leftPage = $("leftPage"), rightPage = $("rightPage"), singlePage = $("singlePage");
-    const leftNum = $("leftNum"), rightNum = $("rightNum"), singleNum = $("singleNum");
-    const pageLabel = $("pageLabel"), pageTotalEl = $("pageTotal");
-    const mPageLabel = $("mPageLabel"), mPageTotal = $("mPageTotal");
-    const flip = $("flip"), flipFront = $("flipFront"), flipBack = $("flipBack");
-    const measureBox = $("measureBox"), measureInner = $("measureInner");
+  const blocks = Array.from(container.children);
 
-    // Progress
-    const progressKey = `progress:${bookId}`;
-    let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
-    if (isNaN(i) || i < 0) i = 0;
+  const measurer = document.createElement("div");
+  measurer.style.position="fixed";
+  measurer.style.visibility="hidden";
+  measurer.style.height="700px";
+  measurer.style.width="500px";
+  measurer.style.padding="28px 24px 60px";
+  measurer.style.overflow="hidden";
+  measurer.style.fontFamily="Georgia";
+  measurer.style.lineHeight="1.75";
+  document.body.appendChild(measurer);
 
-    let BOOK_HTML = "";
-    let PAGES = [];
+  let page = document.createElement("div");
+  measurer.appendChild(page);
 
-    async function loadBook(){
-      const res = await fetch(bookFile, { cache:"no-store" });
-      if(!res.ok) throw new Error("Could not load book: " + res.status);
-      BOOK_HTML = await res.text();
-    }
+  PAGES=[];
 
-    // Hard page break before each chapter title
-    function injectChapterBreaks(html){
-      return html.replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
-    }
+  blocks.forEach(block=>{
 
-    // ✅ Bulletproof sizing (prevents 1px measurer -> one word per page)
-    function syncMeasurerSize(){
-      const gap = 14;
-      const bookR = bookBox.getBoundingClientRect();
-
-      let W = Math.max(360, bookR.width || 0);
-      let H = Math.max(520, bookR.height || 0);
-
-      let pageW, pageH;
-      if(isMobile()){
-        pageW = W;
-        pageH = H;
-      }else{
-        pageW = (W - gap) / 2;
-        pageH = H;
-      }
-
-      pageW = Math.max(360, pageW);
-      pageH = Math.max(520, pageH);
-
-      measureBox.style.width  = pageW + "px";
-      measureBox.style.height = pageH + "px";
-    }
-
-    function escapeHtml(str){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function paginate(html){
-      const src = injectChapterBreaks(html);
-      const container = document.createElement("div");
-      container.innerHTML = src;
-
-      // Only ELEMENTS + PAGEBREAK comments. (Avoid raw text nodes confusion)
-      const nodes = Array.from(container.childNodes).filter(n=>{
-        if(n.nodeType === 8 && n.data.includes("PAGEBREAK")) return true;
-        return n.nodeType === 1;
-      });
-
-      const maxH = Math.max(520, measureBox.getBoundingClientRect().height);
-      const margin = 6; // safety margin so bottom never clips
-
-      const fits = (testHTML)=>{
-        measureInner.innerHTML = testHTML;
-        return measureInner.scrollHeight <= (maxH - margin);
-      };
-
-      const pages = [];
-      let pageHTML = "";
-
-      const push = ()=>{
-        if(pageHTML.trim()){
-          pages.push(pageHTML);
-          pageHTML = "";
-        }
-      };
-
-      const splitParagraph = (pEl)=>{
-        const cls = pEl.getAttribute("class");
-        const text = (pEl.textContent || "").trim();
-        const words = text.split(/\s+/).filter(Boolean);
-        let buf = "";
-
-        for(const w of words){
-          const next = buf ? (buf + " " + w) : w;
-          const part = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
-          if(fits(pageHTML + part)){
-            buf = next;
-          }else{
-            if(buf){
-              pageHTML += `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
-              push();
-              buf = w;
-            }else{
-              // force
-              push();
-              buf = w;
-            }
-          }
-        }
-        if(buf){
-          pageHTML += `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
-        }
-      };
-
-      for(const node of nodes){
-        if(node.nodeType === 8){
-          push();
-          continue;
-        }
-
-        // chapter titles always new page
-        if(node.matches && node.matches("section.chapter-title")){
-          push();
-        }
-
-        const htmlBlock = node.outerHTML || "";
-        const test = pageHTML + htmlBlock;
-
-        if(fits(test)){
-          pageHTML = test;
-          continue;
-        }
-
-        if(pageHTML.trim()){
-          push();
-          if(fits(htmlBlock)){
-            pageHTML = htmlBlock;
-            continue;
-          }
-        }
-
-        // If a single paragraph is too big, split word-by-word
-        if(node.tagName === "P"){
-          splitParagraph(node);
-          continue;
-        }
-
-        // Otherwise force it
-        pageHTML = htmlBlock;
-        push();
-      }
-
-      push();
-      return pages.filter(p=>p.trim().length);
-    }
-
-    function normalizeIndex(){
-      if(i < 0) i = 0;
-      if(i > PAGES.length - 1) i = PAGES.length - 1;
-      if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
-    }
-
-    function updateCounters(){
-      const total = String(PAGES.length || 0);
-      pageTotalEl.textContent = total;
-      mPageTotal.textContent = total;
-      pageLabel.textContent = String(i+1);
-      mPageLabel.textContent = String(i+1);
-    }
-
-    function saveProgress(){ localStorage.setItem(progressKey, String(i)); }
-
-    function render(){
-      if(PAGES.length === 0){
-        const msg = "<p class='muted'>No content found.</p>";
-        if(isMobile()){
-          singlePage.innerHTML = msg; singleNum.textContent = "—";
-        }else{
-          leftPage.innerHTML = msg; rightPage.innerHTML = "";
-          leftNum.textContent = "—"; rightNum.textContent = "";
-        }
-        updateCounters();
-        return;
-      }
-
-      normalizeIndex();
-      updateCounters();
-
-      if(isMobile()){
-        singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
-        singleNum.textContent = String(i+1);
-      }else{
-        const L = i, R = i+1;
-        leftPage.innerHTML = PAGES[L] || "<p class='muted'>End.</p>";
-        rightPage.innerHTML = PAGES[R] || "<p class='muted'>End.</p>";
-        leftNum.textContent = String(L+1);
-        rightNum.textContent = (R+1 <= PAGES.length) ? String(R+1) : "";
-      }
-
-      saveProgress();
-    }
-
-    function animateFlip(nextIndex){
-      if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
-      const forward = nextIndex > i;
-
-      flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
-      void flip.offsetWidth;
-
-      if(isMobile()){
-        flip.classList.add("full");
-        flip.classList.add(forward ? "fromRight" : "fromLeft");
-        flip.classList.add(forward ? "animForward" : "animBackward");
-        flipFront.innerHTML = PAGES[i] || "";
-        flipBack.innerHTML  = PAGES[nextIndex] || "";
-      }else{
-        if(forward){
-          flip.classList.add("fromRight","animForward");
-          flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
-        }else{
-          flip.classList.add("fromLeft","animBackward");
-          flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
-        }
-      }
-
-      setTimeout(()=>{
-        i = nextIndex;
-        render();
-        flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
-      }, 560);
-    }
-
-    function next(){
-      if(isMobile()){
-        if(i+1 <= PAGES.length-1) animateFlip(i+1);
-      }else{
-        if(i+2 <= PAGES.length-1) animateFlip(i+2);
-      }
-    }
-    function prev(){
-      if(isMobile()){
-        if(i-1 >= 0) animateFlip(i-1);
-      }else{
-        if(i-2 >= 0) animateFlip(i-2);
+    if(block.classList && block.classList.contains("chapter-title")){
+      if(page.innerHTML.trim()!==""){
+        PAGES.push(page.innerHTML);
+        page=document.createElement("div");
+        measurer.innerHTML="";
+        measurer.appendChild(page);
       }
     }
 
-    $("nextBtn").addEventListener("click", next);
-    $("prevBtn").addEventListener("click", prev);
-    $("mNext").addEventListener("click", next);
-    $("mPrev").addEventListener("click", prev);
+    const clone = block.cloneNode(true);
+    page.appendChild(clone);
 
-    document.addEventListener("keydown",(e)=>{
-      if(e.key==="ArrowRight") next();
-      if(e.key==="ArrowLeft") prev();
-    });
-
-    // Tap zones on mobile
-    bookBox.addEventListener("click",(e)=>{
-      if(!isMobile()) return;
-      const rect = bookBox.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      if(x < rect.width * 0.45) prev();
-      else if(x > rect.width * 0.55) next();
-    });
-
-    function paginateAndRender(){
-      syncMeasurerSize();
-      PAGES = paginate(BOOK_HTML);
-      render();
+    if(page.scrollHeight > measurer.clientHeight){
+      page.removeChild(clone);
+      PAGES.push(page.innerHTML);
+      page=document.createElement("div");
+      measurer.innerHTML="";
+      measurer.appendChild(page);
+      page.appendChild(clone);
     }
+  });
 
-    (async ()=>{
-      try{
-        await loadBook();
-      }catch(e){
-        BOOK_HTML = `<p class="muted">${escapeHtml(String(e))}</p>`;
-      }
+  if(page.innerHTML.trim()!==""){
+    PAGES.push(page.innerHTML);
+  }
 
-      // Run pagination after layout settles (important on iPhone)
-      const run = ()=>paginateAndRender();
-      requestAnimationFrame(()=>requestAnimationFrame(run));
-      setTimeout(run, 250);
-      setTimeout(run, 900);
+  document.body.removeChild(measurer);
+}
 
-      window.addEventListener("resize", run);
-    })();
-  </script>
+function render(){
+
+  document.getElementById("pageTotal").textContent = PAGES.length;
+  document.getElementById("pageLabel").textContent = i+1;
+
+  if(isMobile()){
+    document.getElementById("singlePage").innerHTML=PAGES[i]||"";
+    document.getElementById("singleNum").textContent=i+1;
+  }else{
+    document.getElementById("leftPage").innerHTML=PAGES[i]||"";
+    document.getElementById("rightPage").innerHTML=PAGES[i+1]||"";
+    document.getElementById("leftNum").textContent=i+1;
+    document.getElementById("rightNum").textContent=i+2;
+  }
+}
+
+function next(){
+  if(isMobile()){
+    if(i+1<PAGES.length){i++;render();}
+  }else{
+    if(i+2<PAGES.length){i+=2;render();}
+  }
+}
+
+function prev(){
+  if(isMobile()){
+    if(i-1>=0){i--;render();}
+  }else{
+    if(i-2>=0){i-=2;render();}
+  }
+}
+
+window.addEventListener("resize",()=>{
+  loadBook();
+});
+
+loadBook();
+</script>
+
 </body>
 </html>
