@@ -1,1 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader</title>
 
+<style>
+body{
+  margin:0;
+  background:#111;
+  color:white;
+  font-family:Georgia, serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+  overflow:hidden;
+}
+
+.page{
+  width:70%;
+  max-width:800px;
+  background:#1c1c1c;
+  padding:40px;
+  border-radius:20px;
+  transition:0.4s;
+}
+
+button{
+  position:fixed;
+  bottom:40px;
+  padding:10px 20px;
+  border:none;
+  border-radius:20px;
+  cursor:pointer;
+}
+#prev{ left:40px; }
+#next{ right:40px; }
+</style>
+</head>
+
+<body>
+
+<div class="page" id="content"></div>
+
+<button id="prev">Prev</button>
+<button id="next">Next</button>
+
+<script>
+const pages = [
+
+`<h2>THIS IS US</h2>
+<h3>Book I — Where We Began</h3>
+<p>by Shengbe Koker</p>`,
+
+`<h3>Chapter One — Fresh Starts</h3>
+<p>Mukeh did not believe in fresh starts.</p>
+<p>He believed in survival.</p>`,
+
+`<p>When he transferred at the beginning of the academic year, people treated it like opportunity...</p>`,
+
+`<h3>Chapter Two — Under the Tree</h3>
+<p>By the second week, Mukeh understood something important:</p>`,
+
+`<h3>Chapter Three — Calibration</h3>
+<p>The tension adjusted.</p>`,
+
+`<h3>Chapter Four — Surface Tension</h3>
+<p>The friend group continued like nothing had changed.</p>`,
+
+`<h3>Chapter Five — Lines</h3>
+<p>Mukeh didn’t wait.</p>`,
+
+`<p style="margin-top:40px;font-size:14px;">
+© ${new Date().getFullYear()} Shengbe Koker. All Rights Reserved.
+Unauthorized reproduction prohibited.
+</p>`
+];
+
+let current = 0;
+const content = document.getElementById("content");
+
+function render(){
+  content.innerHTML = pages[current];
+  localStorage.setItem("progress",current);
+}
+
+document.getElementById("next").onclick = ()=>{
+  if(current < pages.length-1){
+    current++;
+    render();
+  }
+};
+
+document.getElementById("prev").onclick = ()=>{
+  if(current > 0){
+    current--;
+    render();
+  }
+};
+
+current = parseInt(localStorage.getItem("progress")) || 0;
+render();
+</script>
+
+</body>
+</html>
