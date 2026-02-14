@@ -21,18 +21,21 @@
                   var(--bg);
       color:var(--ink);
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
+    /* Top bar */
     .top{
       position:fixed; left:0; right:0; top:0;
       display:flex; align-items:center; justify-content:space-between; gap:10px;
-      padding:12px 14px;
+      padding:10px 12px;
       border-bottom:1px solid var(--stroke);
       background:rgba(0,0,0,.18);
       backdrop-filter: blur(10px);
       z-index:30;
     }
-    .top .left{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .top .left,.top .right{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
     .chip{
       border:1px solid var(--stroke);
       background:rgba(255,255,255,.04);
@@ -43,30 +46,47 @@
       cursor:pointer;
       user-select:none;
       display:inline-flex; align-items:center; gap:8px;
+      white-space:nowrap;
     }
     .chip strong{color:var(--ink); font-weight:800}
-    .top .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    select{
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--stroke);
+      color:var(--ink);
+      padding:8px 10px;
+      border-radius:12px;
+      font-size:12px;
+      max-width: 260px;
+    }
 
+    /* Stage */
     .stage{
       height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:64px 16px 18px;
+      padding:62px 12px 14px; /* leaves room for top bar */
     }
 
     .book{
-      width:min(1000px, 96vw);
-      height:min(680px, 78vh);
+      width:min(1100px, 98vw);
+      height:min(720px, 80vh);
       position:relative;
       perspective: 1800px;
     }
 
+    /* Desktop spread */
     .spread{
       position:absolute; inset:0;
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:14px;
+    }
+
+    /* Mobile single-page mode */
+    .single{
+      position:absolute; inset:0;
+      display:none;
     }
 
     .page{
@@ -78,12 +98,14 @@
       position:relative;
     }
 
+    /* ✅ Exact inner height lock + no overflow */
     .page .inner{
       height:100%;
-      padding:26px 24px;
+      padding:26px 22px;
       overflow:hidden; /* no scroll inside page */
     }
 
+    /* Typography */
     .inner h1,.inner h2,.inner h3,.inner h4{
       font-family: ui-sans-serif, system-ui;
       margin:0 0 10px;
@@ -101,16 +123,12 @@
       white-space:normal;
     }
     .inner .muted{color:var(--muted)}
-    .inner hr{border:0;border-top:1px solid var(--stroke);margin:14px 0}
-
     .pageNum{
       position:absolute; bottom:12px; right:14px;
       font-size:12px; color:var(--muted);
     }
 
-    /* =======================
-       Flip Layer (bidirectional)
-       ======================= */
+    /* Flip overlay (bidirectional) */
     .flip{
       position:absolute;
       top:0; bottom:0;
@@ -118,6 +136,7 @@
       transform-style:preserve-3d;
       pointer-events:none;
       opacity:0;
+      z-index:20;
     }
     .flip.fromRight{
       left:50%;
@@ -126,6 +145,11 @@
     .flip.fromLeft{
       left:0;
       transform-origin:right;
+    }
+    .flip.full{
+      width:100%;
+      left:0;
+      transform-origin:left;
     }
     .flip .front, .flip .back{
       position:absolute; inset:0;
@@ -137,7 +161,7 @@
       backface-visibility:hidden;
     }
     .flip .front .inner, .flip .back .inner{
-      padding:26px 24px; height:100%; overflow:hidden;
+      padding:26px 22px; height:100%; overflow:hidden;
     }
     .flip .back{transform: rotateY(180deg)}
 
@@ -149,57 +173,46 @@
       0%{transform:rotateY(0deg)}
       100%{transform:rotateY(180deg)}
     }
-    .flip.animForward{
-      opacity:1;
-      animation: flipForward .55s ease-in-out forwards;
-    }
-    .flip.animBackward{
-      opacity:1;
-      animation: flipBackward .55s ease-in-out forwards;
-    }
+    .flip.animForward{opacity:1; animation: flipForward .55s ease-in-out forwards;}
+    .flip.animBackward{opacity:1; animation: flipBackward .55s ease-in-out forwards;}
 
     .navHint{
       position:fixed; left:50%; transform:translateX(-50%);
-      bottom:14px; display:flex; gap:10px; align-items:center;
+      bottom:12px; display:flex; gap:10px; align-items:center;
       color:var(--muted); font-size:12px; z-index:35;
+      text-align:center;
+      padding:0 12px;
     }
 
-    select{
-      background:rgba(255,255,255,.06);
-      border:1px solid var(--stroke);
-      color:var(--ink);
-      padding:8px 10px;
-      border-radius:12px;
-      font-size:12px;
-      max-width: 260px;
-    }
-
-    /* Hidden measurer (for pagination) */
+    /* Hidden measurers */
     .measureWrap{
       position:fixed; left:-9999px; top:-9999px;
-      width:min(1000px, 96vw);
-      height:min(680px, 78vh);
+      width:min(1100px, 98vw);
+      height:min(720px, 80vh);
       visibility:hidden;
     }
-    .measurePage{
-      width:50%; /* measure one page column */
+    .measureSpread{
       height:100%;
-      padding:26px 24px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    .measurePage{
+      height:100%;
+      padding:26px 22px;
       overflow:hidden;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
     }
-
-    @media (max-width:720px){
-      .spread{grid-template-columns:1fr}
-      .flip{display:none}
-      .book{height:min(740px, 78vh)}
-      .measurePage{width:100%}
-      .inner p{font-size:16px}
+    .measureSingle{
+      height:100%;
+      padding:26px 22px;
+      overflow:hidden;
+      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+      display:none;
     }
 
     /* ================================
        Cinematic Novel Formatting
-       (book content classes)
     ================================ */
     .chapter-cover{
       padding: 18px 0 10px;
@@ -226,7 +239,6 @@
       color:var(--ink);
       opacity:.92;
     }
-
     .chapter-title{
       text-align:center;
       padding: 10px 0 6px;
@@ -246,7 +258,6 @@
       font-family: ui-sans-serif, system-ui;
       letter-spacing:.02em;
     }
-
     hr.ornament{
       border:0;
       border-top:1px solid var(--stroke);
@@ -265,7 +276,6 @@
       font-size:13px;
       padding:0 10px;
     }
-
     .scene-break{
       text-align:center;
       color:var(--muted);
@@ -274,7 +284,6 @@
       font-size:14px;
       user-select:none;
     }
-
     .dropcap:first-letter{
       float:left;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
@@ -284,7 +293,6 @@
       padding-top:6px;
       font-weight:800;
     }
-
     .copyright{
       text-align:center;
       color:var(--muted);
@@ -292,6 +300,23 @@
       font-family: ui-sans-serif, system-ui;
       margin: 8px 0 4px;
       letter-spacing:.04em;
+    }
+
+    /* ✅ Mobile: keep same “book” feeling + flip */
+    @media (max-width:720px){
+      .book{width:98vw; height:82vh;}
+      .spread{display:none;}
+      .single{display:block;}
+      .measureSingle{display:block;}
+      .measureSpread{display:none;}
+      .flip{width:100%; left:0;}
+      .flip.fromRight{left:0; transform-origin:left;}
+      .flip.fromLeft{left:0; transform-origin:right;}
+      .flip .front .inner, .flip .back .inner,
+      .page .inner, .measureSingle{padding:22px 18px;}
+      .inner p{font-size:16px; line-height:1.75;}
+      .top{padding:10px 10px;}
+      select{max-width:160px;}
     }
   </style>
 </head>
@@ -305,7 +330,7 @@
     </div>
 
     <div class="right">
-      <div class="chip" id="themeBtn">Toggle Theme</div>
+      <div class="chip" id="themeBtn">Theme</div>
       <div class="chip" id="prevBtn">Prev</div>
       <div class="chip" id="nextBtn">Next</div>
       <div class="chip" id="speakBtn">Speak</div>
@@ -316,7 +341,8 @@
 
   <div class="stage">
     <div class="book">
-      <div class="spread">
+      <!-- Desktop spread -->
+      <div class="spread" id="spread">
         <div class="page">
           <div class="inner" id="leftPage"></div>
           <div class="pageNum" id="leftNum"></div>
@@ -327,6 +353,15 @@
         </div>
       </div>
 
+      <!-- Mobile single -->
+      <div class="single" id="single">
+        <div class="page">
+          <div class="inner" id="singlePage"></div>
+          <div class="pageNum" id="singleNum"></div>
+        </div>
+      </div>
+
+      <!-- Flip overlay -->
       <div class="flip" id="flip">
         <div class="front"><div class="inner" id="flipFront"></div></div>
         <div class="back"><div class="inner" id="flipBack"></div></div>
@@ -335,10 +370,14 @@
   </div>
 
   <div class="measureWrap">
-    <div class="measurePage" id="measure"></div>
+    <div class="measureSpread" id="measureSpread">
+      <div class="measurePage" id="measureLeft"></div>
+      <div class="measurePage" id="measureRight"></div>
+    </div>
+    <div class="measureSingle" id="measureSingle"></div>
   </div>
 
-  <div class="navHint">Tip: Use ◀ ▶ keys. On mobile, tap Prev/Next.</div>
+  <div class="navHint">Tip: Swipe isn’t needed — use Prev/Next or ◀ ▶. Flip works on mobile too.</div>
 
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
@@ -364,7 +403,6 @@
     const bookId = params.get("book") || "book1";
     document.getElementById("bookTitle").textContent = bookId;
 
-    // Map bookId -> content file
     const BOOK_FILES = {
       book1: "./books/book1.html",
       coming: "./books/coming-soon.html"
@@ -372,17 +410,27 @@
     const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
 
     // Elements
+    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
+
     const leftPage = document.getElementById("leftPage");
     const rightPage = document.getElementById("rightPage");
     const leftNum = document.getElementById("leftNum");
     const rightNum = document.getElementById("rightNum");
+
+    const singlePage = document.getElementById("singlePage");
+    const singleNum  = document.getElementById("singleNum");
+
     const pageLabel = document.getElementById("pageLabel");
     const pageTotalEl = document.getElementById("pageTotal");
 
     const flip = document.getElementById("flip");
     const flipFront = document.getElementById("flipFront");
     const flipBack = document.getElementById("flipBack");
-    const measure = document.getElementById("measure");
+
+    // Measurers
+    const measureLeft = document.getElementById("measureLeft");
+    const measureRight = document.getElementById("measureRight");
+    const measureSingle = document.getElementById("measureSingle");
 
     // Progress
     const progressKey = `progress:${bookId}`;
@@ -403,7 +451,7 @@
     }
 
     let BOOK_HTML = "<p class='muted'>Loading…</p>";
-    let PAGES = [];
+    let PAGES = []; // unified pages (single-page units)
 
     async function loadBook(){
       try{
@@ -415,10 +463,20 @@
       }
     }
 
+    // ✅ Force every chapter to start on a new page:
+    // We insert a special token before each chapter title section
+    function injectChapterBreaks(html){
+      return html.replaceAll('<section class="chapter-title">', '<!--PAGEBREAK--><section class="chapter-title">');
+    }
+
     function tokenizeHtml(html){
       const parts = html.split(/(<[^>]+>)/g).filter(Boolean);
       const tokens = [];
       for(const part of parts){
+        if(part.startsWith("<!--PAGEBREAK-->")){
+          tokens.push("<!--PAGEBREAK-->");
+          continue;
+        }
         if(part.startsWith("<")) tokens.push(part);
         else{
           const words = part.split(/(\s+)/g).filter(w=>w.length>0);
@@ -428,105 +486,162 @@
       return tokens;
     }
 
-    function paginate(html){
-      const tokens = tokenizeHtml(html);
+    function paginateToSinglePages(html){
+      const src = injectChapterBreaks(html);
+      const tokens = tokenizeHtml(src);
+
       const out = [];
       let buf = "";
-      const maxH = measure.clientHeight || 600;
 
-      for(let t=0; t<tokens.length; t++){
-        const test = buf + tokens[t];
-        measure.innerHTML = test;
+      const measurer = measureSingle;
+      const maxH = measurer.clientHeight || 600;
 
-        if(measure.scrollHeight <= maxH + 1){
-          buf = test;
-        }else{
+      function pushBuf(){
+        if(buf.trim()){
           out.push(buf.trim());
-          buf = tokens[t];
+          buf = "";
         }
       }
-      if(buf.trim()) out.push(buf.trim());
+
+      for(let t=0; t<tokens.length; t++){
+        const tok = tokens[t];
+
+        if(tok === "<!--PAGEBREAK-->"){
+          pushBuf();
+          continue;
+        }
+
+        const test = buf + tok;
+        measurer.innerHTML = test;
+
+        if(measurer.scrollHeight <= maxH + 1){
+          buf = test;
+        }else{
+          pushBuf();
+          buf = tok;
+        }
+      }
+      pushBuf();
       return out;
     }
 
+    function normalizeIndex(){
+      if(i < 0) i = 0;
+      if(i > PAGES.length - 1) i = PAGES.length - 1;
+    }
+
     function render(){
-      const total = PAGES.length;
-      if(total === 0){
-        leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
-        rightPage.innerHTML = "";
+      if(PAGES.length === 0){
+        if(isMobile()){
+          singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
+        }else{
+          leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
+          rightPage.innerHTML = "";
+        }
         return;
       }
 
-      if(i < 0) i = 0;
-      if(i > total - 1) i = total - 1;
+      normalizeIndex();
 
-      const leftIdx = i;
-      const rightIdx = i + 1;
-
-      leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
-      rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
-
-      leftNum.textContent = leftIdx + 1;
-      rightNum.textContent = rightIdx + 1 <= total ? (rightIdx + 1) : "";
-      pageLabel.textContent = String(leftIdx + 1);
+      const total = PAGES.length;
       pageTotalEl.textContent = String(total);
+
+      if(isMobile()){
+        // Mobile: show one page at a time
+        singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
+        singleNum.textContent = String(i + 1);
+        pageLabel.textContent = String(i + 1);
+      }else{
+        // Desktop: show a spread (2 pages)
+        // Ensure left page is even
+        if(i % 2 !== 0) i = Math.max(0, i - 1);
+
+        const leftIdx = i;
+        const rightIdx = i + 1;
+
+        leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
+        rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
+
+        leftNum.textContent = String(leftIdx + 1);
+        rightNum.textContent = (rightIdx + 1 <= total) ? String(rightIdx + 1) : "";
+        pageLabel.textContent = String(leftIdx + 1);
+      }
 
       saveProgress();
     }
 
-    // ✅ Bidirectional flip:
-    // - Forward flip uses RIGHT page (i+1) flipping leftward
-    // - Backward flip uses LEFT page (i) flipping rightward
+    // ✅ Flip animation works on BOTH desktop + mobile
     function animateFlip(nextIndex){
-      if (matchMedia("(max-width: 720px)").matches){
-        i = nextIndex; render(); return;
-      }
-
       const total = PAGES.length;
       if(nextIndex < 0 || nextIndex > total - 1) return;
 
       const goingForward = nextIndex > i;
 
-      // Reset classes
-      flip.classList.remove("animForward","animBackward","fromLeft","fromRight");
+      // Reset flip classes
+      flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
       void flip.offsetWidth;
 
-      if(goingForward){
-        // flip right page -> reveals next left page
-        flip.classList.add("fromRight","animForward");
-        const currentRight = i + 1;
-        flipFront.innerHTML = PAGES[currentRight] || "<p class='muted'>End.</p>";
-        flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>End.</p>";
-      } else {
-        // flip left page -> reveals previous right page
-        flip.classList.add("fromLeft","animBackward");
-        const currentLeft = i;
-        const prevRight = nextIndex + 1; // i-1
-        flipFront.innerHTML = PAGES[currentLeft] || "<p class='muted'>Start.</p>";
-        flipBack.innerHTML  = PAGES[prevRight] || "<p class='muted'>Start.</p>";
+      if(isMobile()){
+        // Mobile: full-page flip
+        flip.classList.add("full");
+        if(goingForward){
+          flip.classList.add("fromRight","animForward");
+          flipFront.innerHTML = PAGES[i] || "";
+          flipBack.innerHTML  = PAGES[nextIndex] || "";
+        } else {
+          flip.classList.add("fromLeft","animBackward");
+          flipFront.innerHTML = PAGES[i] || "";
+          flipBack.innerHTML  = PAGES[nextIndex] || "";
+        }
+      }else{
+        // Desktop: flip a half (right page forward, left page backward)
+        if(goingForward){
+          // Next spread: i += 2
+          const currentRight = i + 1;
+          flip.classList.add("fromRight","animForward");
+          flipFront.innerHTML = PAGES[currentRight] || "<p class='muted'>End.</p>";
+          flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>End.</p>";
+        } else {
+          // Prev spread: i -= 2
+          const currentLeft = i;
+          const prevRight = nextIndex + 1;
+          flip.classList.add("fromLeft","animBackward");
+          flipFront.innerHTML = PAGES[currentLeft] || "<p class='muted'>Start.</p>";
+          flipBack.innerHTML  = PAGES[prevRight] || "<p class='muted'>Start.</p>";
+        }
       }
 
       setTimeout(()=>{
         i = nextIndex;
         render();
-        flip.classList.remove("animForward","animBackward","fromLeft","fromRight");
+        flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
       }, 560);
     }
 
+    // Controls
     document.getElementById("nextBtn").onclick = ()=> {
-      if (i + 2 <= PAGES.length - 1) animateFlip(i + 2);
+      if(isMobile()){
+        if(i + 1 <= PAGES.length - 1) animateFlip(i + 1);
+      }else{
+        if(i + 2 <= PAGES.length - 1) animateFlip(i + 2);
+      }
     };
     document.getElementById("prevBtn").onclick = ()=> {
-      if (i - 2 >= 0) animateFlip(i - 2);
+      if(isMobile()){
+        if(i - 1 >= 0) animateFlip(i - 1);
+      }else{
+        if(i - 2 >= 0) animateFlip(i - 2);
+      }
     };
 
     document.getElementById("backBtn").onclick = ()=> location.href = "./";
+
     document.addEventListener("keydown",(e)=>{
       if(e.key === "ArrowRight") document.getElementById("nextBtn").click();
       if(e.key === "ArrowLeft") document.getElementById("prevBtn").click();
     });
 
-    // Voice (reads current spread)
+    // Voice (reads visible pages)
     const voiceSelect = document.getElementById("voiceSelect");
     function loadVoices(){
       const voices = speechSynthesis.getVoices();
@@ -541,16 +656,21 @@
     loadVoices();
     speechSynthesis.onvoiceschanged = loadVoices;
 
-    function currentText(){
+    function visibleText(){
       const temp = document.createElement("div");
-      temp.innerHTML = (PAGES[i]||"") + " " + (PAGES[i+1]||"");
+      if(isMobile()){
+        temp.innerHTML = (PAGES[i]||"");
+      }else{
+        const leftIdx = (i % 2 === 0) ? i : Math.max(0, i - 1);
+        temp.innerHTML = (PAGES[leftIdx]||"") + " " + (PAGES[leftIdx+1]||"");
+      }
       return temp.textContent || "";
     }
 
     document.getElementById("speakBtn").onclick = ()=>{
       if(!("speechSynthesis" in window)){ alert("Speech not supported."); return; }
       speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(currentText());
+      const utter = new SpeechSynthesisUtterance(visibleText());
       const voices = speechSynthesis.getVoices();
       const chosen = voices[parseInt(voiceSelect.value||"0",10)];
       if(chosen) utter.voice = chosen;
@@ -560,13 +680,19 @@
     document.getElementById("stopBtn").onclick = ()=> speechSynthesis.cancel();
 
     function paginateAndRender(){
-      PAGES = paginate(BOOK_HTML);
-      // Ensure i is even (left page index)
-      if(i % 2 !== 0) i = Math.max(0, i - 1);
+      // ✅ Pagination always based on SINGLE page inner height (mobile sizing)
+      // So text never goes outside.
+      // We temporarily force the single measurer to match current device.
+      PAGES = paginateToSinglePages(BOOK_HTML);
+
+      // Keep index aligned for desktop spreads
+      if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
+
       render();
     }
 
     await loadBook();
+    // Wait 2 frames so measurers have real sizes
     requestAnimationFrame(()=>requestAnimationFrame(()=>paginateAndRender()));
     window.addEventListener("resize", ()=> paginateAndRender());
   </script>
