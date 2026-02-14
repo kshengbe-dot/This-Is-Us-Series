@@ -12,10 +12,12 @@
       --shadow: 0 26px 80px rgba(0,0,0,.55);
       --bar: rgba(10,14,28,.88);
       --chip: rgba(255,255,255,.06);
+      --sheet: rgba(15,20,40,.94);
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
-      --footerSpace: 64px; /* reserve so last line never clips */
-      --gap: 14px;
+
+      /* Bigger reserved space so NOTHING clips at the bottom */
+      --footerSpace: 60px;
     }
     [data-theme="light"]{
       --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
@@ -23,6 +25,7 @@
       --shadow: 0 18px 60px rgba(2,6,23,.12);
       --bar: rgba(255,255,255,.92);
       --chip: rgba(2,6,23,.04);
+      --sheet: rgba(255,255,255,.96);
     }
 
     *{box-sizing:border-box}
@@ -33,10 +36,14 @@
         var(--bg);
       color:var(--ink);
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
+    /* ===== Desktop Top Bar ===== */
     .top{
-      position:fixed; left:0; right:0; top:0; z-index:40;
+      position:fixed; left:0; right:0; top:0;
+      z-index:40;
       border-bottom:1px solid var(--stroke);
       background: var(--bar);
       backdrop-filter: blur(12px);
@@ -57,13 +64,23 @@
       white-space:nowrap;
     }
     .chip strong{color:var(--ink); font-weight:900}
+    select{
+      background: var(--chip);
+      border:1px solid var(--stroke);
+      color:var(--ink);
+      padding:8px 10px;
+      border-radius:12px;
+      font-size:12px;
+      max-width: 260px;
+    }
 
+    /* ===== Stage ===== */
     .stage{
       height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: 78px 12px 16px;
+      padding: 78px 12px 16px; /* desktop */
     }
     .book{
       width:min(1120px, 98vw);
@@ -71,12 +88,16 @@
       position:relative;
       perspective: 1800px;
     }
+
+    /* Desktop spread */
     .spread{
       position:absolute; inset:0;
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--gap);
+      gap:14px;
     }
+
+    /* Mobile single */
     .single{ position:absolute; inset:0; display:none; }
 
     .page{
@@ -87,11 +108,15 @@
       overflow:hidden;
       position:relative;
     }
+
+    /* IMPORTANT: reserve footer space so last line never clips */
     .inner{
       height:100%;
-      padding:26px 22px calc(18px + var(--footerSpace));
+      padding:26px 22px calc(20px + var(--footerSpace));
       overflow:hidden;
     }
+
+    /* Typography */
     .inner h1,.inner h2,.inner h3,.inner h4{
       font-family: ui-sans-serif, system-ui;
       margin:0 0 10px;
@@ -108,6 +133,8 @@
       color:var(--ink);
     }
     .muted{color:var(--muted)}
+
+    /* Page number sits in reserved footer space */
     .pageNum{
       position:absolute;
       bottom:16px;
@@ -117,6 +144,7 @@
       pointer-events:none;
     }
 
+    /* Flip overlay */
     .flip{
       position:absolute; top:0; bottom:0;
       width:50%;
@@ -132,13 +160,13 @@
       position:absolute; inset:0;
       border-radius:18px;
       overflow:hidden;
-      background: rgba(255,255,255,.03);
+      background: var(--paper);
       border:1px solid var(--stroke);
       box-shadow:var(--shadow);
       backface-visibility:hidden;
     }
     .flip .front .inner, .flip .back .inner{
-      padding:26px 22px calc(18px + var(--footerSpace));
+      padding:26px 22px calc(20px + var(--footerSpace));
       height:100%;
       overflow:hidden;
     }
@@ -148,6 +176,20 @@
     .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
     .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
 
+    /* Novel styling */
+    .chapter-cover{ text-align:center; padding: 18px 0 10px; }
+    .chapter-cover h2{
+      margin:0 0 8px; font-size:44px; font-weight:900;
+      letter-spacing:.10em; text-transform:uppercase;
+    }
+    .series-sub{
+      margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
+      font-size:14px; letter-spacing:.05em;
+    }
+    .author{
+      margin:10px 0 0; font-family: ui-sans-serif, system-ui;
+      font-size:14px; opacity:.92;
+    }
     .chapter-title{ text-align:center; padding:10px 0 6px; }
     .chapter-title h3{
       margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
@@ -156,6 +198,16 @@
     .chapter-title h4{
       margin:10px 0 0; font-size:30px; font-weight:900;
       font-family: ui-sans-serif, system-ui;
+    }
+    hr.ornament{
+      border:0; border-top:1px solid var(--stroke);
+      margin:18px auto; width:66%; position:relative;
+    }
+    hr.ornament:after{
+      content:"✦"; position:absolute; left:50%;
+      transform:translate(-50%,-50%); top:0;
+      color:var(--muted); font-size:13px; padding:0 10px;
+      background: transparent;
     }
     .scene-break{
       text-align:center; color:var(--muted);
@@ -167,25 +219,43 @@
       padding-right:10px; padding-top:6px; font-weight:800;
     }
 
-    /* Mobile */
-    .mTop, .mBottom{ display:none; }
+    /* ===== Mobile Premium UI ===== */
+    .mTop, .mBottom, .sheet, .sheetBackdrop{ display:none; }
+
     @media (max-width:720px){
       .top{ display:none; }
+
       .mTop{
         display:flex;
-        position:fixed; left:0; right:0; top:0; z-index:60;
+        position:fixed; left:0; right:0; top:0;
+        z-index:60;
         padding: calc(10px + var(--safeTop)) 12px 10px;
         background: var(--bar);
         backdrop-filter: blur(12px);
         border-bottom:1px solid var(--stroke);
-        align-items:center; justify-content:space-between; gap:10px;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
       }
-      .mTitle{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
+      .mTitle{
+        display:flex; flex-direction:column;
+        line-height:1.1;
+        min-width:0;
+      }
       .mTitle .t1{
-        font-family: ui-sans-serif, system-ui; font-weight:900; font-size:14px;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:52vw;
+        font-family: ui-sans-serif, system-ui;
+        font-weight:900;
+        font-size:14px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        max-width: 52vw;
       }
-      .mTitle .t2{ font-family: ui-sans-serif, system-ui; font-size:12px; color:var(--muted); }
+      .mTitle .t2{
+        font-family: ui-sans-serif, system-ui;
+        font-size:12px;
+        color:var(--muted);
+      }
       .mBtn{
         border:1px solid var(--stroke);
         background: rgba(0,0,0,.18);
@@ -203,7 +273,8 @@
 
       .mBottom{
         display:flex;
-        position:fixed; left:0; right:0; bottom:0; z-index:60;
+        position:fixed; left:0; right:0; bottom:0;
+        z-index:60;
         padding:10px 12px calc(10px + var(--safeBot));
         background: var(--bar);
         backdrop-filter: blur(12px);
@@ -212,14 +283,15 @@
       }
       .mBottom .mBtn{ flex:1; text-align:center; }
 
-      .stage{ padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot)) 10px; }
+      .stage{
+        padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot));
+      }
       .book{
         width:98vw;
         height: calc(100vh - (58px + var(--safeTop)) - (74px + var(--safeBot)) - 18px);
       }
       .spread{ display:none; }
       .single{ display:block; }
-
       .flip{ width:100%; left:0; }
       .flip.fromRight{ left:0; transform-origin:left; }
       .flip.fromLeft{ left:0; transform-origin:right; }
@@ -229,29 +301,88 @@
       .inner p{ font-size:16px; line-height:1.82; }
     }
 
-    /* Offscreen measurer (DO NOT restrict width/height here) */
-    .measureHost{
-      position:fixed;
-      left:-99999px; top:0;
+    /* Mobile Sheet */
+    @media (max-width:720px){
+      .sheetBackdrop{
+        display:block;
+        position:fixed; inset:0;
+        background: rgba(0,0,0,.60);
+        backdrop-filter: blur(8px);
+        z-index:70;
+        opacity:0;
+        pointer-events:none;
+        transition: .2s ease;
+      }
+      .sheet{
+        display:block;
+        position:fixed; left:0; right:0; bottom:0;
+        z-index:80;
+        transform: translateY(110%);
+        transition: .25s ease;
+        background: var(--sheet);
+        border-top:1px solid var(--stroke);
+        border-radius:18px 18px 0 0;
+        padding: 14px 14px calc(14px + var(--safeBot));
+        box-shadow: 0 -24px 60px rgba(0,0,0,.55);
+      }
+      .sheet.open{ transform: translateY(0); }
+      .sheetBackdrop.open{ opacity:1; pointer-events:auto; }
+
+      .sheet h4{
+        margin:0 0 10px;
+        font-family: ui-sans-serif, system-ui;
+        font-size:14px;
+        letter-spacing:.06em;
+        text-transform:uppercase;
+        color:var(--muted);
+      }
+      .sheetRow{
+        display:flex; gap:10px; flex-wrap:wrap;
+      }
+      .sheetRow .mBtn{ flex:1; min-width: 44%; }
+      .sheet select{
+        width:100%;
+        margin-top:10px;
+        padding:12px 12px;
+        border-radius:14px;
+        font-size:14px;
+        background: rgba(0,0,0,.18);
+        border:1px solid var(--stroke);
+        color: var(--ink);
+      }
+      [data-theme="light"] .sheet select{ background: rgba(2,6,23,.06); }
+      .sheet .divider{
+        height:1px; background: var(--stroke);
+        margin:12px 0;
+      }
+    }
+
+    /* Hidden measurer uses the SAME page sizing as real pages */
+    .measureWrap{
+      position:fixed; left:-9999px; top:-9999px;
+      width: min(1120px, 98vw);
+      height: min(740px, 84vh);
       visibility:hidden;
-      z-index:-1;
     }
-    .measureBox{
-      border:1px solid transparent;
-      border-radius:18px;
-      overflow:hidden;
-      background: #0000;
-    }
-    .measureInner{
+    .measurePage{
       height:100%;
-      padding:26px 22px calc(18px + var(--footerSpace));
+      padding:26px 22px calc(20px + var(--footerSpace));
       overflow:hidden;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+      line-height:1.82;
+      font-size:16px;
     }
-    .measureInner p{ font-size:16px; line-height:1.78; margin:0 0 14px; }
+    .measureSingle{
+      height:100%;
+      padding:22px 18px calc(18px + var(--footerSpace));
+      overflow:hidden;
+      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+      line-height:1.82;
+      font-size:16px;
+      display:none;
+    }
     @media (max-width:720px){
-      .measureInner{ padding:22px 18px calc(18px + var(--footerSpace)); }
-      .measureInner p{ line-height:1.82; }
+      .measureSingle{ display:block; }
     }
   </style>
 </head>
@@ -264,7 +395,7 @@
       <div class="t1" id="mBookTitle">book1</div>
       <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
     </div>
-    <div class="mBtn" id="mTheme">Theme</div>
+    <div class="mBtn" id="mMenu">Menu</div>
   </div>
 
   <!-- Desktop top -->
@@ -278,6 +409,9 @@
     <div class="row">
       <div class="chip" id="prevBtn">Prev</div>
       <div class="chip" id="nextBtn">Next</div>
+      <div class="chip" id="speakBtn">Speak</div>
+      <div class="chip" id="stopBtn">Stop</div>
+      <select id="voiceSelect" title="Voice"></select>
     </div>
   </div>
 
@@ -287,15 +421,38 @@
     <div class="mBtn" id="mNext">Next</div>
   </div>
 
+  <!-- Mobile sheet -->
+  <div class="sheetBackdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet">
+    <h4>Reader Settings</h4>
+    <div class="sheetRow">
+      <div class="mBtn" id="mTheme">Theme</div>
+      <div class="mBtn" id="mSpeak">Speak</div>
+      <div class="mBtn" id="mStop">Stop</div>
+      <div class="mBtn" id="mClose">Close</div>
+    </div>
+    <div class="divider"></div>
+    <select id="mVoiceSelect" title="Voice"></select>
+  </div>
+
   <div class="stage">
-    <div class="book" id="bookBox">
+    <div class="book">
       <div class="spread" id="spread">
-        <div class="page"><div class="inner" id="leftPage"></div><div class="pageNum" id="leftNum"></div></div>
-        <div class="page"><div class="inner" id="rightPage"></div><div class="pageNum" id="rightNum"></div></div>
+        <div class="page">
+          <div class="inner" id="leftPage"></div>
+          <div class="pageNum" id="leftNum"></div>
+        </div>
+        <div class="page">
+          <div class="inner" id="rightPage"></div>
+          <div class="pageNum" id="rightNum"></div>
+        </div>
       </div>
 
       <div class="single" id="single">
-        <div class="page"><div class="inner" id="singlePage"></div><div class="pageNum" id="singleNum"></div></div>
+        <div class="page">
+          <div class="inner" id="singlePage"></div>
+          <div class="pageNum" id="singleNum"></div>
+        </div>
       </div>
 
       <div class="flip" id="flip">
@@ -305,32 +462,26 @@
     </div>
   </div>
 
-  <!-- Offscreen measurer -->
-  <div class="measureHost">
-    <div class="measureBox" id="measureBox">
-      <div class="measureInner" id="measureInner"></div>
-    </div>
+  <div class="measureWrap" id="measureWrap">
+    <div class="measurePage" id="measureLeft"></div>
+    <div class="measureSingle" id="measureSingle"></div>
   </div>
 
   <script type="module">
-    // IMPORTANT: your folder looks like "book" in your repo screenshot.
-    // If your folder is "book", keep it. If it's "books", change below.
+    // IMPORTANT: books/ path
     const BOOK_FILES = {
-      book1: "./book/book1.html",
-      coming: "./book/coming-soon.html"
+      book1: "./books/book1.html",
+      coming: "./books/coming-soon.html"
     };
 
     const params = new URLSearchParams(location.search);
     const bookId = params.get("book") || "book1";
-    const bookFile = BOOK_FILES[bookId] || "./book/coming-soon.html";
+    const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
 
-    const $ = (id)=>document.getElementById(id);
-    const bookBox = $("bookBox");
+    document.getElementById("bookTitle").textContent = bookId;
+    document.getElementById("mBookTitle").textContent = bookId;
 
     const isMobile = ()=> matchMedia("(max-width:720px)").matches;
-
-    $("bookTitle").textContent = bookId;
-    $("mBookTitle").textContent = bookId;
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -341,65 +492,201 @@
       localStorage.setItem("theme", next);
       paginateAndRender();
     }
-    $("themeBtn").addEventListener("click", toggleTheme);
-    $("mTheme").addEventListener("click", toggleTheme);
+    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+
+    // Sheet
+    const sheet = document.getElementById("sheet");
+    const sheetBackdrop = document.getElementById("sheetBackdrop");
+    function openSheet(){ sheet.classList.add("open"); sheetBackdrop.classList.add("open"); }
+    function closeSheet(){ sheet.classList.remove("open"); sheetBackdrop.classList.remove("open"); }
+    document.getElementById("mMenu").addEventListener("click", openSheet);
+    document.getElementById("mClose").addEventListener("click", closeSheet);
+    sheetBackdrop.addEventListener("click", closeSheet);
+    document.getElementById("mTheme").addEventListener("click", ()=>{ toggleTheme(); closeSheet(); });
 
     // Nav
     function goLibrary(){ location.href = "./"; }
-    $("backBtn").addEventListener("click", goLibrary);
-    $("mBack").addEventListener("click", goLibrary);
+    document.getElementById("backBtn").addEventListener("click", goLibrary);
+    document.getElementById("mBack").addEventListener("click", goLibrary);
 
-    // DOM
-    const leftPage = $("leftPage"), rightPage = $("rightPage"), singlePage = $("singlePage");
-    const leftNum = $("leftNum"), rightNum = $("rightNum"), singleNum = $("singleNum");
-    const pageLabel = $("pageLabel"), pageTotalEl = $("pageTotal");
-    const mPageLabel = $("mPageLabel"), mPageTotal = $("mPageTotal");
-    const flip = $("flip"), flipFront = $("flipFront"), flipBack = $("flipBack");
-    const measureBox = $("measureBox"), measureInner = $("measureInner");
+    // Page DOM
+    const leftPage = document.getElementById("leftPage");
+    const rightPage = document.getElementById("rightPage");
+    const leftNum = document.getElementById("leftNum");
+    const rightNum = document.getElementById("rightNum");
+    const singlePage = document.getElementById("singlePage");
+    const singleNum  = document.getElementById("singleNum");
+
+    const pageLabel = document.getElementById("pageLabel");
+    const pageTotalEl = document.getElementById("pageTotal");
+    const mPageLabel = document.getElementById("mPageLabel");
+    const mPageTotal = document.getElementById("mPageTotal");
+
+    // Flip DOM
+    const flip = document.getElementById("flip");
+    const flipFront = document.getElementById("flipFront");
+    const flipBack  = document.getElementById("flipBack");
+
+    // Measurers
+    const measureLeft = document.getElementById("measureLeft");
+    const measureSingle = document.getElementById("measureSingle");
 
     // Progress
     const progressKey = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
 
-    let BOOK_HTML = "";
+    // Load book html
+    let BOOK_HTML = "<p class='muted'>Loading…</p>";
     let PAGES = [];
 
     async function loadBook(){
       const res = await fetch(bookFile, { cache:"no-store" });
-      if(!res.ok) throw new Error("Could not load book: " + res.status);
+      if(!res.ok) throw new Error("Could not load: " + res.status);
       BOOK_HTML = await res.text();
     }
 
-    // Make sure chapters start new page
+    // Hard pagebreak before chapter titles
     function injectChapterBreaks(html){
       return html.replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
     }
 
-    // ✅ BULLETPROOF size: never 1px, never 0px
-    function syncMeasurerSize(){
-      const gap = 14;
+    function getMeasurer(){
+      return isMobile() ? measureSingle : measureLeft;
+    }
 
-      const bookR = bookBox.getBoundingClientRect();
-      let W = Math.max(320, bookR.width);
-      let H = Math.max(420, bookR.height);
+    // ✅ Robust pagination that DOES NOT drop words
+    function paginate(html){
+      const src = injectChapterBreaks(html);
+      const container = document.createElement("div");
+      container.innerHTML = src;
 
-      let pageW, pageH;
+      // Collect blocks (top-level)
+      const blocks = Array.from(container.childNodes).filter(n => {
+        if(n.nodeType === 3) return n.textContent.trim().length; // text
+        if(n.nodeType === 1) return true; // element
+        return false;
+      });
 
-      if(isMobile()){
-        pageW = W;
-        pageH = H;
-      }else{
-        pageW = (W - gap) / 2;
-        pageH = H;
+      const measurer = getMeasurer();
+      const maxH = measurer.clientHeight || 600;
+
+      const pages = [];
+      let pageHTML = "";
+
+      function fits(testHTML){
+        measurer.innerHTML = testHTML;
+        // use a tiny safety margin so last line never clips
+        return measurer.scrollHeight <= (maxH - 2);
       }
 
-      // If Safari returns weird tiny values, clamp
-      pageW = Math.max(320, pageW);
-      pageH = Math.max(420, pageH);
+      function pushPage(){
+        if(pageHTML.length){
+          pages.push(pageHTML);
+          pageHTML = "";
+        }
+      }
 
-      measureBox.style.width  = pageW + "px";
-      measureBox.style.height = pageH + "px";
+      function splitParagraphNode(pNode){
+        // Split a <p> word-by-word if it doesn't fit alone.
+        const clone = pNode.cloneNode(true);
+        const text = clone.textContent || "";
+        const words = text.split(/\s+/).filter(Boolean);
+        // keep class like dropcap
+        const cls = pNode.getAttribute("class");
+        let out = [];
+        let buf = "";
+
+        for(const w of words){
+          const next = buf ? (buf + " " + w) : w;
+          const test = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
+          const testHTML = pageHTML + test;
+          if(fits(testHTML)){
+            buf = next;
+          }else{
+            // commit current buffer
+            if(buf){
+              out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+              buf = w;
+              // if even single word doesn't fit on current page, start new page
+              const test2 = pageHTML + `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
+              if(!fits(test2)){
+                pushPage();
+              }
+            }else{
+              // buffer empty but this word can't fit: force new page then place it
+              pushPage();
+              buf = w;
+            }
+          }
+        }
+        if(buf){
+          out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+        }
+        return out;
+      }
+
+      // Walk blocks, add them safely
+      for(const node of blocks){
+        // hard pagebreak marker
+        if(node.nodeType === 8 && node.data.includes("PAGEBREAK")){
+          pushPage();
+          continue;
+        }
+
+        // convert node to HTML string
+        let nodeHTML = "";
+        if(node.nodeType === 3){
+          nodeHTML = `<p>${escapeHtml(node.textContent)}</p>`;
+        }else{
+          nodeHTML = node.outerHTML || "";
+        }
+
+        // If node is <section class="chapter-title"> => start on new page
+        if(node.nodeType === 1 && node.matches && node.matches("section.chapter-title")){
+          pushPage();
+        }
+
+        // Try to add as a whole
+        const test = pageHTML + nodeHTML;
+        if(fits(test)){
+          pageHTML = test;
+          continue;
+        }
+
+        // If current page has content, push it and retry
+        if(pageHTML.length){
+          pushPage();
+          const test2 = pageHTML + nodeHTML;
+          if(fits(test2)){
+            pageHTML = test2;
+            continue;
+          }
+        }
+
+        // Still doesn't fit on an empty page:
+        // If paragraph, split it word-by-word safely
+        if(node.nodeType === 1 && node.tagName === "P"){
+          const parts = splitParagraphNode(node);
+          for(const part of parts){
+            const t = pageHTML + part;
+            if(fits(t)){
+              pageHTML = t;
+            }else{
+              pushPage();
+              pageHTML = part;
+            }
+          }
+          continue;
+        }
+
+        // Otherwise: force it into its own page (rare: big headers)
+        pageHTML = nodeHTML;
+        pushPage();
+      }
+
+      pushPage();
+      return pages.filter(p => p.trim().length);
     }
 
     function escapeHtml(str){
@@ -409,105 +696,6 @@
         .replaceAll(">","&gt;")
         .replaceAll('"',"&quot;")
         .replaceAll("'","&#039;");
-    }
-
-    function paginate(html){
-      const src = injectChapterBreaks(html);
-      const container = document.createElement("div");
-      container.innerHTML = src;
-
-      const blocks = Array.from(container.childNodes).filter(n=>{
-        if(n.nodeType === 3) return n.textContent.trim().length;
-        if(n.nodeType === 1) return true;
-        return false;
-      }).map(n=>{
-        if(n.nodeType === 3){
-          // preserve line breaks in text nodes
-          const t = n.textContent.replace(/\n+/g,"\n").trim();
-          return t ? `<p>${escapeHtml(t).replace(/\n/g,"<br>")}</p>` : "";
-        }
-        return n.outerHTML || "";
-      }).filter(Boolean);
-
-      const boxH = measureBox.getBoundingClientRect().height;
-      const maxH = Math.max(420, boxH);
-
-      const fits = (testHTML)=>{
-        measureInner.innerHTML = testHTML;
-        return measureInner.scrollHeight <= (maxH - 2);
-      };
-
-      const pages = [];
-      let pageHTML = "";
-
-      const push = ()=>{
-        if(pageHTML.trim()){
-          pages.push(pageHTML);
-          pageHTML = "";
-        }
-      };
-
-      for(const blockHTML of blocks){
-        if(blockHTML.includes("PAGEBREAK")){
-          push();
-          continue;
-        }
-        if(blockHTML.includes('class="chapter-title"')){
-          push();
-        }
-
-        const test = pageHTML + blockHTML;
-        if(fits(test)){
-          pageHTML = test;
-          continue;
-        }
-
-        if(pageHTML.trim()){
-          push();
-          if(fits(blockHTML)){
-            pageHTML = blockHTML;
-            continue;
-          }
-        }
-
-        // If a single block doesn't fit on empty page:
-        // Split only if it's a <p> without losing words
-        if(blockHTML.trim().startsWith("<p")){
-          // split by words safely
-          const raw = blockHTML.replace(/^<p[^>]*>/i,"").replace(/<\/p>\s*$/i,"");
-          const text = raw.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g,"").trim();
-          const words = text.split(/\s+/).filter(Boolean);
-
-          let buf = "";
-          for(const w of words){
-            const next = buf ? (buf + " " + w) : w;
-            const piece = `<p>${escapeHtml(next)}</p>`;
-            if(fits(pageHTML + piece)){
-              buf = next;
-            }else{
-              if(buf){
-                pageHTML += `<p>${escapeHtml(buf)}</p>`;
-                push();
-                buf = w;
-              }else{
-                // even 1 word doesn't fit? then something is wrong, but force it
-                pageHTML = `<p>${escapeHtml(w)}</p>`;
-                push();
-                buf = "";
-              }
-            }
-          }
-          if(buf){
-            pageHTML += `<p>${escapeHtml(buf)}</p>`;
-          }
-        }else{
-          pageHTML = blockHTML;
-          push();
-        }
-      }
-
-      push();
-      return pages.filter(p=>p.trim().length);
     }
 
     function normalizeIndex(){
@@ -524,16 +712,17 @@
       mPageLabel.textContent = String(i+1);
     }
 
-    function saveProgress(){ localStorage.setItem(progressKey, String(i)); }
+    function saveProgress(){
+      localStorage.setItem(progressKey, String(i));
+    }
 
     function render(){
       if(PAGES.length === 0){
-        const msg = "<p class='muted'>No content found.</p>";
         if(isMobile()){
-          singlePage.innerHTML = msg; singleNum.textContent = "—";
+          singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
         }else{
-          leftPage.innerHTML = msg; rightPage.innerHTML = "";
-          leftNum.textContent = "—"; rightNum.textContent = "";
+          leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
+          rightPage.innerHTML = "";
         }
         updateCounters();
         return;
@@ -546,11 +735,12 @@
         singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
         singleNum.textContent = String(i+1);
       }else{
-        const L = i, R = i+1;
-        leftPage.innerHTML = PAGES[L] || "<p class='muted'>End.</p>";
-        rightPage.innerHTML = PAGES[R] || "<p class='muted'>End.</p>";
-        leftNum.textContent = String(L+1);
-        rightNum.textContent = (R+1 <= PAGES.length) ? String(R+1) : "";
+        const leftIdx = i;
+        const rightIdx = i+1;
+        leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
+        rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
+        leftNum.textContent = String(leftIdx+1);
+        rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
       }
 
       saveProgress();
@@ -558,6 +748,7 @@
 
     function animateFlip(nextIndex){
       if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
+
       const forward = nextIndex > i;
 
       flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
@@ -565,8 +756,11 @@
 
       if(isMobile()){
         flip.classList.add("full");
-        flip.classList.add(forward ? "fromRight" : "fromLeft");
-        flip.classList.add(forward ? "animForward" : "animBackward");
+        if(forward){
+          flip.classList.add("fromRight","animForward");
+        }else{
+          flip.classList.add("fromLeft","animBackward");
+        }
         flipFront.innerHTML = PAGES[i] || "";
         flipBack.innerHTML  = PAGES[nextIndex] || "";
       }else{
@@ -603,16 +797,17 @@
       }
     }
 
-    $("nextBtn").addEventListener("click", next);
-    $("prevBtn").addEventListener("click", prev);
-    $("mNext").addEventListener("click", next);
-    $("mPrev").addEventListener("click", prev);
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("mNext").addEventListener("click", next);
+    document.getElementById("mPrev").addEventListener("click", prev);
 
     document.addEventListener("keydown",(e)=>{
       if(e.key==="ArrowRight") next();
       if(e.key==="ArrowLeft") prev();
     });
 
+    // Tap zones (mobile): left side prev, right side next
     document.querySelector(".book").addEventListener("click",(e)=>{
       if(!isMobile()) return;
       const rect = e.currentTarget.getBoundingClientRect();
@@ -621,8 +816,72 @@
       else if(x > rect.width * 0.55) next();
     });
 
+    // Speech
+    const voiceSelect = document.getElementById("voiceSelect");
+    const mVoiceSelect = document.getElementById("mVoiceSelect");
+
+    function loadVoices(){
+      const voices = speechSynthesis.getVoices();
+      const fill = (sel)=>{
+        sel.innerHTML = "";
+        voices.forEach((v, idx)=>{
+          const opt = document.createElement("option");
+          opt.value = String(idx);
+          opt.textContent = `${v.name} — ${v.lang}`;
+          sel.appendChild(opt);
+        });
+      };
+      fill(voiceSelect);
+      fill(mVoiceSelect);
+
+      const saved = localStorage.getItem("voiceIndex");
+      if(saved){
+        voiceSelect.value = saved;
+        mVoiceSelect.value = saved;
+      }
+    }
+    if("speechSynthesis" in window){
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function getChosenVoice(){
+      const idx = parseInt((isMobile()? mVoiceSelect.value : voiceSelect.value) || "0",10);
+      localStorage.setItem("voiceIndex", String(idx));
+      const voices = speechSynthesis.getVoices();
+      return voices[idx] || null;
+    }
+
+    function visibleText(){
+      const temp = document.createElement("div");
+      if(isMobile()){
+        temp.innerHTML = PAGES[i] || "";
+      }else{
+        temp.innerHTML = (PAGES[i]||"") + " " + (PAGES[i+1]||"");
+      }
+      return temp.textContent || "";
+    }
+
+    function speak(){
+      if(!("speechSynthesis" in window)){ alert("Speech not supported."); return; }
+      speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(visibleText());
+      const v = getChosenVoice();
+      if(v) utter.voice = v;
+      utter.rate = 1; utter.pitch = 1;
+      speechSynthesis.speak(utter);
+    }
+    function stop(){ if("speechSynthesis" in window) speechSynthesis.cancel(); }
+
+    document.getElementById("speakBtn").addEventListener("click", speak);
+    document.getElementById("stopBtn").addEventListener("click", stop);
+    document.getElementById("mSpeak").addEventListener("click", ()=>{ speak(); closeSheet(); });
+    document.getElementById("mStop").addEventListener("click", ()=>{ stop(); closeSheet(); });
+
+    voiceSelect.addEventListener("change", ()=>{ mVoiceSelect.value = voiceSelect.value; localStorage.setItem("voiceIndex", voiceSelect.value); });
+    mVoiceSelect.addEventListener("change", ()=>{ voiceSelect.value = mVoiceSelect.value; localStorage.setItem("voiceIndex", mVoiceSelect.value); });
+
     function paginateAndRender(){
-      syncMeasurerSize();
       PAGES = paginate(BOOK_HTML);
       render();
     }
@@ -631,16 +890,10 @@
       try{
         await loadBook();
       }catch(e){
-        BOOK_HTML = `<p class="muted">${escapeHtml(String(e))}</p>`;
+        BOOK_HTML = `<p class="muted">${String(e)}</p>`;
       }
-
-      // Wait for layout + fonts (iOS/Pages needs this)
-      const run = ()=>paginateAndRender();
-      requestAnimationFrame(()=>requestAnimationFrame(run));
-      setTimeout(run, 250);
-      setTimeout(run, 900);
-
-      window.addEventListener("resize", run);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>paginateAndRender()));
+      window.addEventListener("resize", ()=> paginateAndRender());
     })();
   </script>
 </body>
