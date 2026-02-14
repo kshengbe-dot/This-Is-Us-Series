@@ -517,6 +517,26 @@
       await signOut(auth);
       closeModal();
     };
+
+    /* Make auth box readable (no glass that hides text) */
+.auth-card, .modal, .modal-card, .authModal, .loginCard {
+  background: rgba(15, 20, 40, .95) !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  backdrop-filter: blur(14px);
+}
+
+.auth-card input, .modal input, .modal-card input, .authModal input, .loginCard input,
+.auth-card button, .modal button, .modal-card button, .authModal button, .loginCard button {
+  background: rgba(255,255,255,.10) !important;
+  border: 1px solid rgba(255,255,255,.18) !important;
+  color: #EAF0FF !important;
+}
+
+.auth-card label, .modal label, .modal-card label, .authModal label, .loginCard label {
+  color: rgba(234,240,255,.90) !important;
+}
+
+    
   </script>
 </body>
 </html>
