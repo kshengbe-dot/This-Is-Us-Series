@@ -1,179 +1,727 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reader</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>THIS IS US — Reader</title>
 
 <style>
+:root{
+  --bg:#0B1020; --paper:#121A33; --ink:#EAF0FF; --muted:#9FB0D6;
+  --stroke:rgba(255,255,255,.12);
+  --shadow: 0 26px 80px rgba(0,0,0,.55);
+  --bar: rgba(10,14,28,.88);
+  --chip: rgba(255,255,255,.06);
+  --sheet: rgba(15,20,40,.94);
+  --accent:#7c5cff;
+  --safeTop: env(safe-area-inset-top);
+  --safeBot: env(safe-area-inset-bottom);
+
+  /* reserved space so last line NEVER clips */
+  --footerSpace: 66px;
+}
+[data-theme="light"]{
+  --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
+  --stroke:rgba(2,6,23,.10);
+  --shadow: 0 18px 60px rgba(2,6,23,.12);
+  --bar: rgba(255,255,255,.92);
+  --chip: rgba(2,6,23,.04);
+  --sheet: rgba(255,255,255,.96);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
 body{
-  margin:0;
-  background:#0B1020;
-  color:#EAF0FF;
-  font-family:Georgia,serif;
-  overflow:hidden;
+  margin:0; height:100vh; overflow:hidden;
+  background:
+    radial-gradient(1200px 900px at 30% 10%, rgba(124,92,255,.22), transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
 }
 
 .top{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  padding:16px;
-  display:flex;
-  justify-content:space-between;
-  background:#0f1731;
-  z-index:10;
+  position:fixed; left:0; right:0; top:0;
+  z-index:40;
+  border-bottom:1px solid var(--stroke);
+  background: var(--bar);
+  backdrop-filter: blur(12px);
+  padding: calc(10px + var(--safeTop)) 12px 10px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
 }
-
-button{
-  background:#7c5cff;
-  border:none;
-  color:white;
-  padding:8px 16px;
-  border-radius:8px;
+.row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.chip{
+  border:1px solid var(--stroke);
+  background: var(--chip);
+  padding:8px 10px;
+  border-radius:999px;
+  font-size:12px;
+  color:var(--muted);
   cursor:pointer;
+  user-select:none;
+  display:inline-flex; align-items:center; gap:8px;
+  white-space:nowrap;
 }
-
-button:hover{
-  opacity:.85;
-}
+.chip strong{color:var(--ink); font-weight:900}
 
 .stage{
   height:100vh;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding-top:70px;
+  padding: 78px 12px 16px; /* desktop */
 }
-
 .book{
-  width:min(1100px,95vw);
-  height:min(760px,85vh);
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:20px;
+  width:min(1120px, 98vw);
+  height:min(740px, 84vh);
+  position:relative;
+  perspective: 1800px;
 }
+.spread{
+  position:absolute; inset:0;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:14px;
+}
+.single{ position:absolute; inset:0; display:none; }
 
 .page{
-  background:#121a33;
+  background: var(--paper);
+  border:1px solid var(--stroke);
   border-radius:18px;
-  padding:30px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  box-shadow:0 30px 90px rgba(0,0,0,.6);
-}
-
-.content{
+  box-shadow:var(--shadow);
   overflow:hidden;
-  line-height:1.8;
-  font-size:17px;
+  position:relative;
+}
+.inner{
+  height:100%;
+  padding:26px 22px calc(20px + var(--footerSpace));
+  overflow:hidden;   /* IMPORTANT: nothing leaks */
 }
 
-.footer{
-  text-align:right;
+.inner h1,.inner h2,.inner h3,.inner h4{
+  font-family: ui-sans-serif, system-ui;
+  margin:0 0 10px;
+  line-height:1.15;
+  letter-spacing:.02em;
+}
+.inner h2{font-size:30px}
+.inner h3{font-size:18px}
+.inner h4{font-size:20px}
+.inner p{
+  line-height:1.78;
+  margin:0 0 14px;
+  font-size:16px;
+  color:var(--ink);
+}
+
+.pageNum{
+  position:absolute;
+  bottom:16px;
+  right:16px;
   font-size:12px;
-  opacity:.6;
+  color:var(--muted);
+  pointer-events:none;
 }
 
-@media(max-width:800px){
+/* Flip overlay */
+.flip{
+  position:absolute; top:0; bottom:0;
+  width:50%;
+  transform-style:preserve-3d;
+  pointer-events:none;
+  opacity:0;
+  z-index:30;
+}
+.flip.fromRight{ left:50%; transform-origin:left; }
+.flip.fromLeft{ left:0; transform-origin:right; }
+.flip.full{ width:100%; left:0; }
+.flip .front, .flip .back{
+  position:absolute; inset:0;
+  border-radius:18px;
+  overflow:hidden;
+  background: var(--paper);
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow);
+  backface-visibility:hidden;
+}
+.flip .front .inner, .flip .back .inner{
+  padding:26px 22px calc(20px + var(--footerSpace));
+  height:100%;
+  overflow:hidden;
+}
+.flip .back{ transform: rotateY(180deg); }
+
+@keyframes flipForward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(-180deg)} }
+@keyframes flipBackward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(180deg)} }
+.flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
+.flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
+
+/* Premium chapter styling */
+.chapter-cover{ text-align:center; padding: 18px 0 10px; }
+.chapter-cover h2{
+  margin:0 0 8px; font-size:44px; font-weight:950;
+  letter-spacing:.10em; text-transform:uppercase;
+}
+.series-sub{
+  margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
+  font-size:14px; letter-spacing:.05em;
+}
+.author{
+  margin:10px 0 0; font-family: ui-sans-serif, system-ui;
+  font-size:14px; opacity:.92;
+}
+.chapter-title{ text-align:center; padding:10px 0 6px; }
+.chapter-title h3{
+  margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--muted); font-family: ui-sans-serif, system-ui;
+}
+.chapter-title h4{
+  margin:10px 0 0; font-size:30px; font-weight:950;
+  font-family: ui-sans-serif, system-ui;
+}
+hr.ornament{
+  border:0; border-top:1px solid var(--stroke);
+  margin:18px auto; width:66%; position:relative;
+}
+hr.ornament:after{
+  content:"✦"; position:absolute; left:50%;
+  transform:translate(-50%,-50%); top:0;
+  color:var(--muted); font-size:13px; padding:0 10px;
+  background: transparent;
+}
+.scene-break{
+  text-align:center; color:var(--muted);
+  letter-spacing:.35em; margin:16px 0 18px;
+  font-size:14px; user-select:none;
+}
+.dropcap:first-letter{
+  float:left; font-size:56px; line-height:.92;
+  padding-right:10px; padding-top:6px; font-weight:900;
+}
+
+/* Mobile */
+.mBottom{ display:none; }
+
+@media (max-width:720px){
+  .spread{ display:none; }
+  .single{ display:block; }
+  .stage{
+    padding: calc(68px + var(--safeTop)) 10px calc(92px + var(--safeBot));
+  }
   .book{
-    grid-template-columns:1fr;
+    width:98vw;
+    height: calc(100vh - (68px + var(--safeTop)) - (92px + var(--safeBot)) - 10px);
+  }
+  .inner{ padding:22px 18px calc(18px + var(--footerSpace)); }
+  .flip{ width:100%; left:0; }
+  .flip.fromRight{ left:0; transform-origin:left; }
+  .flip.fromLeft{ left:0; transform-origin:right; }
+  .flip .front .inner, .flip .back .inner{
+    padding:22px 18px calc(18px + var(--footerSpace));
+  }
+  .mBottom{
+    display:flex;
+    position:fixed; left:0; right:0; bottom:0;
+    z-index:60;
+    padding:10px 12px calc(10px + var(--safeBot));
+    background: var(--bar);
+    backdrop-filter: blur(12px);
+    border-top:1px solid var(--stroke);
+    gap:10px;
+  }
+  .mBtn{
+    flex:1;
+    border:1px solid var(--stroke);
+    background: var(--chip);
+    color:var(--ink);
+    padding:12px 14px;
+    border-radius:14px;
+    font-family: ui-sans-serif, system-ui;
+    font-size:14px;
+    font-weight:900;
+    cursor:pointer;
   }
 }
+
+/* Hidden measurer mirrors page sizing */
+.measureWrap{
+  position:fixed; left:-9999px; top:-9999px;
+  width: min(1120px, 98vw);
+  height: min(740px, 84vh);
+  visibility:hidden;
+}
+.measurePage{
+  height:100%;
+  padding:26px 22px calc(20px + var(--footerSpace));
+  overflow:hidden;
+  font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+  line-height:1.78;
+  font-size:16px;
+}
+.measureSingle{
+  height:100%;
+  padding:22px 18px calc(18px + var(--footerSpace));
+  overflow:hidden;
+  font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+  line-height:1.78;
+  font-size:16px;
+  display:none;
+}
+@media (max-width:720px){ .measureSingle{display:block} }
 </style>
 </head>
 
 <body>
+  <!-- Desktop top -->
+  <div class="top">
+    <div class="row">
+      <div class="chip" id="backBtn">← <strong>Library</strong></div>
+      <div class="chip">Book: <strong id="bookTitle">book1</strong></div>
+      <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
+      <div class="chip" id="themeBtn">🌓 Theme</div>
+      <div class="chip" id="settingsBtn">⚙️ Settings</div>
+    </div>
+    <div class="row">
+      <div class="chip" id="prevBtn">Prev</div>
+      <div class="chip" id="nextBtn">Next</div>
+    </div>
+  </div>
 
-<div class="top">
-<div>
-<button onclick="prev()">Prev</button>
-<button onclick="next()">Next</button>
-</div>
-<div>
-<button onclick="location.href='index.html'">Library</button>
-</div>
-</div>
+  <!-- Mobile bottom buttons (non-blocking) -->
+  <div class="mBottom">
+    <button class="mBtn" id="mPrev">Prev</button>
+    <button class="mBtn" id="mNext">Next</button>
+  </div>
 
-<div class="stage">
-<div class="book">
-<div class="page">
-<div class="content" id="left"></div>
-<div class="footer" id="leftNum"></div>
-</div>
-<div class="page">
-<div class="content" id="right"></div>
-<div class="footer" id="rightNum"></div>
-</div>
-</div>
-</div>
+  <div class="stage">
+    <div class="book" id="bookTapZone">
+      <div class="spread" id="spread">
+        <div class="page">
+          <div class="inner" id="leftPage"></div>
+          <div class="pageNum" id="leftNum"></div>
+        </div>
+        <div class="page">
+          <div class="inner" id="rightPage"></div>
+          <div class="pageNum" id="rightNum"></div>
+        </div>
+      </div>
 
-<script>
-const params=new URLSearchParams(location.search);
-const book=params.get("book")||"book1";
+      <div class="single" id="single">
+        <div class="page">
+          <div class="inner" id="singlePage"></div>
+          <div class="pageNum" id="singleNum"></div>
+        </div>
+      </div>
 
-let pages=[];
-let index=0;
+      <div class="flip" id="flip">
+        <div class="front"><div class="inner" id="flipFront"></div></div>
+        <div class="back"><div class="inner" id="flipBack"></div></div>
+      </div>
+    </div>
+  </div>
 
-fetch("books/"+book+".html")
-.then(r=>r.text())
-.then(html=>{
-  const container=document.createElement("div");
-  container.innerHTML=html;
-  paginate(container);
-  render();
-});
+  <div class="measureWrap" id="measureWrap">
+    <div class="measurePage" id="measureLeft"></div>
+    <div class="measureSingle" id="measureSingle"></div>
+  </div>
 
-function paginate(container){
-  const temp=document.createElement("div");
-  temp.style.visibility="hidden";
-  temp.style.position="absolute";
-  temp.style.width="45%";
-  temp.style.lineHeight="1.8";
-  temp.style.fontSize="17px";
-  document.body.appendChild(temp);
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-  let page=document.createElement("div");
+  const BOOK_FILES = {
+    book1: "./books/book1.html",
+    coming: "./books/coming-soon.html"
+  };
 
-  [...container.children].forEach(el=>{
-    const clone=el.cloneNode(true);
-    page.appendChild(clone);
-    temp.innerHTML=page.innerHTML;
-    if(temp.scrollHeight>700){
-      page.removeChild(clone);
-      pages.push(page.innerHTML);
-      page=document.createElement("div");
-      page.appendChild(clone);
+  const params = new URLSearchParams(location.search);
+  const bookId = params.get("book") || "book1";
+  const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
+
+  document.getElementById("bookTitle").textContent = bookId;
+
+  const isMobile = ()=> matchMedia("(max-width:720px)").matches;
+
+  // Theme sync local
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+  function toggleTheme(){
+    const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    paginateAndRender();
+    saveSettingCloud({ theme: next });
+  }
+  document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+
+  // Nav
+  document.getElementById("backBtn").addEventListener("click", ()=> location.href="index.html");
+  document.getElementById("settingsBtn").addEventListener("click", ()=> location.href="settings.html");
+
+  // DOM
+  const leftPage = document.getElementById("leftPage");
+  const rightPage = document.getElementById("rightPage");
+  const leftNum = document.getElementById("leftNum");
+  const rightNum = document.getElementById("rightNum");
+  const singlePage = document.getElementById("singlePage");
+  const singleNum  = document.getElementById("singleNum");
+
+  const pageLabel = document.getElementById("pageLabel");
+  const pageTotalEl = document.getElementById("pageTotal");
+
+  const flip = document.getElementById("flip");
+  const flipFront = document.getElementById("flipFront");
+  const flipBack  = document.getElementById("flipBack");
+
+  const measureLeft = document.getElementById("measureLeft");
+  const measureSingle = document.getElementById("measureSingle");
+  const measurer = ()=> isMobile() ? measureSingle : measureLeft;
+
+  // Firebase optional
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  let UID = null;
+
+  onAuthStateChanged(auth, async (user)=>{
+    UID = user ? user.uid : null;
+    // If user has theme in cloud, load it once
+    if(user){
+      try{
+        const snap = await getDoc(doc(db,"users",user.uid));
+        if(snap.exists()){
+          const d = snap.data();
+          if(d.theme && (d.theme==="dark"||d.theme==="light")){
+            document.documentElement.dataset.theme = d.theme;
+            localStorage.setItem("theme", d.theme);
+          }
+        }
+      }catch{}
     }
+    // load progress (cloud preferred)
+    await loadProgress();
+    paginateAndRender();
   });
 
-  pages.push(page.innerHTML);
-  document.body.removeChild(temp);
-}
+  async function saveSettingCloud(obj){
+    if(!UID) return;
+    try{
+      await setDoc(doc(db,"users",UID), { ...obj, updatedAt: serverTimestamp() }, { merge:true });
+    }catch{}
+  }
 
-function render(){
-  document.getElementById("left").innerHTML=pages[index]||"";
-  document.getElementById("right").innerHTML=pages[index+1]||"";
-  document.getElementById("leftNum").innerText=index+1;
-  document.getElementById("rightNum").innerText=index+2;
-}
+  const progressKey = `progress:${bookId}`;
+  let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
+  if (isNaN(i) || i < 0) i = 0;
 
-function next(){
-  if(index+2<pages.length){
-    index+=2;
+  async function loadProgress(){
+    if(!UID) return;
+    try{
+      const ref = doc(db, "users", UID, "progress", bookId);
+      const snap = await getDoc(ref);
+      if(snap.exists()){
+        const d = snap.data();
+        if(typeof d.index === "number"){
+          i = d.index;
+          localStorage.setItem(progressKey, String(i));
+        }
+      }
+    }catch{}
+  }
+
+  async function saveProgress(){
+    localStorage.setItem(progressKey, String(i));
+    if(!UID) return;
+    try{
+      const ref = doc(db, "users", UID, "progress", bookId);
+      await setDoc(ref, { index: i, updatedAt: serverTimestamp() }, { merge:true });
+    }catch{}
+  }
+
+  // Load book
+  let BOOK_HTML = "";
+  let PAGES = [];
+
+  async function loadBook(){
+    const res = await fetch(bookFile, { cache:"no-store" });
+    if(!res.ok) throw new Error("Could not load book file.");
+    BOOK_HTML = await res.text();
+  }
+
+  // Force new page at chapter starts
+  function injectChapterBreaks(html){
+    // pagebreak before chapter-title sections and chapter-cover
+    return html
+      .replaceAll('<section class="chapter-cover">','<!--PAGEBREAK--><section class="chapter-cover">')
+      .replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
+  }
+
+  // Pagination that DOES NOT drop words:
+  // - We paginate by elements.
+  // - If a <p> is too big, we split its TEXT (not html) safely into multiple <p> parts.
+  // This guarantees all words appear (even if bold/line breaks become plain text inside split parts).
+  function paginate(html){
+    const src = injectChapterBreaks(html);
+
+    const container = document.createElement("div");
+    container.innerHTML = src;
+
+    // Convert childNodes to blocks in order (including PAGEBREAK comments)
+    const blocks = Array.from(container.childNodes).filter(n=>{
+      if(n.nodeType === 8 && n.data.includes("PAGEBREAK")) return true;
+      if(n.nodeType === 3) return n.textContent.trim().length > 0;
+      if(n.nodeType === 1) return true;
+      return false;
+    });
+
+    const m = measurer();
+    const maxH = m.clientHeight || 600;
+
+    const pages = [];
+    let pageHTML = "";
+
+    function fits(testHTML){
+      m.innerHTML = testHTML;
+      return m.scrollHeight <= (maxH - 2);
+    }
+    function pushPage(){
+      if(pageHTML.trim().length){
+        pages.push(pageHTML);
+        pageHTML = "";
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function splitParagraph(pEl){
+      const cls = pEl.getAttribute("class");
+      // IMPORTANT: preserve <br> as space
+      const text = (pEl.textContent || "").replace(/\s+/g," ").trim();
+      const words = text.split(" ").filter(Boolean);
+
+      const parts = [];
+      let buf = "";
+
+      for(const w of words){
+        const next = buf ? (buf + " " + w) : w;
+        const candidate = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
+        if(fits(pageHTML + candidate)){
+          buf = next;
+        }else{
+          if(buf){
+            parts.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+            buf = w;
+            // If even the next word doesn't fit, force new page
+            const oneWord = `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
+            if(!fits(pageHTML + oneWord)){
+              pushPage();
+            }
+          }else{
+            // page empty but word doesn't fit (rare): push anyway
+            pushPage();
+            buf = w;
+          }
+        }
+      }
+      if(buf) parts.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+      return parts;
+    }
+
+    for(const node of blocks){
+      if(node.nodeType === 8 && node.data.includes("PAGEBREAK")){
+        pushPage();
+        continue;
+      }
+
+      let nodeHTML = "";
+      if(node.nodeType === 3){
+        nodeHTML = `<p>${escapeHtml(node.textContent)}</p>`;
+      }else{
+        nodeHTML = node.outerHTML || "";
+      }
+
+      // If it fits, add
+      if(fits(pageHTML + nodeHTML)){
+        pageHTML += nodeHTML;
+        continue;
+      }
+
+      // If current page has content, finalize and retry on new page
+      if(pageHTML.trim().length){
+        pushPage();
+        if(fits(pageHTML + nodeHTML)){
+          pageHTML += nodeHTML;
+          continue;
+        }
+      }
+
+      // If still doesn't fit on empty page:
+      if(node.nodeType === 1 && node.tagName === "P"){
+        const parts = splitParagraph(node);
+        for(const part of parts){
+          if(fits(pageHTML + part)){
+            pageHTML += part;
+          }else{
+            pushPage();
+            pageHTML += part;
+          }
+        }
+        continue;
+      }
+
+      // Large non-paragraph elements: force into its own page
+      pageHTML += nodeHTML;
+      pushPage();
+    }
+
+    pushPage();
+    return pages;
+  }
+
+  function normalizeIndex(){
+    if(i < 0) i = 0;
+    if(i > PAGES.length - 1) i = PAGES.length - 1;
+    if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
+  }
+
+  function updateCounters(){
+    pageTotalEl.textContent = String(PAGES.length || 0);
+    pageLabel.textContent = String(i+1);
+  }
+
+  function render(){
+    if(!PAGES.length){
+      leftPage.innerHTML = "<p>Empty book.</p>";
+      rightPage.innerHTML = "";
+      singlePage.innerHTML = "<p>Empty book.</p>";
+      updateCounters();
+      return;
+    }
+
+    normalizeIndex();
+    updateCounters();
+
+    if(isMobile()){
+      singlePage.innerHTML = PAGES[i] || "<p>End.</p>";
+      singleNum.textContent = String(i+1);
+    }else{
+      leftPage.innerHTML = PAGES[i] || "<p>End.</p>";
+      rightPage.innerHTML = PAGES[i+1] || "<p>End.</p>";
+      leftNum.textContent = String(i+1);
+      rightNum.textContent = (i+2 <= PAGES.length) ? String(i+2) : "";
+    }
+
+    saveProgress();
+  }
+
+  function animateFlip(nextIndex){
+    if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
+
+    const forward = nextIndex > i;
+
+    flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
+    void flip.offsetWidth;
+
+    if(isMobile()){
+      flip.classList.add("full");
+      if(forward){
+        flip.classList.add("fromRight","animForward");
+      }else{
+        flip.classList.add("fromLeft","animBackward");
+      }
+      flipFront.innerHTML = PAGES[i] || "";
+      flipBack.innerHTML  = PAGES[nextIndex] || "";
+    }else{
+      if(forward){
+        flip.classList.add("fromRight","animForward");
+        // Animate the RIGHT page turning
+        flipFront.innerHTML = PAGES[i+1] || "<p>End.</p>";
+        flipBack.innerHTML  = PAGES[nextIndex+1] || "<p>End.</p>";
+      }else{
+        flip.classList.add("fromLeft","animBackward");
+        // Animate the LEFT page turning backward
+        flipFront.innerHTML = PAGES[i] || "<p>Start.</p>";
+        flipBack.innerHTML  = PAGES[nextIndex] || "<p>Start.</p>";
+      }
+    }
+
+    setTimeout(()=>{
+      i = nextIndex;
+      render();
+      flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
+    }, 560);
+  }
+
+  function next(){
+    if(isMobile()){
+      if(i+1 <= PAGES.length-1) animateFlip(i+1);
+    }else{
+      if(i+2 <= PAGES.length-1) animateFlip(i+2);
+    }
+  }
+  function prev(){
+    if(isMobile()){
+      if(i-1 >= 0) animateFlip(i-1);
+    }else{
+      if(i-2 >= 0) animateFlip(i-2);
+    }
+  }
+
+  document.getElementById("nextBtn").addEventListener("click", next);
+  document.getElementById("prevBtn").addEventListener("click", prev);
+  document.getElementById("mNext").addEventListener("click", next);
+  document.getElementById("mPrev").addEventListener("click", prev);
+
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="ArrowRight") next();
+    if(e.key==="ArrowLeft") prev();
+  });
+
+  // Mobile swipe
+  let tStartX = 0, tStartY = 0;
+  const tapZone = document.getElementById("bookTapZone");
+  tapZone.addEventListener("touchstart",(e)=>{
+    const t = e.touches[0];
+    tStartX = t.clientX;
+    tStartY = t.clientY;
+  }, {passive:true});
+
+  tapZone.addEventListener("touchend",(e)=>{
+    if(!isMobile()) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tStartX;
+    const dy = t.clientY - tStartY;
+    if(Math.abs(dx) < 40) return;
+    if(Math.abs(dy) > 80) return;
+    if(dx < 0) next(); else prev();
+  }, {passive:true});
+
+  async function paginateAndRender(){
+    // force measurer to be up-to-date
+    PAGES = paginate(BOOK_HTML);
+    if(i >= PAGES.length) i = Math.max(0, PAGES.length - 1);
     render();
   }
-}
 
-function prev(){
-  if(index-2>=0){
-    index-=2;
-    render();
-  }
-}
+  (async ()=>{
+    try{
+      await loadBook();
+    }catch(e){
+      BOOK_HTML = `<p>${String(e)}</p>`;
+    }
+    requestAnimationFrame(()=>requestAnimationFrame(()=>paginateAndRender()));
+    window.addEventListener("resize", ()=> paginateAndRender());
+  })();
 </script>
-
 </body>
 </html>
