@@ -1,108 +1,369 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reader</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>THIS IS US — Reader</title>
 
-<style>
-body{
-  margin:0;
-  background:#111;
-  color:white;
-  font-family:Georgia, serif;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height:100vh;
-  overflow:hidden;
-}
+  <style>
+    :root{
+      --bg:#0B1020; --paper:#121A33; --ink:#EAF0FF; --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12); --accent:#7C5CFF;
+      --shadow: 0 30px 90px rgba(0,0,0,.55);
+    }
+    [data-theme="light"]{
+      --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
+      --stroke:rgba(2,6,23,.10); --accent:#5B5CFF;
+      --shadow: 0 18px 60px rgba(2,6,23,.12);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; height:100vh; overflow:hidden;
+      background: radial-gradient(1200px 900px at 30% 10%, rgba(124,92,255,.30), transparent 60%),
+                  var(--bg);
+      color:var(--ink);
+      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
+    }
 
-.page{
-  width:70%;
-  max-width:800px;
-  background:#1c1c1c;
-  padding:40px;
-  border-radius:20px;
-  transition:0.4s;
-}
+    .top{
+      position:fixed; left:0; right:0; top:0;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--stroke);
+      background:rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
+      z-index:30;
+    }
+    .top .left{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .chip{
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.04);
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:12px;
+      color:var(--muted);
+      cursor:pointer;
+      user-select:none;
+    }
+    .chip strong{color:var(--ink); font-weight:700}
+    .top .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 
-button{
-  position:fixed;
-  bottom:40px;
-  padding:10px 20px;
-  border:none;
-  border-radius:20px;
-  cursor:pointer;
-}
-#prev{ left:40px; }
-#next{ right:40px; }
-</style>
+    .stage{
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:64px 16px 18px;
+    }
+
+    .book{
+      width:min(1000px, 96vw);
+      height:min(680px, 78vh);
+      position:relative;
+      perspective: 1800px;
+    }
+
+    .spread{
+      position:absolute; inset:0;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+
+    .page{
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .page .inner{
+      height:100%;
+      padding:26px 24px;
+      overflow:auto;
+    }
+    .inner h1,.inner h2,.inner h3{font-family: ui-sans-serif, system-ui; margin:0 0 10px}
+    .inner p{line-height:1.7; margin:0 0 14px; color:var(--ink)}
+    .inner .muted{color:var(--muted)}
+    .pageNum{
+      position:absolute; bottom:12px; right:14px;
+      font-size:12px; color:var(--muted);
+    }
+
+    /* Flip animation layer (desktop) */
+    .flip{
+      position:absolute;
+      top:0; bottom:0;
+      left:50%;
+      width:50%;
+      transform-origin:left;
+      transform-style:preserve-3d;
+      pointer-events:none;
+      opacity:0;
+    }
+    .flip .front, .flip .back{
+      position:absolute; inset:0;
+      border-radius:18px;
+      overflow:hidden;
+      background:var(--paper);
+      border:1px solid var(--stroke);
+      box-shadow:var(--shadow);
+      backface-visibility:hidden;
+    }
+    .flip .front .inner,
+    .flip .back .inner{
+      padding:26px 24px; height:100%; overflow:auto;
+    }
+    .flip .back{transform: rotateY(180deg)}
+    .flip.anim{
+      opacity:1;
+      animation: flip .55s ease-in-out forwards;
+    }
+    @keyframes flip{
+      0%{transform:rotateY(0deg)}
+      100%{transform:rotateY(-180deg)}
+    }
+
+    .navHint{
+      position:fixed;
+      left:50%; transform:translateX(-50%);
+      bottom:14px;
+      display:flex; gap:10px; align-items:center;
+      color:var(--muted);
+      font-size:12px;
+      z-index:35;
+    }
+
+    select{
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--stroke);
+      color:var(--ink);
+      padding:8px 10px;
+      border-radius:12px;
+      font-size:12px;
+      max-width: 260px;
+    }
+
+    @media (max-width:720px){
+      .spread{grid-template-columns:1fr}
+      .flip{display:none}
+      .book{height:min(740px, 78vh)}
+    }
+  </style>
 </head>
 
 <body>
+  <div class="top">
+    <div class="left">
+      <div class="chip" id="backBtn">← <strong>Library</strong></div>
+      <div class="chip">Book: <strong id="bookTitle">Book I</strong></div>
+      <div class="chip">Page: <strong id="pageLabel">1</strong></div>
+    </div>
 
-<div class="page" id="content"></div>
+    <div class="right">
+      <div class="chip" id="themeBtn">Toggle Theme</div>
+      <div class="chip" id="prevBtn">Prev</div>
+      <div class="chip" id="nextBtn">Next</div>
+      <div class="chip" id="speakBtn">Speak</div>
+      <div class="chip" id="stopBtn">Stop</div>
+      <select id="voiceSelect" title="Voice"></select>
+    </div>
+  </div>
 
-<button id="prev">Prev</button>
-<button id="next">Next</button>
+  <div class="stage">
+    <div class="book">
+      <div class="spread">
+        <div class="page">
+          <div class="inner" id="leftPage"></div>
+          <div class="pageNum" id="leftNum"></div>
+        </div>
+        <div class="page">
+          <div class="inner" id="rightPage"></div>
+          <div class="pageNum" id="rightNum"></div>
+        </div>
+      </div>
 
-<script>
-const pages = [
+      <div class="flip" id="flip">
+        <div class="front"><div class="inner" id="flipFront"></div></div>
+        <div class="back"><div class="inner" id="flipBack"></div></div>
+      </div>
+    </div>
+  </div>
 
-`<h2>THIS IS US</h2>
-<h3>Book I — Where We Began</h3>
-<p>by Shengbe Koker</p>`,
+  <div class="navHint">Tip: Use ◀ ▶ keys. On mobile, tap Prev/Next.</div>
 
-`<h3>Chapter One — Fresh Starts</h3>
-<p>Mukeh did not believe in fresh starts.</p>
-<p>He believed in survival.</p>`,
+  <script type="module">
+    import { firebaseConfig } from "./firebase-config.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-`<p>When he transferred at the beginning of the academic year, people treated it like opportunity...</p>`,
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-`<h3>Chapter Two — Under the Tree</h3>
-<p>By the second week, Mukeh understood something important:</p>`,
+    // Theme
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+    document.getElementById("themeBtn").onclick = ()=>{
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+    };
 
-`<h3>Chapter Three — Calibration</h3>
-<p>The tension adjusted.</p>`,
+    // Pages (Book I sample — you can paste more later)
+    const pages = [
+      `<h2>THIS IS US</h2><p class="muted">Book I — Where We Began</p><p class="muted">by Shengbe Koker</p>`,
 
-`<h3>Chapter Four — Surface Tension</h3>
-<p>The friend group continued like nothing had changed.</p>`,
+      `<h3>Chapter One — Fresh Starts</h3>
+       <p>Mukeh did not believe in fresh starts.</p>
+       <p>He believed in survival.</p>
+       <p>When he transferred at the beginning of the academic year, people treated it like opportunity — a clean slate, a reset button, a chance to become someone new.</p>`,
 
-`<h3>Chapter Five — Lines</h3>
-<p>Mukeh didn’t wait.</p>`,
+      `<p>But walking through the school gates that first morning didn’t feel new.</p>
+       <p>It felt heavy.</p>
+       <p>The courtyard was already alive — voices layered over each other, laughter breaking easily between groups who had known each other for years.</p>`,
 
-`<p style="margin-top:40px;font-size:14px;">
-© ${new Date().getFullYear()} Shengbe Koker. All Rights Reserved.
-Unauthorized reproduction prohibited.
-</p>`
-];
+      `<h3>Chapter Two — Under the Tree</h3>
+       <p>By the second week, Mukeh understood something important:</p>
+       <p>The group under the big tree wasn’t random. It was a system.</p>`,
 
-let current = 0;
-const content = document.getElementById("content");
+      `<h3>Chapter Three — Calibration</h3>
+       <p>The tension adjusted. It didn’t disappear.</p>`,
 
-function render(){
-  content.innerHTML = pages[current];
-  localStorage.setItem("progress",current);
-}
+      `<h3>Chapter Four — Surface Tension</h3>
+       <p>The friend group continued like nothing had changed.</p>`,
 
-document.getElementById("next").onclick = ()=>{
-  if(current < pages.length-1){
-    current++;
+      `<p class="muted" style="margin-top:22px">© ${new Date().getFullYear()} Shengbe Koker. All Rights Reserved.</p>`
+    ];
+
+    const leftPage = document.getElementById("leftPage");
+    const rightPage = document.getElementById("rightPage");
+    const leftNum = document.getElementById("leftNum");
+    const rightNum = document.getElementById("rightNum");
+    const pageLabel = document.getElementById("pageLabel");
+
+    const flip = document.getElementById("flip");
+    const flipFront = document.getElementById("flipFront");
+    const flipBack = document.getElementById("flipBack");
+
+    const params = new URLSearchParams(location.search);
+    const bookId = params.get("book") || "book1";
+    document.getElementById("bookTitle").textContent = bookId;
+
+    const progressKey = `progress:${bookId}`;
+    let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
+    if (isNaN(i) || i < 0) i = 0;
+
+    function clampIndex(){
+      if (i < 0) i = 0;
+      if (i > pages.length - 1) i = pages.length - 1;
+    }
+
+    function render(){
+      clampIndex();
+      const leftIdx = i;
+      const rightIdx = i + 1;
+
+      leftPage.innerHTML = pages[leftIdx] || `<p class="muted">End.</p>`;
+      rightPage.innerHTML = pages[rightIdx] || `<p class="muted">End.</p>`;
+
+      leftNum.textContent = leftIdx + 1;
+      rightNum.textContent = rightIdx + 1 <= pages.length ? (rightIdx + 1) : "";
+      pageLabel.textContent = `${leftIdx + 1}`;
+
+      localStorage.setItem(progressKey, String(i));
+      saveProgress();
+    }
+
+    // Save progress to Firestore (if logged in)
+    let currentUser = null;
+    onAuthStateChanged(auth, (user)=>{ currentUser = user || null; });
+
+    async function saveProgress(){
+      if(!currentUser) return;
+      try{
+        const ref = doc(db, "users", currentUser.uid, "progress", bookId);
+        await setDoc(ref, { pageIndex: i, updatedAt: serverTimestamp() }, { merge:true });
+      }catch(e){}
+    }
+
+    function animateFlip(nextIndex){
+      if (matchMedia("(max-width: 720px)").matches){
+        i = nextIndex; render(); return;
+      }
+      const rightIdx = i+1;
+      flipFront.innerHTML = pages[rightIdx] || `<p class="muted">End.</p>`;
+      flipBack.innerHTML  = pages[nextIndex] || `<p class="muted">End.</p>`;
+
+      flip.classList.remove("anim");
+      void flip.offsetWidth;
+      flip.classList.add("anim");
+
+      setTimeout(()=>{
+        i = nextIndex;
+        render();
+        flip.classList.remove("anim");
+      }, 560);
+    }
+
+    document.getElementById("nextBtn").onclick = ()=> {
+      if (i + 2 <= pages.length - 1) animateFlip(i + 2);
+    };
+    document.getElementById("prevBtn").onclick = ()=> {
+      if (i - 2 >= 0) animateFlip(i - 2);
+    };
+
+    document.getElementById("backBtn").onclick = ()=> location.href = "./";
+    document.addEventListener("keydown",(e)=>{
+      if(e.key === "ArrowRight") document.getElementById("nextBtn").click();
+      if(e.key === "ArrowLeft") document.getElementById("prevBtn").click();
+    });
+
+    // Voice (Web Speech API)
+    const voiceSelect = document.getElementById("voiceSelect");
+    const speakBtn = document.getElementById("speakBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    function loadVoices(){
+      const voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = "";
+      voices.forEach((v, idx)=>{
+        const opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = `${v.name} — ${v.lang}`;
+        voiceSelect.appendChild(opt);
+      });
+    }
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+
+    function currentText(){
+      const temp = document.createElement("div");
+      temp.innerHTML = (pages[i]||"") + " " + (pages[i+1]||"");
+      return temp.textContent || "";
+    }
+
+    speakBtn.onclick = ()=>{
+      if(!("speechSynthesis" in window)){
+        alert("Speech not supported on this browser.");
+        return;
+      }
+      speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(currentText());
+      const voices = speechSynthesis.getVoices();
+      const chosen = voices[parseInt(voiceSelect.value||"0",10)];
+      if(chosen) utter.voice = chosen;
+      utter.rate = 1;
+      utter.pitch = 1;
+      speechSynthesis.speak(utter);
+    };
+
+    stopBtn.onclick = ()=> speechSynthesis.cancel();
+
     render();
-  }
-};
-
-document.getElementById("prev").onclick = ()=>{
-  if(current > 0){
-    current--;
-    render();
-  }
-};
-
-current = parseInt(localStorage.getItem("progress")) || 0;
-render();
-</script>
-
+  </script>
 </body>
 </html>
