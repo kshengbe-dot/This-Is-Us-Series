@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>THIS IS US — Reader</title>
 
   <style>
@@ -12,6 +12,15 @@
       --shadow: 0 26px 80px rgba(0,0,0,.55);
       --bar: rgba(10,14,28,.88);
       --chip: rgba(255,255,255,.06);
+      --sheet: rgba(15,20,40,.94);
+
+      --pageRadius:18px;
+      --footerH:44px; /* IMPORTANT: reserved footer space so text never gets cut */
+      --padX:22px;
+      --padY:26px;
+
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
     }
     [data-theme="light"]{
       --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
@@ -19,13 +28,14 @@
       --shadow: 0 18px 60px rgba(2,6,23,.12);
       --bar: rgba(255,255,255,.92);
       --chip: rgba(2,6,23,.04);
+      --sheet: rgba(255,255,255,.96);
     }
 
     *{box-sizing:border-box}
     body{
       margin:0; height:100vh; overflow:hidden;
       background:
-        radial-gradient(1200px 900px at 30% 10%, rgba(124,92,255,.26), transparent 60%),
+        radial-gradient(1200px 900px at 30% 10%, rgba(124,92,255,.22), transparent 60%),
         var(--bg);
       color:var(--ink);
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
@@ -33,19 +43,17 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Top bar */
+    /* ===== Desktop Top Bar ===== */
     .top{
       position:fixed; left:0; right:0; top:0;
       z-index:40;
       border-bottom:1px solid var(--stroke);
       background: var(--bar);
       backdrop-filter: blur(12px);
-      padding:10px 12px;
+      padding: calc(10px + var(--safeTop)) 12px 10px;
       display:flex; align-items:center; justify-content:space-between; gap:10px;
     }
-    .row{
-      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    }
+    .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .chip{
       border:1px solid var(--stroke);
       background: var(--chip);
@@ -69,13 +77,13 @@
       max-width: 260px;
     }
 
-    /* Stage */
+    /* ===== Stage ===== */
     .stage{
       height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:72px 12px 16px; /* space for bar */
+      padding: 78px 12px 16px; /* desktop default */
     }
     .book{
       width:min(1120px, 98vw);
@@ -93,25 +101,40 @@
     }
 
     /* Mobile single */
-    .single{
-      position:absolute; inset:0;
-      display:none;
-    }
+    .single{ position:absolute; inset:0; display:none; }
 
     .page{
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
       border:1px solid var(--stroke);
-      border-radius:18px;
+      border-radius:var(--pageRadius);
       box-shadow:var(--shadow);
       overflow:hidden;
       position:relative;
+      display:flex;
+      flex-direction:column;
     }
 
-    /* ✅ hard-lock page content */
+    /* Text area is ALWAYS exact: page height - footer height */
     .inner{
-      height:100%;
-      padding:26px 22px;
-      overflow:hidden; /* no scrolling inside page */
+      height: calc(100% - var(--footerH));
+      padding: var(--padY) var(--padX);
+      overflow:hidden; /* no scroll inside */
+    }
+    .footer{
+      height: var(--footerH);
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      padding: 10px 14px;
+      border-top:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.18));
+      color: var(--muted);
+      font-size:12px;
+      font-family: ui-sans-serif, system-ui;
+      letter-spacing:.04em;
+    }
+    [data-theme="light"] .footer{
+      background: linear-gradient(180deg, rgba(255,255,255,.00), rgba(2,6,23,.05));
     }
 
     /* Typography */
@@ -131,14 +154,10 @@
       color:var(--ink);
     }
     .muted{color:var(--muted)}
-    .pageNum{
-      position:absolute; bottom:12px; right:14px;
-      font-size:12px; color:var(--muted);
-    }
 
     /* Flip overlay */
     .flip{
-      position:absolute; top:0; bottom:0;
+      position:absolute; top:0; bottom:0; left:0;
       width:50%;
       transform-style:preserve-3d;
       pointer-events:none;
@@ -150,16 +169,39 @@
     .flip.full{ width:100%; left:0; }
     .flip .front, .flip .back{
       position:absolute; inset:0;
-      border-radius:18px;
+      border-radius:var(--pageRadius);
       overflow:hidden;
       background: var(--paper);
       border:1px solid var(--stroke);
       box-shadow:var(--shadow);
       backface-visibility:hidden;
+      display:flex;
+      flex-direction:column;
     }
-    .flip .front .inner, .flip .back .inner{ padding:26px 22px; height:100%; overflow:hidden; }
-    .flip .back{ transform: rotateY(180deg); }
+    .flip .front .inner, .flip .back .inner{
+      padding: var(--padY) var(--padX);
+      height: calc(100% - var(--footerH));
+      overflow:hidden;
+    }
+    .flip .front .footer, .flip .back .footer{
+      height: var(--footerH);
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      padding: 10px 14px;
+      border-top:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(0,0,0,.00), rgba(0,0,0,.18));
+      color: var(--muted);
+      font-size:12px;
+      font-family: ui-sans-serif, system-ui;
+      letter-spacing:.04em;
+    }
+    [data-theme="light"] .flip .front .footer,
+    [data-theme="light"] .flip .back .footer{
+      background: linear-gradient(180deg, rgba(255,255,255,.00), rgba(2,6,23,.05));
+    }
 
+    .flip .back{ transform: rotateY(180deg); }
     @keyframes flipForward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(-180deg)} }
     @keyframes flipBackward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(180deg)} }
     .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
@@ -207,41 +249,145 @@
       float:left; font-size:56px; line-height:.92;
       padding-right:10px; padding-top:6px; font-weight:800;
     }
-    .copyright{
-      text-align:center; color:var(--muted); font-size:12px;
-      font-family: ui-sans-serif, system-ui;
-      margin: 8px 0 4px; letter-spacing:.04em;
-    }
 
-    /* ✅ Mobile: clean bar (2 rows) + single page flip */
+    /* ===== Mobile Premium UI ===== */
+    .mTop, .mBottom, .sheet, .sheetBackdrop{ display:none; }
+
     @media (max-width:720px){
-      .top{
-        padding:10px 10px;
-        flex-direction:column;
-        align-items:stretch;
-        gap:8px;
+      :root{
+        --footerH: 46px;
+        --padX: 18px;
+        --padY: 22px;
       }
-      .row{
-        flex-wrap:nowrap;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        padding-bottom:2px;
+
+      .top{ display:none; } /* hide desktop bar */
+
+      .mTop{
+        display:flex;
+        position:fixed; left:0; right:0; top:0;
+        z-index:60;
+        padding: calc(10px + var(--safeTop)) 12px 10px;
+        background: var(--bar);
+        backdrop-filter: blur(12px);
+        border-bottom:1px solid var(--stroke);
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
       }
-      .row::-webkit-scrollbar{height:6px}
-      .row::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:999px}
-      select{ max-width: 180px; }
-      .stage{ padding:104px 10px 14px; } /* space for 2-row bar */
-      .book{ width:98vw; height:82vh; }
+      .mTitle{
+        display:flex; flex-direction:column;
+        line-height:1.1;
+        min-width:0;
+      }
+      .mTitle .t1{
+        font-family: ui-sans-serif, system-ui;
+        font-weight:900;
+        font-size:14px;
+        letter-spacing:.02em;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        max-width: 52vw;
+      }
+      .mTitle .t2{
+        font-family: ui-sans-serif, system-ui;
+        font-size:12px;
+        color:var(--muted);
+      }
+      .mBtn{
+        border:1px solid var(--stroke);
+        background: rgba(255,255,255,.08);
+        color:var(--ink);
+        padding:10px 12px;
+        border-radius:999px;
+        font-family: ui-sans-serif, system-ui;
+        font-size:13px;
+        font-weight:800;
+        cursor:pointer;
+        user-select:none;
+        white-space:nowrap;
+      }
+
+      .mBottom{
+        display:flex;
+        position:fixed; left:0; right:0; bottom:0;
+        z-index:60;
+        padding:10px 12px calc(10px + var(--safeBot));
+        background: var(--bar);
+        backdrop-filter: blur(12px);
+        border-top:1px solid var(--stroke);
+        gap:10px;
+      }
+      .mBottom .mBtn{ flex:1; text-align:center; }
+
+      .stage{
+        padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot));
+      }
+      .book{ width:98vw; height: calc(100vh - (58px + var(--safeTop)) - (74px + var(--safeBot)) - 18px); }
       .spread{ display:none; }
       .single{ display:block; }
       .flip{ width:100%; left:0; }
       .flip.fromRight{ left:0; transform-origin:left; }
       .flip.fromLeft{ left:0; transform-origin:right; }
-      .inner{ padding:22px 18px; }
-      .inner p{ font-size:16px; line-height:1.75; }
+
+      .inner p{ font-size:16px; line-height:1.78; }
+      .chapter-cover h2{ font-size:36px; }
+      .chapter-title h4{ font-size:28px; }
     }
 
-    /* Hidden measurers */
+    /* Mobile Sheet */
+    @media (max-width:720px){
+      .sheetBackdrop{
+        display:block;
+        position:fixed; inset:0;
+        background: rgba(0,0,0,.55);
+        backdrop-filter: blur(8px);
+        z-index:70;
+        opacity:0;
+        pointer-events:none;
+        transition: .2s ease;
+      }
+      .sheet{
+        display:block;
+        position:fixed; left:0; right:0; bottom:0;
+        z-index:80;
+        transform: translateY(110%);
+        transition: .25s ease;
+        background: var(--sheet);
+        border-top:1px solid var(--stroke);
+        border-radius:18px 18px 0 0;
+        padding: 14px 14px calc(14px + var(--safeBot));
+        box-shadow: 0 -24px 60px rgba(0,0,0,.55);
+      }
+      .sheet.open{ transform: translateY(0); }
+      .sheetBackdrop.open{ opacity:1; pointer-events:auto; }
+
+      .sheet h4{
+        margin:0 0 10px;
+        font-family: ui-sans-serif, system-ui;
+        font-size:14px;
+        letter-spacing:.06em;
+        text-transform:uppercase;
+        color:var(--muted);
+      }
+      .sheetRow{
+        display:flex; gap:10px; flex-wrap:wrap;
+      }
+      .sheetRow .mBtn{ flex:1; min-width: 44%; }
+      .sheet select{
+        width:100%;
+        margin-top:10px;
+        padding:12px 12px;
+        border-radius:14px;
+        font-size:14px;
+      }
+      .sheet .divider{
+        height:1px; background: var(--stroke);
+        margin:12px 0;
+      }
+    }
+
+    /* Hidden measurers (MUST match real page inner sizing) */
     .measureWrap{
       position:fixed; left:-9999px; top:-9999px;
       width:min(1120px, 98vw);
@@ -255,14 +401,14 @@
       gap:14px;
     }
     .measurePage{
-      height:100%;
-      padding:26px 22px;
+      height: calc(100% - var(--footerH));
+      padding: var(--padY) var(--padX);
       overflow:hidden;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
     }
     .measureSingle{
-      height:100%;
-      padding:22px 18px;
+      height: calc(100% - var(--footerH));
+      padding: var(--padY) var(--padX);
       overflow:hidden;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
       display:none;
@@ -275,6 +421,17 @@
 </head>
 
 <body>
+  <!-- Mobile top -->
+  <div class="mTop">
+    <div class="mBtn" id="mBack">← Library</div>
+    <div class="mTitle">
+      <div class="t1" id="mBookTitle">book1</div>
+      <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
+    </div>
+    <div class="mBtn" id="mMenu">Menu</div>
+  </div>
+
+  <!-- Desktop top -->
   <div class="top">
     <div class="row">
       <div class="chip" id="backBtn">← <strong>Library</strong></div>
@@ -291,33 +448,63 @@
     </div>
   </div>
 
+  <!-- Mobile bottom -->
+  <div class="mBottom">
+    <div class="mBtn" id="mPrev">Prev</div>
+    <div class="mBtn" id="mNext">Next</div>
+  </div>
+
+  <!-- Mobile sheet -->
+  <div class="sheetBackdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet">
+    <h4>Reader Settings</h4>
+    <div class="sheetRow">
+      <div class="mBtn" id="mTheme">Theme</div>
+      <div class="mBtn" id="mSpeak">Speak</div>
+      <div class="mBtn" id="mStop">Stop</div>
+      <div class="mBtn" id="mClose">Close</div>
+    </div>
+    <div class="divider"></div>
+    <select id="mVoiceSelect" title="Voice"></select>
+  </div>
+
   <div class="stage">
     <div class="book">
+      <!-- Desktop spread -->
       <div class="spread" id="spread">
         <div class="page">
           <div class="inner" id="leftPage"></div>
-          <div class="pageNum" id="leftNum"></div>
+          <div class="footer"><span id="leftNum"></span></div>
         </div>
         <div class="page">
           <div class="inner" id="rightPage"></div>
-          <div class="pageNum" id="rightNum"></div>
+          <div class="footer"><span id="rightNum"></span></div>
         </div>
       </div>
 
+      <!-- Mobile single -->
       <div class="single" id="single">
         <div class="page">
           <div class="inner" id="singlePage"></div>
-          <div class="pageNum" id="singleNum"></div>
+          <div class="footer"><span id="singleNum"></span></div>
         </div>
       </div>
 
+      <!-- Flip overlay -->
       <div class="flip" id="flip">
-        <div class="front"><div class="inner" id="flipFront"></div></div>
-        <div class="back"><div class="inner" id="flipBack"></div></div>
+        <div class="front">
+          <div class="inner" id="flipFront"></div>
+          <div class="footer"><span id="flipFrontNum"></span></div>
+        </div>
+        <div class="back">
+          <div class="inner" id="flipBack"></div>
+          <div class="footer"><span id="flipBackNum"></span></div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Hidden measurers -->
   <div class="measureWrap">
     <div class="measureSpread" id="measureSpread">
       <div class="measurePage" id="measureLeft"></div>
@@ -338,25 +525,31 @@
 
     const params = new URLSearchParams(location.search);
     const bookId = params.get("book") || "book1";
-    document.getElementById("bookTitle").textContent = bookId;
+
+    const bookTitle = document.getElementById("bookTitle");
+    const mBookTitle = document.getElementById("mBookTitle");
+    if(bookTitle) bookTitle.textContent = bookId;
+    if(mBookTitle) mBookTitle.textContent = bookId;
+
+    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-    document.getElementById("themeBtn").onclick = ()=>{
+    function toggleTheme(){
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
       paginateAndRender();
-    };
+    }
+    document.getElementById("themeBtn")?.addEventListener("click", toggleTheme);
+    document.getElementById("mTheme")?.addEventListener("click", ()=>{ toggleTheme(); closeSheet(); });
 
     const BOOK_FILES = {
       book1: "./books/book1.html",
       coming: "./books/coming-soon.html"
     };
     const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
-
-    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
     // Page DOM
     const leftPage = document.getElementById("leftPage");
@@ -367,13 +560,16 @@
     const singlePage = document.getElementById("singlePage");
     const singleNum  = document.getElementById("singleNum");
 
-    const pageLabel = document.getElementById("pageLabel");
-    const pageTotalEl = document.getElementById("pageTotal");
-
-    // Flip DOM
     const flip = document.getElementById("flip");
     const flipFront = document.getElementById("flipFront");
     const flipBack  = document.getElementById("flipBack");
+    const flipFrontNum = document.getElementById("flipFrontNum");
+    const flipBackNum  = document.getElementById("flipBackNum");
+
+    const pageLabel = document.getElementById("pageLabel");
+    const pageTotalEl = document.getElementById("pageTotal");
+    const mPageLabel = document.getElementById("mPageLabel");
+    const mPageTotal = document.getElementById("mPageTotal");
 
     // Measurers
     const measureLeft = document.getElementById("measureLeft");
@@ -397,6 +593,26 @@
       }catch(e){}
     }
 
+    // Sheet
+    const sheet = document.getElementById("sheet");
+    const sheetBackdrop = document.getElementById("sheetBackdrop");
+    function openSheet(){
+      sheet.classList.add("open");
+      sheetBackdrop.classList.add("open");
+    }
+    function closeSheet(){
+      sheet.classList.remove("open");
+      sheetBackdrop.classList.remove("open");
+    }
+    document.getElementById("mMenu")?.addEventListener("click", openSheet);
+    document.getElementById("mClose")?.addEventListener("click", closeSheet);
+    sheetBackdrop?.addEventListener("click", closeSheet);
+
+    // Navigation
+    function goLibrary(){ location.href = "./"; }
+    document.getElementById("backBtn")?.addEventListener("click", goLibrary);
+    document.getElementById("mBack")?.addEventListener("click", goLibrary);
+
     let BOOK_HTML = "<p class='muted'>Loading…</p>";
     let PAGES = [];
 
@@ -410,13 +626,12 @@
       }
     }
 
-    /* ✅ Chapter starts new page (but DOES NOT force “one chapter per page”) */
+    /* Chapter starts on new page */
     function injectChapterBreaks(html){
       return html.replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
     }
 
     function tokenizeHtml(html){
-      // keep tags, words, spaces
       const parts = html.split(/(<[^>]+>)/g).filter(Boolean);
       const tokens = [];
       for(const part of parts){
@@ -438,7 +653,7 @@
     }
 
     function getMeasurer(){
-      return isMobile() ? measureSingle : measureLeft; // desktop: each page side height
+      return isMobile() ? measureSingle : measureLeft;
     }
 
     function paginate(html){
@@ -466,7 +681,6 @@
         const test = buf + tok;
         measurer.innerHTML = test;
 
-        // ✅ Fill page until it would overflow, then break
         if(measurer.scrollHeight <= maxH + 1){
           buf = test;
         }else{
@@ -484,24 +698,36 @@
       if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
     }
 
+    function updateCounters(){
+      const total = String(PAGES.length || 0);
+      pageTotalEl.textContent = total;
+      mPageTotal.textContent = total;
+
+      pageLabel.textContent = String(i+1);
+      mPageLabel.textContent = String(i+1);
+    }
+
     function render(){
       if(PAGES.length === 0){
         if(isMobile()){
           singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
+          singleNum.textContent = "";
         }else{
           leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
           rightPage.innerHTML = "";
+          leftNum.textContent = "";
+          rightNum.textContent = "";
         }
+        updateCounters();
         return;
       }
 
       normalizeIndex();
-      pageTotalEl.textContent = String(PAGES.length);
+      updateCounters();
 
       if(isMobile()){
         singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
         singleNum.textContent = String(i+1);
-        pageLabel.textContent = String(i+1);
       }else{
         const leftIdx = i;
         const rightIdx = i+1;
@@ -509,7 +735,6 @@
         rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
         leftNum.textContent = String(leftIdx+1);
         rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
-        pageLabel.textContent = String(leftIdx+1);
       }
       saveProgress();
     }
@@ -531,17 +756,23 @@
         }
         flipFront.innerHTML = PAGES[i] || "";
         flipBack.innerHTML  = PAGES[nextIndex] || "";
+        flipFrontNum.textContent = String(i+1);
+        flipBackNum.textContent  = String(nextIndex+1);
       }else{
         if(forward){
-          // flip right page forward
           flip.classList.add("fromRight","animForward");
+          // forward: animate the right page turning
           flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
           flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
+          flipFrontNum.textContent = String(i+2);
+          flipBackNum.textContent  = String(nextIndex+2);
         }else{
-          // flip left page backward
           flip.classList.add("fromLeft","animBackward");
+          // backward: animate the left page turning back
           flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
           flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
+          flipFrontNum.textContent = String(i+1);
+          flipBackNum.textContent  = String(nextIndex+1);
         }
       }
 
@@ -552,42 +783,66 @@
       }, 560);
     }
 
-    // Controls
-    document.getElementById("nextBtn").onclick = ()=>{
+    function next(){
       if(isMobile()){
         if(i+1 <= PAGES.length-1) animateFlip(i+1);
       }else{
         if(i+2 <= PAGES.length-1) animateFlip(i+2);
       }
-    };
-    document.getElementById("prevBtn").onclick = ()=>{
+    }
+    function prev(){
       if(isMobile()){
         if(i-1 >= 0) animateFlip(i-1);
       }else{
         if(i-2 >= 0) animateFlip(i-2);
       }
-    };
-    document.getElementById("backBtn").onclick = ()=> location.href = "./";
+    }
+
+    document.getElementById("nextBtn")?.addEventListener("click", next);
+    document.getElementById("prevBtn")?.addEventListener("click", prev);
+    document.getElementById("mNext")?.addEventListener("click", next);
+    document.getElementById("mPrev")?.addEventListener("click", prev);
 
     document.addEventListener("keydown",(e)=>{
-      if(e.key==="ArrowRight") document.getElementById("nextBtn").click();
-      if(e.key==="ArrowLeft") document.getElementById("prevBtn").click();
+      if(e.key==="ArrowRight") next();
+      if(e.key==="ArrowLeft") prev();
     });
 
     // Speech
     const voiceSelect = document.getElementById("voiceSelect");
+    const mVoiceSelect = document.getElementById("mVoiceSelect");
+
     function loadVoices(){
       const voices = speechSynthesis.getVoices();
-      voiceSelect.innerHTML = "";
-      voices.forEach((v, idx)=>{
-        const opt = document.createElement("option");
-        opt.value = String(idx);
-        opt.textContent = `${v.name} — ${v.lang}`;
-        voiceSelect.appendChild(opt);
-      });
+      const fill = (sel)=>{
+        sel.innerHTML = "";
+        voices.forEach((v, idx)=>{
+          const opt = document.createElement("option");
+          opt.value = String(idx);
+          opt.textContent = `${v.name} — ${v.lang}`;
+          sel.appendChild(opt);
+        });
+      };
+      fill(voiceSelect);
+      fill(mVoiceSelect);
+
+      const saved = localStorage.getItem("voiceIndex");
+      if(saved){
+        voiceSelect.value = saved;
+        mVoiceSelect.value = saved;
+      }
     }
-    loadVoices();
-    speechSynthesis.onvoiceschanged = loadVoices;
+    if("speechSynthesis" in window){
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function getChosenVoice(){
+      const idx = parseInt((isMobile()? mVoiceSelect.value : voiceSelect.value) || "0",10);
+      localStorage.setItem("voiceIndex", String(idx));
+      const voices = speechSynthesis.getVoices();
+      return voices[idx] || null;
+    }
 
     function visibleText(){
       const temp = document.createElement("div");
@@ -598,20 +853,27 @@
       }
       return temp.textContent || "";
     }
-    document.getElementById("speakBtn").onclick = ()=>{
+
+    function speak(){
       if(!("speechSynthesis" in window)){ alert("Speech not supported."); return; }
       speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(visibleText());
-      const voices = speechSynthesis.getVoices();
-      const chosen = voices[parseInt(voiceSelect.value||"0",10)];
-      if(chosen) utter.voice = chosen;
+      const v = getChosenVoice();
+      if(v) utter.voice = v;
       utter.rate = 1; utter.pitch = 1;
       speechSynthesis.speak(utter);
-    };
-    document.getElementById("stopBtn").onclick = ()=> speechSynthesis.cancel();
+    }
+    function stop(){ if("speechSynthesis" in window) speechSynthesis.cancel(); }
+
+    document.getElementById("speakBtn")?.addEventListener("click", speak);
+    document.getElementById("stopBtn")?.addEventListener("click", stop);
+    document.getElementById("mSpeak")?.addEventListener("click", ()=>{ speak(); closeSheet(); });
+    document.getElementById("mStop")?.addEventListener("click", ()=>{ stop(); closeSheet(); });
+
+    voiceSelect?.addEventListener("change", ()=>{ mVoiceSelect.value = voiceSelect.value; localStorage.setItem("voiceIndex", voiceSelect.value); });
+    mVoiceSelect?.addEventListener("change", ()=>{ voiceSelect.value = mVoiceSelect.value; localStorage.setItem("voiceIndex", mVoiceSelect.value); });
 
     function paginateAndRender(){
-      // ✅ TRUE flowing pagination (fills page, continues) + chapter starts new page
       PAGES = paginate(BOOK_HTML);
       render();
     }
