@@ -14,22 +14,28 @@
   --stroke:rgba(255,255,255,.12);
 }
 
-*{box-sizing:border-box}
-
 body{
   margin:0;
   background:var(--bg);
   color:var(--ink);
   font-family:Georgia, serif;
+  overflow-x:hidden;
+  transition:.3s;
 }
 
 .top{
-  height:60px;
+  height:64px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:0 20px;
   border-bottom:1px solid var(--stroke);
+}
+
+.controls{
+  display:flex;
+  gap:10px;
+  align-items:center;
 }
 
 button{
@@ -41,29 +47,39 @@ button{
   cursor:pointer;
 }
 
+button:hover{
+  opacity:.8;
+}
+
 .stage{
   display:flex;
   justify-content:center;
-  padding:30px 20px;
+  padding:40px 20px;
 }
 
 .book{
-  width:min(1000px,95vw);
+  display:flex;
+  gap:30px;
+  width:min(1100px,95vw);
 }
 
 .page{
+  flex:1;
   background:var(--paper);
   border:1px solid var(--stroke);
-  border-radius:12px;
-  padding:40px 32px;
-  line-height:1.8;
-  font-size:17px;
-  min-height:70vh;
+  border-radius:14px;
+  padding:50px 40px;
+  line-height:1.9;
+  font-size:18px;
+  min-height:75vh;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+  animation:fade .4s ease;
 }
 
-.chapter{
-  page-break-before:always;
-  margin-top:60px;
+@keyframes fade{
+  from{opacity:0; transform:translateX(10px);}
+  to{opacity:1; transform:none;}
 }
 
 h3{
@@ -77,6 +93,29 @@ h4{
   font-size:28px;
   margin-top:8px;
 }
+
+.dropcap:first-letter{
+  float:left;
+  font-size:48px;
+  line-height:1;
+  padding-right:6px;
+}
+
+.counter{
+  color:var(--muted);
+  font-size:14px;
+}
+
+/* Mobile */
+
+@media(max-width:900px){
+  .book{
+    flex-direction:column;
+  }
+  .page{
+    min-height:70vh;
+  }
+}
 </style>
 </head>
 
@@ -84,15 +123,19 @@ h4{
 
 <div class="top">
   <button onclick="location.href='./'">← Library</button>
-  <div>
+
+  <div class="controls">
+    <span class="counter" id="counter"></span>
     <button onclick="prev()">Prev</button>
     <button onclick="next()">Next</button>
+    <button onclick="toggleTheme()">Theme</button>
   </div>
 </div>
 
 <div class="stage">
   <div class="book">
-    <div class="page" id="page"></div>
+    <div class="page" id="left"></div>
+    <div class="page" id="right"></div>
   </div>
 </div>
 
@@ -114,6 +157,7 @@ async function load(){
   const res=await fetch(file);
   content=await res.text();
   paginate();
+  loadProgress();
   render();
 }
 
@@ -126,11 +170,6 @@ function paginate(){
   let page=document.createElement("div");
 
   blocks.forEach(block=>{
-    if(block.classList.contains("chapter-title")){
-      pages.push(page.innerHTML);
-      page=document.createElement("div");
-    }
-
     page.appendChild(block.cloneNode(true));
 
     if(page.innerText.length>1800){
@@ -145,20 +184,51 @@ function paginate(){
 }
 
 function render(){
-  document.getElementById("page").innerHTML=pages[current]||"";
+  const left=document.getElementById("left");
+  const right=document.getElementById("right");
+
+  left.innerHTML=pages[current]||"";
+  right.innerHTML=pages[current+1]||"";
+
+  document.getElementById("counter").innerText =
+    "Page " + (current+1) + " / " + pages.length;
+
+  saveProgress();
 }
 
 function next(){
-  if(current<pages.length-1){
-    current++;
+  if(current+2 < pages.length){
+    current+=2;
     render();
   }
 }
 
 function prev(){
-  if(current>0){
-    current--;
+  if(current-2 >=0){
+    current-=2;
     render();
+  }
+}
+
+function saveProgress(){
+  localStorage.setItem("progress_"+book,current);
+}
+
+function loadProgress(){
+  const saved=localStorage.getItem("progress_"+book);
+  if(saved){
+    current=parseInt(saved);
+  }
+}
+
+function toggleTheme(){
+  const body=document.body;
+  if(body.style.background=="rgb(245, 239, 224)"){
+    body.style.background="#0B1020";
+    body.style.color="#EAF0FF";
+  }else{
+    body.style.background="#F5EFE0";
+    body.style.color="#2A2A2A";
   }
 }
 
