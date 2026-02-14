@@ -12,6 +12,11 @@
       --shadow: 0 28px 90px rgba(0,0,0,.55);
       --glow: rgba(124,92,255,.45);
       --accent: rgba(124,92,255,.95);
+
+      /* modal readability */
+      --modalBg: rgba(12, 16, 30, .92);
+      --fieldBg: rgba(255,255,255,.10);
+      --fieldStroke: rgba(255,255,255,.18);
     }
     [data-theme="light"]{
       --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
@@ -19,6 +24,10 @@
       --shadow: 0 18px 60px rgba(2,6,23,.10);
       --glow: rgba(124,92,255,.20);
       --accent: rgba(124,92,255,.95);
+
+      --modalBg: rgba(255,255,255,.95);
+      --fieldBg: rgba(2,6,23,.06);
+      --fieldStroke: rgba(2,6,23,.14);
     }
     *{box-sizing:border-box}
     body{
@@ -193,21 +202,10 @@
     }
     .bookCard:hover .cover img{ transform: scale(1.06); }
 
-    .meta{
-      padding:12px 12px 14px;
-    }
-    .meta .name{
-      font-weight:950;
-      letter-spacing:.02em;
-      margin:0;
-      font-size:16px;
-    }
-    .meta .desc{
-      margin:6px 0 0;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.45;
-    }
+    .meta{ padding:12px 12px 14px; }
+    .meta .name{ font-weight:950; letter-spacing:.02em; margin:0; font-size:16px; }
+    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+
     .badge{
       position:absolute;
       top:12px; left:12px;
@@ -223,6 +221,7 @@
     }
     .badge.live{ border-color: rgba(0,255,198,.35); }
     .badge.soon{ border-color: rgba(255,198,0,.35); }
+
     .lock{
       position:absolute; inset:0;
       background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.35));
@@ -255,30 +254,35 @@
     .modalCard{
       width:min(520px, 96vw);
       border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      background: var(--modalBg);
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
+      backdrop-filter: blur(14px);
     }
     .modalHead{
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 6px 10px;
     }
     .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
-    .x{cursor:pointer; padding:8px 10px; border-radius:12px; border:1px solid var(--stroke); background: rgba(255,255,255,.06); }
-    .grid{
-      display:grid; gap:10px; padding:6px;
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
     }
+    .grid{ display:grid; gap:10px; padding:6px; }
     input{
       width:100%;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
+      border:1px solid var(--fieldStroke);
+      background: var(--fieldBg);
       padding:10px 12px;
       border-radius:14px;
       color:var(--ink);
       outline:none;
       font-size:14px;
     }
+    input::placeholder{ color: rgba(234,240,255,.70); }
+    [data-theme="light"] input::placeholder{ color: rgba(15,23,42,.55); }
     .note{color:var(--muted); font-size:12px; line-height:1.45}
 
     @media (max-width:980px){
@@ -341,7 +345,6 @@
     </div>
 
     <div class="shelf">
-      <!-- BOOK 1 -->
       <a class="bookCard" href="read.html?book=book1">
         <div class="badge live">Live</div>
         <div class="cover">
@@ -353,7 +356,6 @@
         </div>
       </a>
 
-      <!-- COMING SOON 1 -->
       <a class="bookCard locked" href="read.html?book=coming">
         <div class="badge soon">Coming Soon</div>
         <div class="cover">
@@ -373,7 +375,6 @@
         </div>
       </a>
 
-      <!-- COMING SOON 2 -->
       <a class="bookCard locked" href="read.html?book=coming">
         <div class="badge soon">Coming Soon</div>
         <div class="cover">
@@ -393,7 +394,6 @@
         </div>
       </a>
 
-      <!-- COMING SOON 3 -->
       <a class="bookCard locked" href="read.html?book=coming">
         <div class="badge soon">Coming Soon</div>
         <div class="cover">
@@ -415,7 +415,6 @@
     </div>
   </div>
 
-  <!-- Sync Modal (optional) -->
   <div class="modal" id="modal">
     <div class="modalCard">
       <div class="modalHead">
@@ -501,7 +500,6 @@
     signupBtn.onclick = async ()=>{
       try{
         const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
-        // Create a basic profile doc
         await setDoc(doc(db, "users", cred.user.uid), {
           email: email.value.trim(),
           createdAt: serverTimestamp(),
@@ -517,26 +515,6 @@
       await signOut(auth);
       closeModal();
     };
-
-    /* Make auth box readable (no glass that hides text) */
-.auth-card, .modal, .modal-card, .authModal, .loginCard {
-  background: rgba(15, 20, 40, .95) !important;
-  border: 1px solid rgba(255,255,255,.16) !important;
-  backdrop-filter: blur(14px);
-}
-
-.auth-card input, .modal input, .modal-card input, .authModal input, .loginCard input,
-.auth-card button, .modal button, .modal-card button, .authModal button, .loginCard button {
-  background: rgba(255,255,255,.10) !important;
-  border: 1px solid rgba(255,255,255,.18) !important;
-  color: #EAF0FF !important;
-}
-
-.auth-card label, .modal label, .modal-card label, .authModal label, .loginCard label {
-  color: rgba(234,240,255,.90) !important;
-}
-
-    
   </script>
 </body>
 </html>
