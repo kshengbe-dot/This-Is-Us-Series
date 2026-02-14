@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>THIS IS US — Reader</title>
 
 <style>
@@ -18,106 +18,64 @@
 
 body{
   margin:0;
-  height:100vh;
-  overflow:hidden;
   background:var(--bg);
   color:var(--ink);
   font-family:Georgia, serif;
 }
 
 .top{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
   height:60px;
-  background:#0e1428;
-  border-bottom:1px solid var(--stroke);
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:0 16px;
-  z-index:50;
+  padding:0 20px;
+  border-bottom:1px solid var(--stroke);
 }
 
-.btn{
-  padding:8px 12px;
-  border:1px solid var(--stroke);
-  border-radius:10px;
-  cursor:pointer;
+button{
+  padding:8px 14px;
   background:#1a2242;
+  border:1px solid var(--stroke);
   color:white;
+  border-radius:8px;
+  cursor:pointer;
 }
 
 .stage{
-  height:100vh;
   display:flex;
-  align-items:center;
   justify-content:center;
-  padding-top:70px;
+  padding:30px 20px;
 }
 
 .book{
-  width:min(1100px,95vw);
-  height:min(720px,85vh);
-  position:relative;
-}
-
-.spread{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  height:100%;
-}
-
-.single{
-  display:none;
-  height:100%;
+  width:min(1000px,95vw);
 }
 
 .page{
   background:var(--paper);
-  border-radius:14px;
-  padding:28px 24px 60px;
-  overflow:hidden;
   border:1px solid var(--stroke);
-  position:relative;
+  border-radius:12px;
+  padding:40px 32px;
+  line-height:1.8;
+  font-size:17px;
+  min-height:70vh;
 }
 
-.pageNum{
-  position:absolute;
-  bottom:16px;
-  right:18px;
-  font-size:12px;
-  color:var(--muted);
+.chapter{
+  page-break-before:always;
+  margin-top:60px;
 }
 
-.inner{
-  height:100%;
-  overflow:hidden;
-}
-
-.inner p{
-  line-height:1.75;
-  margin:0 0 14px;
-  font-size:16px;
-}
-
-.inner h3{
+h3{
   text-transform:uppercase;
   letter-spacing:.2em;
   font-size:12px;
   color:var(--muted);
 }
 
-.inner h4{
+h4{
   font-size:28px;
-  margin:8px 0 20px;
-}
-
-@media(max-width:720px){
-  .spread{display:none}
-  .single{display:block}
+  margin-top:8px;
 }
 </style>
 </head>
@@ -125,154 +83,86 @@ body{
 <body>
 
 <div class="top">
-  <div class="btn" onclick="location.href='./'">← Library</div>
-  <div><span id="pageLabel">1</span> / <span id="pageTotal">1</span></div>
+  <button onclick="location.href='./'">← Library</button>
   <div>
-    <button class="btn" onclick="prev()">Prev</button>
-    <button class="btn" onclick="next()">Next</button>
+    <button onclick="prev()">Prev</button>
+    <button onclick="next()">Next</button>
   </div>
 </div>
 
 <div class="stage">
   <div class="book">
-
-    <div class="spread">
-      <div class="page">
-        <div class="inner" id="leftPage"></div>
-        <div class="pageNum" id="leftNum"></div>
-      </div>
-      <div class="page">
-        <div class="inner" id="rightPage"></div>
-        <div class="pageNum" id="rightNum"></div>
-      </div>
-    </div>
-
-    <div class="single">
-      <div class="page">
-        <div class="inner" id="singlePage"></div>
-        <div class="pageNum" id="singleNum"></div>
-      </div>
-    </div>
-
+    <div class="page" id="page"></div>
   </div>
 </div>
 
 <script>
-const BOOK_FILES = {
+const BOOKS={
   book1:"./books/book1.html",
   coming:"./books/coming-soon.html"
 };
 
-const params = new URLSearchParams(location.search);
-const bookId = params.get("book") || "book1";
-const file = BOOK_FILES[bookId];
+const params=new URLSearchParams(location.search);
+const book=params.get("book")||"book1";
+const file=BOOKS[book];
 
-let PAGES = [];
-let i = 0;
+let content="";
+let pages=[];
+let current=0;
 
-function isMobile(){
-  return window.innerWidth <= 720;
-}
-
-async function loadBook(){
-  const res = await fetch(file);
-  const html = await res.text();
-  paginate(html);
+async function load(){
+  const res=await fetch(file);
+  content=await res.text();
+  paginate();
   render();
 }
 
-function paginate(html){
+function paginate(){
+  pages=[];
+  const temp=document.createElement("div");
+  temp.innerHTML=content;
 
-  const container = document.createElement("div");
-  container.innerHTML = html;
-
-  const blocks = Array.from(container.children);
-
-  const realPage = document.querySelector(".page");
-  const pageHeight = realPage.clientHeight;
-
-  const measurer = document.createElement("div");
-  measurer.style.position="absolute";
-  measurer.style.visibility="hidden";
-  measurer.style.width=realPage.clientWidth+"px";
-  measurer.style.height=pageHeight+"px";
-  measurer.style.padding="28px 24px 60px";
-  measurer.style.overflow="hidden";
-  measurer.style.fontFamily="Georgia, serif";
-  measurer.style.lineHeight="1.75";
-  document.body.appendChild(measurer);
-
+  const blocks=[...temp.children];
   let page=document.createElement("div");
-  measurer.appendChild(page);
-
-  PAGES=[];
 
   blocks.forEach(block=>{
-
-    if(block.classList && block.classList.contains("chapter-title")){
-      if(page.innerHTML.trim()!==""){
-        PAGES.push(page.innerHTML);
-        page=document.createElement("div");
-        measurer.innerHTML="";
-        measurer.appendChild(page);
-      }
+    if(block.classList.contains("chapter-title")){
+      pages.push(page.innerHTML);
+      page=document.createElement("div");
     }
 
-    const clone=block.cloneNode(true);
-    page.appendChild(clone);
+    page.appendChild(block.cloneNode(true));
 
-    if(page.scrollHeight > pageHeight){
-      page.removeChild(clone);
-      PAGES.push(page.innerHTML);
+    if(page.innerText.length>1800){
+      pages.push(page.innerHTML);
       page=document.createElement("div");
-      measurer.innerHTML="";
-      measurer.appendChild(page);
-      page.appendChild(clone);
     }
   });
 
   if(page.innerHTML.trim()!==""){
-    PAGES.push(page.innerHTML);
+    pages.push(page.innerHTML);
   }
-
-  document.body.removeChild(measurer);
 }
 
 function render(){
-
-  document.getElementById("pageTotal").textContent = PAGES.length;
-  document.getElementById("pageLabel").textContent = i+1;
-
-  if(isMobile()){
-    document.getElementById("singlePage").innerHTML=PAGES[i]||"";
-    document.getElementById("singleNum").textContent=i+1;
-  }else{
-    document.getElementById("leftPage").innerHTML=PAGES[i]||"";
-    document.getElementById("rightPage").innerHTML=PAGES[i+1]||"";
-    document.getElementById("leftNum").textContent=i+1;
-    document.getElementById("rightNum").textContent=i+2;
-  }
+  document.getElementById("page").innerHTML=pages[current]||"";
 }
 
 function next(){
-  if(isMobile()){
-    if(i+1<PAGES.length){i++;render();}
-  }else{
-    if(i+2<PAGES.length){i+=2;render();}
+  if(current<pages.length-1){
+    current++;
+    render();
   }
 }
 
 function prev(){
-  if(isMobile()){
-    if(i-1>=0){i--;render();}
-  }else{
-    if(i-2>=0){i-=2;render();}
+  if(current>0){
+    current--;
+    render();
   }
 }
 
-window.addEventListener("resize", loadBook);
-
-loadBook();
+load();
 </script>
 
 </body>
