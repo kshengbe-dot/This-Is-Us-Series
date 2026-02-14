@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
@@ -110,7 +110,7 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
       <hr>
 
       <div style="font-weight:950">Profile photo</div>
-      <div class="small">Upload a small image (suggested: under 500KB).</div>
+      <div class="small">Upload a small image (recommended under ~700KB).</div>
       <input id="photoInput" type="file" accept="image/*">
       <div class="row" style="margin-top:10px;">
         <button class="btn primary" id="savePhoto">Save Photo</button>
@@ -133,15 +133,9 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+  // Theme
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-
-  document.getElementById("themeBtn").onclick = async ()=>{
-    const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem("theme", next);
-    await saveUser({ theme: next });
-  };
 
   document.getElementById("backBtn").onclick = ()=> location.href="index.html";
 
@@ -189,6 +183,13 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
     }
   }
 
+  document.getElementById("themeBtn").onclick = async ()=>{
+    const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    await saveUser({ theme: next });
+  };
+
   onAuthStateChanged(auth, async (user)=>{
     UID = user ? user.uid : null;
     if(user){
@@ -234,7 +235,9 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
   };
 
   document.getElementById("resetBook1").onclick = async ()=>{
+    // local
     localStorage.removeItem("progress:book1");
+    // cloud (if signed)
     if(UID){
       try{
         await setDoc(doc(db,"users",UID,"progress","book1"), { index: 0, updatedAt: serverTimestamp() }, { merge:true });
