@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>THIS IS US — Settings</title>
+
+<style>
+:root{
+  --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
+  --stroke:rgba(255,255,255,.12);
+  --shadow: 0 28px 90px rgba(0,0,0,.55);
+  --glass: rgba(0,0,0,.30);
+  --accent:#7c5cff;
+  --safeTop: env(safe-area-inset-top);
+  --safeBot: env(safe-area-inset-bottom);
+}
+[data-theme="light"]{
+  --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
+  --stroke:rgba(2,6,23,.10);
+  --shadow: 0 18px 60px rgba(2,6,23,.10);
+  --glass: rgba(255,255,255,.78);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:
+    radial-gradient(900px 700px at 20% 10%, rgba(124,92,255,.20), transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+.top{
+  position:sticky; top:0; z-index:10;
+  backdrop-filter: blur(14px);
+  background: var(--glass);
+  border-bottom:1px solid var(--stroke);
+}
+.nav{
+  max-width:900px; margin:0 auto;
+  padding: calc(10px + var(--safeTop)) 16px 10px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.pill{
+  border:1px solid var(--stroke);
+  background: rgba(255,255,255,.06);
+  padding:9px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:12px;
+  color:var(--muted);
+  font-weight:900;
+}
+.wrap{max-width:900px;margin:0 auto;padding:18px 16px 60px;}
+.card{
+  border:1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  border-radius:22px;
+  box-shadow: var(--shadow);
+  padding:16px;
+}
+h1{margin:0 0 10px; font-size:22px; letter-spacing:.08em; text-transform:uppercase}
+.row{display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+.avatar{
+  width:84px;height:84px;border-radius:50%;
+  border:1px solid var(--stroke);
+  background: rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.small{color:var(--muted);font-size:13px}
+.btn{
+  border:1px solid var(--stroke);
+  background: rgba(255,255,255,.08);
+  color:var(--ink);
+  padding:10px 12px;
+  border-radius:14px;
+  font-weight:950;
+  cursor:pointer;
+}
+.btn.primary{
+  border-color: rgba(124,92,255,.55);
+  background: rgba(124,92,255,.16);
+}
+input[type="file"]{display:block; margin-top:8px}
+hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
+</style>
+</head>
+
+<body>
+  <div class="top">
+    <div class="nav">
+      <div class="pill" id="backBtn">← Library</div>
+      <div class="pill" id="themeBtn">🌓 Theme</div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Settings</h1>
+      <div class="row">
+        <div class="avatar" id="avatarBox"></div>
+        <div>
+          <div style="font-weight:950" id="whoLine">Guest</div>
+          <div class="small" id="emailLine">Not signed in</div>
+          <div class="small" id="syncLine">Cloud sync: OFF</div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div style="font-weight:950">Profile photo</div>
+      <div class="small">Upload a small image (suggested: under 500KB).</div>
+      <input id="photoInput" type="file" accept="image/*">
+      <div class="row" style="margin-top:10px;">
+        <button class="btn primary" id="savePhoto">Save Photo</button>
+        <button class="btn" id="clearPhoto">Remove</button>
+      </div>
+
+      <hr>
+
+      <div style="font-weight:950">Reading</div>
+      <div class="small">Reset progress if you want to restart a book.</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" id="resetBook1">Reset Book1 Progress</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+  // Theme
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+  document.getElementById("themeBtn").onclick = async ()=>{
+    const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    await saveUser({ theme: next });
+  };
+
+  document.getElementById("backBtn").onclick = ()=> location.href="index.html";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const avatarBox = document.getElementById("avatarBox");
+  const whoLine = document.getElementById("whoLine");
+  const emailLine = document.getElementById("emailLine");
+  const syncLine = document.getElementById("syncLine");
+
+  const photoInput = document.getElementById("photoInput");
+  const savePhoto = document.getElementById("savePhoto");
+  const clearPhoto = document.getElementById("clearPhoto");
+
+  let UID = null;
+  let pendingDataURL = null;
+
+  function setAvatar(url){
+    avatarBox.innerHTML = url
+      ? `<img src="${url}" alt="Profile">`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;">👤</div>`;
+  }
+
+  async function saveUser(obj){
+    if(!UID) return;
+    try{
+      await setDoc(doc(db,"users",UID), { ...obj, updatedAt: serverTimestamp() }, { merge:true });
+    }catch{}
+  }
+
+  async function loadUser(){
+    if(!UID){ setAvatar(""); return; }
+    try{
+      const snap = await getDoc(doc(db,"users",UID));
+      const d = snap.exists() ? snap.data() : {};
+      if(d.theme && (d.theme==="dark"||d.theme==="light")){
+        document.documentElement.dataset.theme = d.theme;
+        localStorage.setItem("theme", d.theme);
+      }
+      setAvatar(d.photoURL || "");
+    }catch{
+      setAvatar("");
+    }
+  }
+
+  onAuthStateChanged(auth, async (user)=>{
+    UID = user ? user.uid : null;
+    if(user){
+      whoLine.textContent = "Signed in";
+      emailLine.textContent = user.email || "User";
+      syncLine.textContent = "Cloud sync: ON";
+      await loadUser();
+    }else{
+      whoLine.textContent = "Guest";
+      emailLine.textContent = "Not signed in";
+      syncLine.textContent = "Cloud sync: OFF";
+      setAvatar("");
+    }
+  });
+
+  photoInput.addEventListener("change", ()=>{
+    const file = photoInput.files?.[0];
+    if(!file) return;
+    if(file.size > 700000){
+      alert("Please choose a smaller image (under ~700KB).");
+      photoInput.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ()=>{ pendingDataURL = String(reader.result || ""); };
+    reader.readAsDataURL(file);
+  });
+
+  savePhoto.onclick = async ()=>{
+    if(!UID){ alert("Sign in first to save a profile photo."); return; }
+    if(!pendingDataURL){ alert("Choose an image first."); return; }
+    await saveUser({ photoURL: pendingDataURL });
+    pendingDataURL = null;
+    await loadUser();
+    alert("Saved!");
+  };
+
+  clearPhoto.onclick = async ()=>{
+    if(!UID){ alert("Sign in first."); return; }
+    await setDoc(doc(db,"users",UID), { photoURL: deleteField(), updatedAt: serverTimestamp() }, { merge:true });
+    await loadUser();
+    alert("Removed!");
+  };
+
+  document.getElementById("resetBook1").onclick = async ()=>{
+    localStorage.removeItem("progress:book1");
+    if(UID){
+      try{
+        await setDoc(doc(db,"users",UID,"progress","book1"), { index: 0, updatedAt: serverTimestamp() }, { merge:true });
+      }catch{}
+    }
+    alert("Book 1 progress reset.");
+  };
+</script>
+</body>
+</html>
