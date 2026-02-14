@@ -46,6 +46,7 @@ body{
   border-radius:10px;
   cursor:pointer;
   background:#1a2242;
+  color:white;
 }
 
 .stage{
@@ -69,6 +70,11 @@ body{
   height:100%;
 }
 
+.single{
+  display:none;
+  height:100%;
+}
+
 .page{
   background:var(--paper);
   border-radius:14px;
@@ -84,11 +90,6 @@ body{
   right:18px;
   font-size:12px;
   color:var(--muted);
-}
-
-.single{
-  display:none;
-  height:100%;
 }
 
 .inner{
@@ -125,9 +126,7 @@ body{
 
 <div class="top">
   <div class="btn" onclick="location.href='./'">← Library</div>
-  <div>
-    <span id="pageLabel">1</span> / <span id="pageTotal">1</span>
-  </div>
+  <div><span id="pageLabel">1</span> / <span id="pageTotal">1</span></div>
   <div>
     <button class="btn" onclick="prev()">Prev</button>
     <button class="btn" onclick="next()">Next</button>
@@ -189,18 +188,21 @@ function paginate(html){
 
   const blocks = Array.from(container.children);
 
+  const realPage = document.querySelector(".page");
+  const pageHeight = realPage.clientHeight;
+
   const measurer = document.createElement("div");
-  measurer.style.position="fixed";
+  measurer.style.position="absolute";
   measurer.style.visibility="hidden";
-  measurer.style.height="700px";
-  measurer.style.width="500px";
+  measurer.style.width=realPage.clientWidth+"px";
+  measurer.style.height=pageHeight+"px";
   measurer.style.padding="28px 24px 60px";
   measurer.style.overflow="hidden";
-  measurer.style.fontFamily="Georgia";
+  measurer.style.fontFamily="Georgia, serif";
   measurer.style.lineHeight="1.75";
   document.body.appendChild(measurer);
 
-  let page = document.createElement("div");
+  let page=document.createElement("div");
   measurer.appendChild(page);
 
   PAGES=[];
@@ -216,10 +218,10 @@ function paginate(html){
       }
     }
 
-    const clone = block.cloneNode(true);
+    const clone=block.cloneNode(true);
     page.appendChild(clone);
 
-    if(page.scrollHeight > measurer.clientHeight){
+    if(page.scrollHeight > pageHeight){
       page.removeChild(clone);
       PAGES.push(page.innerHTML);
       page=document.createElement("div");
@@ -268,9 +270,7 @@ function prev(){
   }
 }
 
-window.addEventListener("resize",()=>{
-  loadBook();
-});
+window.addEventListener("resize", loadBook);
 
 loadBook();
 </script>
