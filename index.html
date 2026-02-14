@@ -1,520 +1,114 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>THIS IS US — Series Library</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THIS IS US — Library</title>
 
-  <style>
-    :root{
-      --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12);
-      --shadow: 0 28px 90px rgba(0,0,0,.55);
-      --glow: rgba(124,92,255,.45);
-      --accent: rgba(124,92,255,.95);
+<style>
+:root{
+  --bg:#0B1020;
+  --card:#121A33;
+  --ink:#EAF0FF;
+  --muted:#9FB0D6;
+  --stroke:rgba(255,255,255,.12);
+}
 
-      /* modal readability */
-      --modalBg: rgba(12, 16, 30, .92);
-      --fieldBg: rgba(255,255,255,.10);
-      --fieldStroke: rgba(255,255,255,.18);
-    }
-    [data-theme="light"]{
-      --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
-      --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.10);
-      --glow: rgba(124,92,255,.20);
-      --accent: rgba(124,92,255,.95);
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui, -apple-system, sans-serif;
+}
 
-      --modalBg: rgba(255,255,255,.95);
-      --fieldBg: rgba(2,6,23,.06);
-      --fieldStroke: rgba(2,6,23,.14);
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      color:var(--ink);
-      background:
-        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
-        radial-gradient(900px 700px at 75% 20%, rgba(0,255,198,.10), transparent 55%),
-        var(--bg);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    a{color:inherit; text-decoration:none}
+header{
+  padding:20px;
+  text-align:center;
+  border-bottom:1px solid var(--stroke);
+}
 
-    .top{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(12px);
-      background: rgba(0,0,0,.18);
-      border-bottom:1px solid var(--stroke);
-    }
-    [data-theme="light"] .top{ background: rgba(255,255,255,.75); }
-    .nav{
-      max-width:1100px; margin:0 auto;
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 16px;
-      gap:12px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:10px;
-      font-weight:900; letter-spacing:.12em; text-transform:uppercase;
-    }
-    .pill{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.05);
-      color:var(--muted);
-      padding:8px 10px;
-      border-radius:999px;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
-      display:inline-flex; align-items:center; gap:8px;
-    }
-    .pill strong{color:var(--ink)}
-    .right{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center}
+h1{
+  margin:0;
+  letter-spacing:.15em;
+}
 
-    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 56px;}
-    .hero{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      margin-top:18px;
-      align-items:stretch;
-    }
-    .heroCard{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:18px 18px 16px;
-      position:relative;
-      overflow:hidden;
-      min-height: 260px;
-    }
-    .heroCard:before{
-      content:"";
-      position:absolute; inset:-1px;
-      background: radial-gradient(600px 300px at 30% 0%, rgba(124,92,255,.20), transparent 65%);
-      pointer-events:none;
-    }
-    .title{
-      font-size:44px;
-      letter-spacing:.06em;
-      font-weight:950;
-      text-transform:uppercase;
-      margin:0 0 8px;
-      line-height:1.02;
-      position:relative;
-    }
-    .subtitle{
-      margin:0;
-      color:var(--muted);
-      font-size:14px;
-      letter-spacing:.03em;
-      max-width:60ch;
-      position:relative;
-    }
-    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; position:relative}
-    .btn{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--ink);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:800;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-    }
-    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
+.library{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:24px;
+  padding:40px;
+  max-width:1000px;
+  margin:auto;
+}
 
-    .stats{
-      display:grid; gap:10px;
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:16px;
-      min-height: 260px;
-    }
-    .stat{
-      border:1px solid var(--stroke);
-      border-radius:16px;
-      padding:12px;
-      background: rgba(0,0,0,.10);
-    }
-    [data-theme="light"] .stat{background: rgba(2,6,23,.04)}
-    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase}
-    .stat .v{font-weight:900; font-size:16px; margin-top:4px}
+.book{
+  background:var(--card);
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:.2s;
+}
 
-    .sectionTitle{
-      margin:26px 0 10px;
-      display:flex; align-items:end; justify-content:space-between; gap:12px;
-    }
-    .sectionTitle h2{
-      margin:0;
-      font-size:18px;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
+.book:hover{
+  transform:translateY(-6px);
+}
 
-    .shelf{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap:14px;
-    }
-    .bookCard{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      overflow:hidden;
-      position:relative;
-      transform-style:preserve-3d;
-      transition: transform .18s ease, border-color .18s ease, background .18s ease;
-      cursor:pointer;
-      min-height: 340px;
-    }
-    .bookCard:hover{
-      transform: translateY(-4px) rotateX(3deg) rotateY(-4deg);
-      border-color: rgba(124,92,255,.35);
-      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
-    }
-    .cover{
-      height: 230px;
-      background: rgba(0,0,0,.18);
-      border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
-    }
-    .cover img{
-      width:100%; height:100%;
-      object-fit:cover;
-      transform: scale(1.02);
-      transition: transform .22s ease;
-      display:block;
-    }
-    .bookCard:hover .cover img{ transform: scale(1.06); }
+.cover{
+  height:300px;
+  background:#1a2242;
+}
 
-    .meta{ padding:12px 12px 14px; }
-    .meta .name{ font-weight:950; letter-spacing:.02em; margin:0; font-size:16px; }
-    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+.cover img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
 
-    .badge{
-      position:absolute;
-      top:12px; left:12px;
-      padding:7px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.25);
-      backdrop-filter: blur(10px);
-    }
-    .badge.live{ border-color: rgba(0,255,198,.35); }
-    .badge.soon{ border-color: rgba(255,198,0,.35); }
+.meta{
+  padding:16px;
+}
 
-    .lock{
-      position:absolute; inset:0;
-      background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.35));
-      display:flex; align-items:center; justify-content:center;
-      color:var(--ink);
-      opacity:0;
-      transition: opacity .18s ease;
-    }
-    .bookCard.locked:hover .lock{ opacity:1; }
-    .lock .lockInner{
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.28);
-      padding:12px 14px;
-      border-radius:16px;
-      text-align:center;
-      max-width: 220px;
-    }
-    .lock .lockInner p{margin:6px 0 0; color:var(--muted); font-size:12px}
+.meta h3{
+  margin:0 0 8px;
+}
 
-    /* Modal */
-    .modal{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.55);
-      z-index:100;
-      padding:16px;
-    }
-    .modal.show{display:flex}
-    .modalCard{
-      width:min(520px, 96vw);
-      border:1px solid var(--stroke);
-      background: var(--modalBg);
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:14px;
-      backdrop-filter: blur(14px);
-    }
-    .modalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:6px 6px 10px;
-    }
-    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
-    .x{
-      cursor:pointer; padding:8px 10px; border-radius:12px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
-    }
-    .grid{ display:grid; gap:10px; padding:6px; }
-    input{
-      width:100%;
-      border:1px solid var(--fieldStroke);
-      background: var(--fieldBg);
-      padding:10px 12px;
-      border-radius:14px;
-      color:var(--ink);
-      outline:none;
-      font-size:14px;
-    }
-    input::placeholder{ color: rgba(234,240,255,.70); }
-    [data-theme="light"] input::placeholder{ color: rgba(15,23,42,.55); }
-    .note{color:var(--muted); font-size:12px; line-height:1.45}
-
-    @media (max-width:980px){
-      .hero{grid-template-columns:1fr}
-      .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
-    }
-    @media (max-width:520px){
-      .shelf{grid-template-columns:1fr}
-      .title{font-size:34px}
-    }
-  </style>
+.meta p{
+  margin:0;
+  color:var(--muted);
+  font-size:14px;
+}
+</style>
 </head>
 
 <body>
-  <div class="top">
-    <div class="nav">
-      <div class="brand">THIS IS US</div>
-      <div class="right">
-        <div class="pill" id="themeBtn">Toggle <strong>Theme</strong></div>
-        <div class="pill" id="syncBtn">Sign in to <strong>Sync</strong></div>
-        <div class="pill" id="statusPill"><span>●</span><strong id="statusText">Guest</strong></div>
-      </div>
+
+<header>
+  <h1>THIS IS US</h1>
+</header>
+
+<div class="library">
+
+  <div class="book" onclick="location.href='read.html?book=book1'">
+    <div class="cover">
+      <img src="assets/cover-book1.png">
+    </div>
+    <div class="meta">
+      <h3>Book I — Where We Began</h3>
+      <p>The beginning of everything.</p>
     </div>
   </div>
 
-  <div class="wrap">
-    <div class="hero">
-      <div class="heroCard">
-        <h1 class="title">THIS IS US</h1>
-        <p class="subtitle">
-          A coming-of-age saga (slow burn, layered growth). Read like a premium novel app:
-          book-style pages, page-flips, progress saved, and optional cloud sync when you sign in.
-        </p>
-        <div class="ctaRow">
-          <a class="btn primary" href="read.html?book=book1">▶ Start Book I</a>
-          <button class="btn" id="openSync">✨ Save progress across devices</button>
-          <a class="btn" href="read.html?book=coming">👀 Preview Coming Soon</a>
-        </div>
-      </div>
-
-      <div class="stats">
-        <div class="stat">
-          <div class="k">Reading Mode</div>
-          <div class="v">Fullscreen Pages + Flip</div>
-        </div>
-        <div class="stat">
-          <div class="k">Audio</div>
-          <div class="v">Device Voice Options</div>
-        </div>
-        <div class="stat">
-          <div class="k">Sync</div>
-          <div class="v">Optional Firebase Cloud Save</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sectionTitle">
-      <h2>Library</h2>
-      <div class="pill">Hover → Click a book</div>
-    </div>
-
-    <div class="shelf">
-      <a class="bookCard" href="read.html?book=book1">
-        <div class="badge live">Live</div>
-        <div class="cover">
-          <img src="assets/cover-book1.png" alt="Book 1 Cover">
-        </div>
-        <div class="meta">
-          <p class="name">Book I — Where We Began</p>
-          <p class="desc">Fresh starts don’t feel fresh. They feel heavy. Mukeh arrives. Francess is the standard. Awareness begins.</p>
-        </div>
-      </a>
-
-      <a class="bookCard locked" href="read.html?book=coming">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:900;letter-spacing:.12em;">
-            NEXT BOOK
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book II — Coming Soon</p>
-          <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
-        </div>
-        <div class="lock">
-          <div class="lockInner">
-            <strong>Locked</strong>
-            <p>Click to see the “Coming Soon” page.</p>
-          </div>
-        </div>
-      </a>
-
-      <a class="bookCard locked" href="read.html?book=coming">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:900;letter-spacing:.12em;">
-            NEXT BOOK
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book III — Coming Soon</p>
-          <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
-        </div>
-        <div class="lock">
-          <div class="lockInner">
-            <strong>Locked</strong>
-            <p>Click to see the “Coming Soon” page.</p>
-          </div>
-        </div>
-      </a>
-
-      <a class="bookCard locked" href="read.html?book=coming">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:900;letter-spacing:.12em;">
-            NEXT BOOK
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book IV — Coming Soon</p>
-          <p class="desc">The past returns. The narrative changes. The costs rise.</p>
-        </div>
-        <div class="lock">
-          <div class="lockInner">
-            <strong>Locked</strong>
-            <p>Click to see the “Coming Soon” page.</p>
-          </div>
-        </div>
-      </a>
+  <div class="book" onclick="location.href='read.html?book=coming'">
+    <div class="cover"></div>
+    <div class="meta">
+      <h3>Book II — Coming Soon</h3>
+      <p>More is coming.</p>
     </div>
   </div>
 
-  <div class="modal" id="modal">
-    <div class="modalCard">
-      <div class="modalHead">
-        <h3>Sign in to Sync</h3>
-        <div class="x" id="close">✕</div>
-      </div>
-      <div class="grid">
-        <input id="email" type="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Password">
-        <button class="btn primary" id="loginBtn">Sign In</button>
-        <button class="btn" id="signupBtn">Create Account</button>
-        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
-        <p class="note">Reading works without login. Sign in only if you want cloud sync across devices.</p>
-      </div>
-    </div>
-  </div>
+</div>
 
-  <script type="module">
-    import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-    // Theme
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-    document.getElementById("themeBtn").onclick = ()=>{
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-    };
-
-    // Modal
-    const modal = document.getElementById("modal");
-    const openSync = document.getElementById("openSync");
-    const syncBtn = document.getElementById("syncBtn");
-    const close = document.getElementById("close");
-    function openModal(){ modal.classList.add("show"); }
-    function closeModal(){ modal.classList.remove("show"); }
-    openSync.onclick = openModal;
-    syncBtn.onclick = openModal;
-    close.onclick = closeModal;
-    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
-
-    // Firebase Auth (optional)
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const statusText = document.getElementById("statusText");
-    const statusPill = document.getElementById("statusPill");
-
-    const email = document.getElementById("email");
-    const password = document.getElementById("password");
-    const loginBtn = document.getElementById("loginBtn");
-    const signupBtn = document.getElementById("signupBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    function setStatus(isAuthed, label){
-      statusText.textContent = label;
-      statusPill.style.opacity = isAuthed ? "1" : ".95";
-    }
-
-    onAuthStateChanged(auth, (user)=>{
-      if(user){
-        setStatus(true, "Synced");
-        logoutBtn.style.display = "inline-flex";
-      }else{
-        setStatus(false, "Guest");
-        logoutBtn.style.display = "none";
-      }
-    });
-
-    loginBtn.onclick = async ()=>{
-      try{
-        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
-        closeModal();
-      }catch(e){
-        alert(e.message);
-      }
-    };
-
-    signupBtn.onclick = async ()=>{
-      try{
-        const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
-        await setDoc(doc(db, "users", cred.user.uid), {
-          email: email.value.trim(),
-          createdAt: serverTimestamp(),
-          role: "reader"
-        }, { merge:true });
-        closeModal();
-      }catch(e){
-        alert(e.message);
-      }
-    };
-
-    logoutBtn.onclick = async ()=>{
-      await signOut(auth);
-      closeModal();
-    };
-  </script>
 </body>
 </html>
