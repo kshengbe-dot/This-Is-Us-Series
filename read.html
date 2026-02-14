@@ -20,7 +20,7 @@
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
 
-      /* reserve space so the last line never clips */
+      /* text padding inside page */
       --footerSpace: 58px;
       --padX: 22px;
       --padT: 26px;
@@ -54,9 +54,10 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
+    /* ===== Desktop Top Bar ===== */
     .top{
       position:fixed; left:0; right:0; top:0;
-      z-index:40;
+      z-index:60;
       border-bottom:1px solid var(--stroke);
       background: var(--bar);
       backdrop-filter: blur(12px);
@@ -78,6 +79,7 @@
     }
     .chip strong{color:var(--ink); font-weight:900}
 
+    /* ===== Stage ===== */
     .stage{
       height:100vh;
       display:flex;
@@ -92,6 +94,7 @@
       perspective: 1800px;
     }
 
+    /* Desktop spread */
     .spread{
       position:absolute; inset:0;
       display:grid;
@@ -99,6 +102,7 @@
       gap:14px;
     }
 
+    /* Mobile single */
     .single{ position:absolute; inset:0; display:none; }
 
     .page{
@@ -108,6 +112,7 @@
       box-shadow:var(--shadow);
       overflow:hidden;
       position:relative;
+      height:100%;
     }
 
     .inner{
@@ -116,6 +121,7 @@
       overflow:hidden;
     }
 
+    /* Typography */
     .inner h1,.inner h2,.inner h3,.inner h4{
       font-family: ui-sans-serif, system-ui;
       margin:0 0 10px;
@@ -133,6 +139,7 @@
     }
     .muted{color:var(--muted)}
 
+    /* Page number sits in reserved footer space */
     .pageNum{
       position:absolute;
       bottom:16px;
@@ -142,13 +149,14 @@
       pointer-events:none;
     }
 
+    /* ===== Flip Overlay ===== */
     .flip{
       position:absolute; top:0; bottom:0;
       width:50%;
       transform-style:preserve-3d;
       pointer-events:none;
       opacity:0;
-      z-index:30;
+      z-index:70;
     }
     .flip.fromRight{ left:50%; transform-origin:left; }
     .flip.fromLeft{ left:0; transform-origin:right; }
@@ -174,6 +182,7 @@
     .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
     .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
 
+    /* ===== Novel Styling ===== */
     .chapter-cover{ text-align:center; padding: 18px 0 10px; }
     .chapter-cover h2{
       margin:0 0 8px; font-size:44px; font-weight:900;
@@ -216,9 +225,11 @@
       padding-right:10px; padding-top:6px; font-weight:800;
     }
 
+    /* ===== Mobile UI ===== */
     .mTop, .mBottom{ display:none; }
     @media (max-width:720px){
       .top{ display:none; }
+
       :root{
         --padX: 18px;
         --padT: 22px;
@@ -228,7 +239,7 @@
       .mTop{
         display:flex;
         position:fixed; left:0; right:0; top:0;
-        z-index:60;
+        z-index:80;
         padding: calc(10px + var(--safeTop)) 12px 10px;
         background: var(--bar);
         backdrop-filter: blur(12px);
@@ -274,7 +285,7 @@
       .mBottom{
         display:flex;
         position:fixed; left:0; right:0; bottom:0;
-        z-index:60;
+        z-index:80;
         padding:10px 12px calc(10px + var(--safeBot));
         background: var(--bar);
         backdrop-filter: blur(12px);
@@ -295,11 +306,12 @@
       .flip{ width:100%; left:0; }
       .flip.fromRight{ left:0; transform-origin:left; }
       .flip.fromLeft{ left:0; transform-origin:right; }
+
       .inner p{ font-size:16px; line-height:1.82; }
     }
 
-    /* offscreen measurer */
-    #measurer{
+    /* hidden measurer */
+    .measureHost{
       position:fixed;
       left:-9999px;
       top:-9999px;
@@ -310,6 +322,7 @@
 </head>
 
 <body>
+  <!-- Mobile top -->
   <div class="mTop">
     <div class="mBtn" id="mBack">← Library</div>
     <div class="mTitle">
@@ -319,13 +332,14 @@
     <div class="mBtn" id="mTheme">Theme</div>
   </div>
 
+  <!-- Desktop top -->
   <div class="top">
     <div class="row">
       <div class="chip" id="backBtn">← <strong>Library</strong></div>
       <div class="chip">Book: <strong id="bookTitle">book</strong></div>
       <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
       <div class="chip" id="themeBtn">Theme</div>
-      <div class="chip" id="syncChip">☁️ <strong id="syncText">Guest</strong></div>
+      <div class="chip" id="syncChip"><span id="syncDot">●</span> <strong id="syncText">Guest</strong></div>
     </div>
     <div class="row">
       <div class="chip" id="prevBtn">Prev</div>
@@ -333,6 +347,7 @@
     </div>
   </div>
 
+  <!-- Mobile bottom -->
   <div class="mBottom">
     <div class="mBtn" id="mPrev">Prev</div>
     <div class="mBtn" id="mNext">Next</div>
@@ -341,18 +356,18 @@
   <div class="stage">
     <div class="book" id="bookTap">
       <div class="spread" id="spread">
-        <div class="page">
+        <div class="page" id="pageL">
           <div class="inner" id="leftPage"></div>
           <div class="pageNum" id="leftNum"></div>
         </div>
-        <div class="page">
+        <div class="page" id="pageR">
           <div class="inner" id="rightPage"></div>
           <div class="pageNum" id="rightNum"></div>
         </div>
       </div>
 
       <div class="single" id="single">
-        <div class="page">
+        <div class="page" id="pageS">
           <div class="inner" id="singlePage"></div>
           <div class="pageNum" id="singleNum"></div>
         </div>
@@ -365,47 +380,15 @@
     </div>
   </div>
 
-  <div id="measurer"></div>
+  <div class="measureHost" id="measureHost"></div>
 
   <script type="module">
-    // ===== Firebase (Cloud Progress) =====
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let UID = null;
-    const syncText = document.getElementById("syncText");
-
-    const progressDocRef = (uid, bookId) => doc(db, "users", uid, "progress", bookId);
-
-    async function loadCloudProgress(uid, bookId){
-      try{
-        const snap = await getDoc(progressDocRef(uid, bookId));
-        if(!snap.exists()) return null;
-        const d = snap.data() || {};
-        return (typeof d.index === "number") ? d.index : null;
-      }catch{
-        return null;
-      }
-    }
-
-    let saveTimer = null;
-    function scheduleCloudSave(bookId, index){
-      if(!UID) return;
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(async ()=>{
-        try{
-          await setDoc(progressDocRef(UID, bookId), { index, updatedAt: serverTimestamp() }, { merge:true });
-        }catch{}
-      }, 350);
-    }
-
-    // ===== Book files =====
+    // ---- Books mapping ----
     const BOOK_FILES = {
       book1: "./books/book1.html",
       coming: "./books/coming-soon.html"
@@ -420,30 +403,27 @@
 
     const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
-    // Theme
+    // ---- Theme ----
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-    function toggleTheme(){
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      paginateAndRender();
-    }
-    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-    document.getElementById("mTheme").addEventListener("click", toggleTheme);
 
-    // Nav
+    // ---- Navigation ----
     function goLibrary(){ location.href = "./"; }
     document.getElementById("backBtn").addEventListener("click", goLibrary);
     document.getElementById("mBack").addEventListener("click", goLibrary);
 
-    // DOM
+    // ---- DOM refs ----
+    const pageL = document.getElementById("pageL");
+    const pageR = document.getElementById("pageR");
+    const pageS = document.getElementById("pageS");
+
     const leftPage = document.getElementById("leftPage");
     const rightPage = document.getElementById("rightPage");
+    const singlePage = document.getElementById("singlePage");
+
     const leftNum = document.getElementById("leftNum");
     const rightNum = document.getElementById("rightNum");
-    const singlePage = document.getElementById("singlePage");
-    const singleNum  = document.getElementById("singleNum");
+    const singleNum = document.getElementById("singleNum");
 
     const pageLabel = document.getElementById("pageLabel");
     const pageTotalEl = document.getElementById("pageTotal");
@@ -454,30 +434,93 @@
     const flipFront = document.getElementById("flipFront");
     const flipBack  = document.getElementById("flipBack");
 
-    // Progress
-    const progressKey = `progress:${bookId}`;
-    let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
+    const measureHost = document.getElementById("measureHost");
+
+    const syncDot = document.getElementById("syncDot");
+    const syncText = document.getElementById("syncText");
+
+    // ---- Firebase (optional sync) ----
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    let UID = null;
+
+    // ---- Progress keys ----
+    const progressKeyLocal = `progress:${bookId}`;
+    let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
 
-    // Prefer cloud progress if signed in
+    // cloud doc for progress: users/{uid}/progress/{bookId}
+    function progressDocRef(uid){
+      return doc(db, "users", uid, "progress", bookId);
+    }
+
+    async function loadCloudProgressIfAny(){
+      if(!UID) return;
+      try{
+        const snap = await getDoc(progressDocRef(UID));
+        if(snap.exists()){
+          const d = snap.data() || {};
+          if(Number.isFinite(d.index) && d.index >= 0){
+            // choose the bigger progress (so user never loses progress)
+            i = Math.max(i, Math.floor(d.index));
+          }
+        }
+      }catch{}
+    }
+
+    async function saveCloudProgress(){
+      if(!UID) return;
+      try{
+        await setDoc(progressDocRef(UID), { index: i, updatedAt: serverTimestamp() }, { merge:true });
+      }catch{}
+    }
+
+    async function saveCloudTheme(theme){
+      if(!UID) return;
+      try{
+        await setDoc(doc(db,"users",UID), { theme, updatedAt: serverTimestamp() }, { merge:true });
+      }catch{}
+    }
+
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
-      syncText.textContent = UID ? "Synced" : "Guest";
 
       if(UID){
-        const cloudIndex = await loadCloudProgress(UID, bookId);
-        if(typeof cloudIndex === "number" && cloudIndex >= 0){
-          i = cloudIndex;
-          if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
-          localStorage.setItem(progressKey, String(i));
-          if(PAGES.length) render();
-        }else{
-          scheduleCloudSave(bookId, i);
-        }
+        syncDot.style.color = "rgba(0,255,198,.9)";
+        syncText.textContent = "Synced";
+        // load user theme (if any)
+        try{
+          const u = await getDoc(doc(db,"users",UID));
+          if(u.exists()){
+            const data = u.data() || {};
+            if(data.theme === "dark" || data.theme === "light"){
+              document.documentElement.dataset.theme = data.theme;
+              localStorage.setItem("theme", data.theme);
+            }
+          }
+        }catch{}
+        // cloud progress
+        await loadCloudProgressIfAny();
+        render(); // safe even before paginate finishes; will correct after
+      }else{
+        syncDot.style.color = "rgba(255,255,255,.65)";
+        syncText.textContent = "Guest";
       }
     });
 
-    // Load book html
+    // Theme toggle
+    function toggleTheme(){
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+      saveCloudTheme(next);
+      paginateAndRender(true);
+    }
+    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+    document.getElementById("mTheme").addEventListener("click", toggleTheme);
+
+    // ---- Load book HTML ----
     let BOOK_HTML = "<p class='muted'>Loading…</p>";
     let PAGES = [];
 
@@ -487,6 +530,7 @@
       BOOK_HTML = await res.text();
     }
 
+    // Force pagebreaks before each chapter-title (and cover)
     function injectChapterBreaks(html){
       return html
         .replaceAll('<section class="chapter-cover">','<!--PAGEBREAK--><section class="chapter-cover">')
@@ -502,33 +546,38 @@
         .replaceAll("'","&#039;");
     }
 
-    // ===== FIXED Measurer (prevents one-word pages) =====
-    const measurerHost = document.getElementById("measurer");
-
+    // Build measurer that matches current visible page typography + width
     function buildMeasurer(){
-      // Use the actual visible inner as reference for width/height
-      const ref = isMobile() ? singlePage : leftPage;
-      const r = ref.getBoundingClientRect();
+      const innerVisible = isMobile() ? singlePage : leftPage;
+      const pageVisible  = isMobile() ? pageS : pageL;
 
-      // If for some reason it's 0 (very early), fallback to a safe size
-      const w = Math.max(320, Math.floor(r.width || 600));
-      const h = Math.max(240, Math.floor(r.height || 520));
+      const pageW = Math.max(320, Math.floor(pageVisible.getBoundingClientRect().width));
+      const cs = getComputedStyle(innerVisible);
 
-      const wrap = document.createElement("div");
-      wrap.className = "inner";
-      wrap.style.width = w + "px";
-      wrap.style.height = h + "px";
-      wrap.style.padding = getComputedStyle(ref).padding;
-      wrap.style.fontFamily = getComputedStyle(ref).fontFamily;
-      wrap.style.fontSize = getComputedStyle(ref).fontSize;
-      wrap.style.lineHeight = getComputedStyle(ref).lineHeight;
-      wrap.style.overflow = "hidden";
+      const meas = document.createElement("div");
+      meas.className = "inner";
+      meas.style.width = pageW + "px";
+      meas.style.padding = cs.padding;
+      meas.style.fontFamily = cs.fontFamily;
+      meas.style.fontSize = cs.fontSize;
+      meas.style.lineHeight = cs.lineHeight;
+      meas.style.letterSpacing = cs.letterSpacing;
 
-      measurerHost.innerHTML = "";
-      measurerHost.appendChild(wrap);
-      return wrap;
+      measureHost.innerHTML = "";
+      measureHost.appendChild(meas);
+      return { meas, cs, pageVisible, innerVisible };
     }
 
+    // IMPORTANT: available text height is based on REAL page height minus inner padding
+    function getAvailableTextHeight(pageEl, innerEl){
+      const pageH = Math.max(240, pageEl.getBoundingClientRect().height);
+      const cs = getComputedStyle(innerEl);
+      const padTop = parseFloat(cs.paddingTop) || 0;
+      const padBot = parseFloat(cs.paddingBottom) || 0;
+      return Math.max(140, Math.floor(pageH - padTop - padBot - 2));
+    }
+
+    // Robust paginate that fills pages and never turns into one-word pages
     function paginate(html){
       const src = injectChapterBreaks(html);
       const container = document.createElement("div");
@@ -537,20 +586,21 @@
       const blocks = Array.from(container.childNodes).filter(n => {
         if(n.nodeType === 3) return n.textContent.trim().length;
         if(n.nodeType === 1) return true;
-        if(n.nodeType === 8) return true; // comments for PAGEBREAK
+        if(n.nodeType === 8) return true;
         return false;
       });
 
-      const measurer = buildMeasurer();
-      const maxH = measurer.getBoundingClientRect().height;
+      const { meas, pageVisible, innerVisible } = buildMeasurer();
+      const maxH = getAvailableTextHeight(pageVisible, innerVisible);
 
       const pages = [];
       let pageHTML = "";
 
       function fits(testHTML){
-        measurer.innerHTML = testHTML;
-        return measurer.scrollHeight <= (maxH - 2);
+        meas.innerHTML = testHTML;
+        return meas.scrollHeight <= maxH;
       }
+
       function pushPage(){
         const trimmed = pageHTML.trim();
         if(trimmed.length){
@@ -561,7 +611,8 @@
 
       function splitParagraphNode(pNode){
         const cls = pNode.getAttribute("class");
-        const text = (pNode.textContent || "").trim();
+        // keep <br> lines by converting them to spaces (still readable)
+        const text = (pNode.innerText || pNode.textContent || "").trim();
         const words = text.split(/\s+/).filter(Boolean);
 
         let buf = "";
@@ -576,14 +627,14 @@
             if(buf){
               out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
               buf = w;
-              const single = `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
-              if(!fits(pageHTML + single)) pushPage();
             }else{
+              // even first word doesn't fit in current page; start new page
               pushPage();
               buf = w;
             }
           }
         }
+
         if(buf){
           out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
         }
@@ -591,6 +642,7 @@
       }
 
       for(const node of blocks){
+        // comment pagebreak
         if(node.nodeType === 8 && String(node.data||"").includes("PAGEBREAK")){
           pushPage();
           continue;
@@ -605,11 +657,13 @@
           continue;
         }
 
+        // If it fits, add it
         if(fits(pageHTML + nodeHTML)){
           pageHTML += nodeHTML;
           continue;
         }
 
+        // If current page already has content, push and retry
         if(pageHTML.length){
           pushPage();
           if(fits(pageHTML + nodeHTML)){
@@ -618,6 +672,7 @@
           }
         }
 
+        // Still doesn't fit on an empty page: split paragraphs
         if(node.nodeType === 1 && node.tagName === "P"){
           const parts = splitParagraphNode(node);
           for(const part of parts){
@@ -631,6 +686,7 @@
           continue;
         }
 
+        // Otherwise: force element on its own page
         pageHTML = nodeHTML;
         pushPage();
       }
@@ -653,9 +709,13 @@
       mPageLabel.textContent = String(i+1);
     }
 
-    function saveProgress(){
-      localStorage.setItem(progressKey, String(i));
-      scheduleCloudSave(bookId, i);
+    function saveProgressLocal(){
+      localStorage.setItem(progressKeyLocal, String(i));
+    }
+
+    async function saveProgressAll(){
+      saveProgressLocal();
+      await saveCloudProgress();
     }
 
     function render(){
@@ -685,11 +745,13 @@
         rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
       }
 
-      saveProgress();
+      saveProgressAll();
     }
 
+    // ---- Flip animation ----
     function animateFlip(nextIndex){
       if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
+
       const forward = nextIndex > i;
 
       flip.className = "flip";
@@ -699,15 +761,18 @@
         flip.classList.add("full");
         if(forward){ flip.classList.add("fromRight","animForward"); }
         else{ flip.classList.add("fromLeft","animBackward"); }
+
         flipFront.innerHTML = PAGES[i] || "";
         flipBack.innerHTML  = PAGES[nextIndex] || "";
       }else{
         if(forward){
           flip.classList.add("fromRight","animForward");
+          // right page flips forward
           flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
           flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
         }else{
           flip.classList.add("fromLeft","animBackward");
+          // left page flips backward
           flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
           flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
         }
@@ -727,6 +792,7 @@
         if(i+2 <= PAGES.length-1) animateFlip(i+2);
       }
     }
+
     function prev(){
       if(isMobile()){
         if(i-1 >= 0) animateFlip(i-1);
@@ -745,13 +811,13 @@
       if(e.key==="ArrowLeft") prev();
     });
 
+    // Mobile tap zones
     document.getElementById("bookTap").addEventListener("click",(e)=>{
       if(!isMobile()) return;
-      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
-      if(tag === "button" || tag === "select") return;
 
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
+
       if(x < rect.width * 0.42) prev();
       else if(x > rect.width * 0.58) next();
     });
@@ -770,14 +836,19 @@
       const dx = t.clientX - sx;
       const dy = t.clientY - sy;
       const dt = Date.now() - st;
-
       if(Math.abs(dx) > 45 && Math.abs(dy) < 70 && dt < 700){
         if(dx < 0) next();
         else prev();
       }
     }, {passive:true});
 
-    function paginateAndRender(){
+    // ---- paginate + render ----
+    function paginateAndRender(forceReflow=false){
+      // ensure DOM sizes are accurate
+      if(forceReflow){
+        // quick reflow
+        void document.body.offsetHeight;
+      }
       PAGES = paginate(BOOK_HTML);
       render();
     }
@@ -789,13 +860,16 @@
         BOOK_HTML = `<p class="muted">${String(e)}</p>`;
       }
 
-      // Wait 2 frames so layout sizes are real, then paginate
-      requestAnimationFrame(()=>requestAnimationFrame(()=>paginateAndRender()));
+      // Wait 2 frames so the page has real height (fixes 1-word page bug)
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        paginateAndRender(true);
+      }));
 
-      let resizeTimer = null;
+      // Resize debounce
+      let t=null;
       window.addEventListener("resize", ()=>{
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(()=>paginateAndRender(), 120);
+        clearTimeout(t);
+        t=setTimeout(()=>paginateAndRender(true), 160);
       });
     })();
   </script>
