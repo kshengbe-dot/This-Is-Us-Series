@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
@@ -45,6 +45,7 @@
     }
     a{color:inherit;text-decoration:none}
 
+    /* Top Bar */
     .top{
       position:sticky; top:0; z-index:50;
       backdrop-filter: blur(14px);
@@ -61,14 +62,31 @@
       display:flex; flex-direction:column; gap:2px;
       letter-spacing:.14em; text-transform:uppercase;
       font-weight:950;
+      min-width:0;
     }
     .brand small{
       color:var(--muted);
       font-weight:800;
       letter-spacing:.08em;
       text-transform:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:46vw;
     }
-    .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+
+    /* Pills: scroll on mobile instead of wrapping everywhere */
+    .right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width:66vw;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom:2px;
+    }
+    .right::-webkit-scrollbar{height:0}
+
     .pill{
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
@@ -81,11 +99,13 @@
       display:inline-flex; align-items:center; gap:8px;
       transition: transform .15s ease, background .15s ease;
       white-space:nowrap;
+      flex:0 0 auto;
     }
     .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .pill strong{color:var(--ink)}
     .dot{font-size:12px; opacity:.9}
 
+    /* Layout */
     .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
     .hero{
       display:grid;
@@ -170,6 +190,7 @@
       color:var(--muted);
     }
 
+    /* Shelf */
     .shelf{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -246,6 +267,7 @@
     }
     .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
+    /* Auth Modal */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -288,9 +310,10 @@
     }
     .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
     .note{color:var(--muted); font-size:12px; line-height:1.45}
+
     .mini{
       display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
-      margin-top:6px;
+      margin-top:14px; position:relative;
     }
     .avatar{
       width:44px; height:44px; border-radius:50%;
@@ -312,6 +335,7 @@
     @media (max-width:520px){
       .shelf{grid-template-columns:1fr}
       h1{font-size:34px}
+      .right{max-width:72vw;}
     }
   </style>
 </head>
@@ -340,8 +364,8 @@
       <div class="card heroMain">
         <h1>THIS IS US</h1>
         <p class="subtitle">
-          Read like a premium novel app: smooth page-flips, saved progress, light/dark mode, and optional cloud sync
-          (Firebase) so your pages follow you across devices.
+          A premium novel-reader: filled pages, smooth flip animation, saved progress, light/dark mode,
+          and optional Firebase sync so your pages follow you across devices.
         </p>
         <div class="ctaRow">
           <a class="btn primary" href="read.html?book=book1">▶ Start Book I</a>
@@ -349,7 +373,7 @@
           <button class="btn" id="openAuth">✨ Sign in to Sync</button>
         </div>
 
-        <div class="mini" style="position:relative; margin-top:14px;">
+        <div class="mini">
           <div class="profileLine">
             <div class="avatar" id="avatarBox"></div>
             <div>
@@ -362,18 +386,9 @@
       </div>
 
       <div class="card heroSide">
-        <div class="stat">
-          <div class="k">Reading</div>
-          <div class="v">Flip Pages + Progress</div>
-        </div>
-        <div class="stat">
-          <div class="k">Theme</div>
-          <div class="v">Light / Dark</div>
-        </div>
-        <div class="stat">
-          <div class="k">Cloud</div>
-          <div class="v">Optional Firebase Sync</div>
-        </div>
+        <div class="stat"><div class="k">Reading</div><div class="v">Filled Pages + Flip</div></div>
+        <div class="stat"><div class="k">Theme</div><div class="v">Light / Dark</div></div>
+        <div class="stat"><div class="k">Cloud</div><div class="v">Optional Firebase Sync</div></div>
       </div>
     </div>
 
@@ -498,13 +513,20 @@
       getFirestore, doc, setDoc, getDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // Theme
+    // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-    document.getElementById("themeBtn").onclick = ()=>{
+
+    document.getElementById("themeBtn").onclick = async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
+      // also save to cloud when signed-in (below)
+      if(window.__UID){
+        try{
+          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+        }catch{}
+      }
     };
 
     document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
@@ -550,6 +572,10 @@
         const ref = doc(db, "users", uid);
         const snap = await getDoc(ref);
         const data = snap.exists() ? snap.data() : {};
+        if(data.theme && (data.theme==="dark" || data.theme==="light")){
+          document.documentElement.dataset.theme = data.theme;
+          localStorage.setItem("theme", data.theme);
+        }
         setAvatar(data.photoURL || "");
       }catch{
         setAvatar("");
@@ -557,6 +583,8 @@
     }
 
     onAuthStateChanged(auth, async (user)=>{
+      window.__UID = user ? user.uid : null;
+
       if(user){
         statusText.textContent = "Synced";
         authText.textContent = "Account";
