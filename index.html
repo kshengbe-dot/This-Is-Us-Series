@@ -1,127 +1,615 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>THIS IS US — Library</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>THIS IS US — Library</title>
 
-<style>
-:root{
-  --bg:#0B1020;
-  --card:#151d3a;
-  --ink:#EAF0FF;
-  --muted:#9FB0D6;
-  --accent:#7c5cff;
-}
+  <style>
+    :root{
+      --bg:#0B1020;
+      --card:#0F1731;
+      --ink:#EAF0FF;
+      --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12);
+      --shadow: 0 28px 90px rgba(0,0,0,.55);
+      --glow: rgba(124,92,255,.45);
+      --accent:#7c5cff;
+      --accent2: rgba(0,255,198,.18);
+      --glass: rgba(0,0,0,.30);
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
+    }
+    [data-theme="light"]{
+      --bg:#F7F8FB;
+      --card:#FFFFFF;
+      --ink:#0F172A;
+      --muted:#475569;
+      --stroke:rgba(2,6,23,.10);
+      --shadow: 0 18px 60px rgba(2,6,23,.10);
+      --glow: rgba(124,92,255,.18);
+      --accent:#7c5cff;
+      --accent2: rgba(2,6,23,.04);
+      --glass: rgba(255,255,255,.78);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--ink);
+      background:
+        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
+        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
+        var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    a{color:inherit;text-decoration:none}
 
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,sans-serif;
-  background:
-  radial-gradient(900px 600px at 20% 0%, rgba(124,92,255,.25), transparent),
-  var(--bg);
-  color:var(--ink);
-}
+    /* Top Bar */
+    .top{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(14px);
+      background: var(--glass);
+      border-bottom:1px solid var(--stroke);
+    }
+    .nav{
+      max-width:1100px; margin:0 auto;
+      padding: calc(10px + var(--safeTop)) 16px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:2px;
+      letter-spacing:.14em; text-transform:uppercase;
+      font-weight:950;
+    }
+    .brand small{
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:none;
+    }
+    .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+    .pill{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      padding:9px 12px;
+      border-radius:999px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease;
+      white-space:nowrap;
+    }
+    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .pill strong{color:var(--ink)}
+    .dot{font-size:12px; opacity:.9}
 
-.header{
-  padding:28px;
-  font-weight:900;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  font-size:20px;
-}
+    /* Layout */
+    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
+    .hero{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .heroMain{ padding:18px 18px 16px; min-height: 260px; }
+    .heroMain:before{
+      content:"";
+      position:absolute; inset:-1px;
+      background:
+        radial-gradient(700px 320px at 25% 0%, rgba(124,92,255,.22), transparent 65%),
+        radial-gradient(520px 320px at 90% 20%, rgba(0,255,198,.10), transparent 65%);
+      pointer-events:none;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size:44px;
+      line-height:1.02;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-weight:950;
+      position:relative;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.55;
+      max-width:65ch;
+      position:relative;
+    }
+    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; position:relative}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
 
-.library{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:40px;
-  padding:60px;
-  max-width:1200px;
-  margin:auto;
-}
+    .heroSide{ padding:16px; min-height:260px; display:grid; gap:10px; }
+    .stat{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
+    }
+    [data-theme="light"] .stat{background: rgba(2,6,23,.04)}
+    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+    .stat .v{font-weight:950; font-size:16px; margin-top:4px}
 
-.book{
-  background:linear-gradient(145deg,#1a2346,#111933);
-  border-radius:22px;
-  overflow:hidden;
-  cursor:pointer;
-  transition:.4s ease;
-  transform-style:preserve-3d;
-  box-shadow:0 30px 90px rgba(0,0,0,.6);
-}
+    .sectionTitle{
+      margin:26px 0 12px;
+      display:flex; align-items:end; justify-content:space-between; gap:12px;
+    }
+    .sectionTitle h2{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
 
-.book:hover{
-  transform:rotateY(-8deg) rotateX(4deg) translateY(-8px);
-  box-shadow:0 40px 120px rgba(124,92,255,.35);
-}
+    /* Shelf */
+    .shelf{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:14px;
+    }
+    .bookCard{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      transform-style:preserve-3d;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      cursor:pointer;
+      min-height: 340px;
+      animation: pop .45s ease both;
+    }
+    @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+    .bookCard:hover{
+      transform: translateY(-4px) rotateX(3deg) rotateY(-4deg);
+      border-color: rgba(124,92,255,.35);
+      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
+    }
+    .cover{
+      height: 230px;
+      background: rgba(0,0,0,.18);
+      border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
+    }
+    .cover img{
+      width:100%; height:100%;
+      object-fit:cover;
+      transform: scale(1.02);
+      transition: transform .22s ease;
+      display:block;
+    }
+    .bookCard:hover .cover img{ transform: scale(1.06); }
 
-.cover{
-  height:300px;
-  background:#0e1428;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:22px;
-  font-weight:900;
-  letter-spacing:.08em;
-}
+    .meta{ padding:12px 12px 14px; }
+    .meta .name{ font-weight:950; margin:0; font-size:16px; }
+    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
 
-.meta{
-  padding:24px;
-}
+    .badge{
+      position:absolute; top:12px; left:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+    }
+    .badge.live{ border-color: rgba(0,255,198,.35); }
+    .badge.soon{ border-color: rgba(255,198,0,.35); }
 
-.meta h3{
-  margin:0 0 10px;
-  font-size:18px;
-}
+    .lockedOverlay{
+      position:absolute; inset:0;
+      background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.42));
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition: opacity .18s ease;
+    }
+    .bookCard.locked:hover .lockedOverlay{ opacity:1; }
+    .lockedOverlay .inner{
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.80);
+      padding:12px 14px;
+      border-radius:16px;
+      text-align:center;
+      max-width: 220px;
+    }
+    .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
-.meta p{
-  margin:0;
-  font-size:14px;
-  color:var(--muted);
-}
+    /* Auth Modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.60);
+      z-index:100;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .modalCard{
+      width:min(560px, 96vw);
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.96);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 6px 10px;
+    }
+    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+    }
+    .grid{ display:grid; gap:10px; padding:6px; }
+    label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    input{
+      width:100%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:14px;
+      color:var(--ink);
+      outline:none;
+      font-size:14px;
+    }
+    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .note{color:var(--muted); font-size:12px; line-height:1.45}
+    .mini{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
+      margin-top:6px;
+    }
+    .avatar{
+      width:44px; height:44px; border-radius:50%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+      flex:none;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .profileLine{display:flex; align-items:center; gap:10px;}
+    .who{font-weight:950}
+    .small{color:var(--muted); font-size:12px}
 
-a{
-  text-decoration:none;
-  color:inherit;
-}
-
-@media(max-width:600px){
-  .library{
-    padding:30px;
-    gap:25px;
-  }
-}
-</style>
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr}
+      .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
+      h1{font-size:38px}
+    }
+    @media (max-width:520px){
+      .shelf{grid-template-columns:1fr}
+      h1{font-size:34px}
+    }
+  </style>
 </head>
 
 <body>
+  <div class="top">
+    <div class="nav">
+      <div class="brand">
+        THIS IS US
+        <small>Series Library</small>
+      </div>
+      <div class="right">
+        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+        <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
+        <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+        <div class="pill" id="statusPill">
+          <span class="dot">●</span>
+          <strong id="statusText">Guest</strong>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<div class="header">THIS IS US — Series Library</div>
+  <div class="wrap">
+    <div class="hero">
+      <div class="card heroMain">
+        <h1>THIS IS US</h1>
+        <p class="subtitle">
+          Read like a premium novel app: smooth page-flips, saved progress, light/dark mode, and optional cloud sync
+          (Firebase) so your pages follow you across devices.
+        </p>
+        <div class="ctaRow">
+          <a class="btn primary" href="read.html?book=book1">▶ Start Book I</a>
+          <a class="btn" href="read.html?book=coming">👀 Coming Soon Preview</a>
+          <button class="btn" id="openAuth">✨ Sign in to Sync</button>
+        </div>
 
-<div class="library">
+        <div class="mini" style="position:relative; margin-top:14px;">
+          <div class="profileLine">
+            <div class="avatar" id="avatarBox"></div>
+            <div>
+              <div class="who" id="whoLine">Guest Reader</div>
+              <div class="small" id="emailLine">Progress saved locally</div>
+            </div>
+          </div>
+          <div class="small" id="syncHint">Sign in to save to cloud</div>
+        </div>
+      </div>
 
-<a href="read.html?book=book1">
-<div class="book">
-<div class="cover">BOOK I</div>
-<div class="meta">
-<h3>Where We Began</h3>
-<p>Fresh starts feel heavy. Awareness begins.</p>
-</div>
-</div>
-</a>
+      <div class="card heroSide">
+        <div class="stat">
+          <div class="k">Reading</div>
+          <div class="v">Flip Pages + Progress</div>
+        </div>
+        <div class="stat">
+          <div class="k">Theme</div>
+          <div class="v">Light / Dark</div>
+        </div>
+        <div class="stat">
+          <div class="k">Cloud</div>
+          <div class="v">Optional Firebase Sync</div>
+        </div>
+      </div>
+    </div>
 
-<a href="read.html?book=coming">
-<div class="book">
-<div class="cover">COMING SOON</div>
-<div class="meta">
-<h3>Book II</h3>
-<p>A new season is loading.</p>
-</div>
-</div>
-</a>
+    <div class="sectionTitle">
+      <h2>Library</h2>
+      <div class="pill">Tap a book → Read</div>
+    </div>
 
-</div>
+    <div class="shelf">
+      <!-- BOOK 1 -->
+      <a class="bookCard" href="read.html?book=book1" aria-label="Book 1">
+        <div class="badge live">Live</div>
+        <div class="cover">
+          <img src="assets/cover-book1.png" alt="Book 1 Cover" onerror="this.style.display='none'">
+        </div>
+        <div class="meta">
+          <p class="name">Book I — Where We Began</p>
+          <p class="desc">Mukeh arrives. Francess is the standard. Awareness begins.</p>
+        </div>
+      </a>
 
+      <!-- COMING SOON -->
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 2">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book II — Coming Soon</p>
+          <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 3">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book III — Coming Soon</p>
+          <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 4">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book IV — Coming Soon</p>
+          <p class="desc">The past returns. The narrative changes. The costs rise.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal" id="modal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Account</h3>
+        <div class="x" id="close">✕</div>
+      </div>
+
+      <div class="grid">
+        <div class="row2">
+          <div>
+            <label>Email</label>
+            <input id="email" type="email" placeholder="Email">
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="password" type="password" placeholder="Password">
+          </div>
+        </div>
+
+        <div class="row2">
+          <button class="btn primary" id="loginBtn">Sign In</button>
+          <button class="btn" id="signupBtn">Create Account</button>
+        </div>
+
+        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
+
+        <p class="note">
+          Reading works without login. Sign in only if you want cloud sync across devices.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { firebaseConfig } from "./firebase-config.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import {
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    // Theme
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+    document.getElementById("themeBtn").onclick = ()=>{
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+    };
+
+    // Settings link
+    document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
+
+    // Modal
+    const modal = document.getElementById("modal");
+    const openAuth = document.getElementById("openAuth");
+    const authBtn  = document.getElementById("authBtn");
+    const close = document.getElementById("close");
+    function openModal(){ modal.classList.add("show"); }
+    function closeModal(){ modal.classList.remove("show"); }
+    openAuth.onclick = openModal;
+    authBtn.onclick  = openModal;
+    close.onclick = closeModal;
+    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const statusText = document.getElementById("statusText");
+    const authText = document.getElementById("authText");
+    const whoLine = document.getElementById("whoLine");
+    const emailLine = document.getElementById("emailLine");
+    const syncHint = document.getElementById("syncHint");
+    const avatarBox = document.getElementById("avatarBox");
+
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    function setAvatar(url){
+      avatarBox.innerHTML = url
+        ? `<img src="${url}" alt="Profile">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;">👤</div>`;
+    }
+
+    async function loadProfile(uid){
+      try{
+        const ref = doc(db, "users", uid);
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        setAvatar(data.photoURL || "");
+      }catch{
+        setAvatar("");
+      }
+    }
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        statusText.textContent = "Synced";
+        authText.textContent = "Account";
+        logoutBtn.style.display = "inline-flex";
+        whoLine.textContent = "Signed in";
+        emailLine.textContent = user.email || "User";
+        syncHint.textContent = "Cloud sync is ON";
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email || "",
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+        await loadProfile(user.uid);
+      }else{
+        statusText.textContent = "Guest";
+        authText.textContent = "Sign in";
+        logoutBtn.style.display = "none";
+        whoLine.textContent = "Guest Reader";
+        emailLine.textContent = "Progress saved locally";
+        syncHint.textContent = "Sign in to save to cloud";
+        setAvatar("");
+      }
+    });
+
+    loginBtn.onclick = async ()=>{
+      try{
+        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    signupBtn.onclick = async ()=>{
+      try{
+        const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          email: email.value.trim(),
+          createdAt: serverTimestamp(),
+          theme: localStorage.getItem("theme") || "dark"
+        }, { merge:true });
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    logoutBtn.onclick = async ()=>{
+      await signOut(auth);
+      closeModal();
+    };
+  </script>
 </body>
 </html>
