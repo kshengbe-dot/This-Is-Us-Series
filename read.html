@@ -15,9 +15,7 @@
       --sheet: rgba(15,20,40,.94);
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
-
-      /* Bigger reserved space so NOTHING clips at the bottom */
-      --footerSpace: 60px;
+      --footerSpace: 64px; /* reserve space so last line never clips */
     }
     [data-theme="light"]{
       --bg:#F7F8FB; --paper:#FFFFFF; --ink:#0F172A; --muted:#475569;
@@ -36,11 +34,9 @@
         var(--bg);
       color:var(--ink);
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
 
-    /* ===== Desktop Top Bar ===== */
+    /* Desktop bar */
     .top{
       position:fixed; left:0; right:0; top:0;
       z-index:40;
@@ -74,13 +70,13 @@
       max-width: 260px;
     }
 
-    /* ===== Stage ===== */
+    /* Stage */
     .stage{
       height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: 78px 12px 16px; /* desktop */
+      padding: 78px 12px 16px;
     }
     .book{
       width:min(1120px, 98vw);
@@ -88,16 +84,12 @@
       position:relative;
       perspective: 1800px;
     }
-
-    /* Desktop spread */
     .spread{
       position:absolute; inset:0;
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:14px;
     }
-
-    /* Mobile single */
     .single{ position:absolute; inset:0; display:none; }
 
     .page{
@@ -108,15 +100,12 @@
       overflow:hidden;
       position:relative;
     }
-
-    /* IMPORTANT: reserve footer space so last line never clips */
     .inner{
       height:100%;
-      padding:26px 22px calc(20px + var(--footerSpace));
+      padding:26px 22px calc(18px + var(--footerSpace));
       overflow:hidden;
     }
 
-    /* Typography */
     .inner h1,.inner h2,.inner h3,.inner h4{
       font-family: ui-sans-serif, system-ui;
       margin:0 0 10px;
@@ -134,7 +123,6 @@
     }
     .muted{color:var(--muted)}
 
-    /* Page number sits in reserved footer space */
     .pageNum{
       position:absolute;
       bottom:16px;
@@ -160,13 +148,13 @@
       position:absolute; inset:0;
       border-radius:18px;
       overflow:hidden;
-      background: var(--paper);
+      background: rgba(255,255,255,.03);
       border:1px solid var(--stroke);
       box-shadow:var(--shadow);
       backface-visibility:hidden;
     }
     .flip .front .inner, .flip .back .inner{
-      padding:26px 22px calc(20px + var(--footerSpace));
+      padding:26px 22px calc(18px + var(--footerSpace));
       height:100%;
       overflow:hidden;
     }
@@ -177,19 +165,6 @@
     .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
 
     /* Novel styling */
-    .chapter-cover{ text-align:center; padding: 18px 0 10px; }
-    .chapter-cover h2{
-      margin:0 0 8px; font-size:44px; font-weight:900;
-      letter-spacing:.10em; text-transform:uppercase;
-    }
-    .series-sub{
-      margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
-      font-size:14px; letter-spacing:.05em;
-    }
-    .author{
-      margin:10px 0 0; font-family: ui-sans-serif, system-ui;
-      font-size:14px; opacity:.92;
-    }
     .chapter-title{ text-align:center; padding:10px 0 6px; }
     .chapter-title h3{
       margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
@@ -198,16 +173,6 @@
     .chapter-title h4{
       margin:10px 0 0; font-size:30px; font-weight:900;
       font-family: ui-sans-serif, system-ui;
-    }
-    hr.ornament{
-      border:0; border-top:1px solid var(--stroke);
-      margin:18px auto; width:66%; position:relative;
-    }
-    hr.ornament:after{
-      content:"✦"; position:absolute; left:50%;
-      transform:translate(-50%,-50%); top:0;
-      color:var(--muted); font-size:13px; padding:0 10px;
-      background: transparent;
     }
     .scene-break{
       text-align:center; color:var(--muted);
@@ -219,8 +184,8 @@
       padding-right:10px; padding-top:6px; font-weight:800;
     }
 
-    /* ===== Mobile Premium UI ===== */
-    .mTop, .mBottom, .sheet, .sheetBackdrop{ display:none; }
+    /* Mobile layout */
+    .mTop, .mBottom{ display:none; }
 
     @media (max-width:720px){
       .top{ display:none; }
@@ -301,88 +266,32 @@
       .inner p{ font-size:16px; line-height:1.82; }
     }
 
-    /* Mobile Sheet */
-    @media (max-width:720px){
-      .sheetBackdrop{
-        display:block;
-        position:fixed; inset:0;
-        background: rgba(0,0,0,.60);
-        backdrop-filter: blur(8px);
-        z-index:70;
-        opacity:0;
-        pointer-events:none;
-        transition: .2s ease;
-      }
-      .sheet{
-        display:block;
-        position:fixed; left:0; right:0; bottom:0;
-        z-index:80;
-        transform: translateY(110%);
-        transition: .25s ease;
-        background: var(--sheet);
-        border-top:1px solid var(--stroke);
-        border-radius:18px 18px 0 0;
-        padding: 14px 14px calc(14px + var(--safeBot));
-        box-shadow: 0 -24px 60px rgba(0,0,0,.55);
-      }
-      .sheet.open{ transform: translateY(0); }
-      .sheetBackdrop.open{ opacity:1; pointer-events:auto; }
-
-      .sheet h4{
-        margin:0 0 10px;
-        font-family: ui-sans-serif, system-ui;
-        font-size:14px;
-        letter-spacing:.06em;
-        text-transform:uppercase;
-        color:var(--muted);
-      }
-      .sheetRow{
-        display:flex; gap:10px; flex-wrap:wrap;
-      }
-      .sheetRow .mBtn{ flex:1; min-width: 44%; }
-      .sheet select{
-        width:100%;
-        margin-top:10px;
-        padding:12px 12px;
-        border-radius:14px;
-        font-size:14px;
-        background: rgba(0,0,0,.18);
-        border:1px solid var(--stroke);
-        color: var(--ink);
-      }
-      [data-theme="light"] .sheet select{ background: rgba(2,6,23,.06); }
-      .sheet .divider{
-        height:1px; background: var(--stroke);
-        margin:12px 0;
-      }
-    }
-
-    /* Hidden measurer uses the SAME page sizing as real pages */
-    .measureWrap{
-      position:fixed; left:-9999px; top:-9999px;
-      width: min(1120px, 98vw);
-      height: min(740px, 84vh);
+    /* Real offscreen measurer */
+    .measureHost{
+      position:fixed;
+      left:-99999px; top:0;
+      width:1px; height:1px;
+      overflow:visible;
       visibility:hidden;
+      z-index:-1;
     }
-    .measurePage{
+    .measureBox{
+      border:1px solid transparent;
+      border-radius:18px;
+      overflow:hidden;
+    }
+    .measureInner{
       height:100%;
-      padding:26px 22px calc(20px + var(--footerSpace));
+      padding:26px 22px calc(18px + var(--footerSpace));
       overflow:hidden;
       font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      line-height:1.82;
-      font-size:16px;
     }
-    .measureSingle{
-      height:100%;
-      padding:22px 18px calc(18px + var(--footerSpace));
-      overflow:hidden;
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      line-height:1.82;
-      font-size:16px;
-      display:none;
-    }
+    .measureInner p{ font-size:16px; line-height:1.78; margin:0 0 14px; }
     @media (max-width:720px){
-      .measureSingle{ display:block; }
+      .measureInner{
+        padding:22px 18px calc(18px + var(--footerSpace));
+      }
+      .measureInner p{ line-height:1.82; }
     }
   </style>
 </head>
@@ -395,7 +304,7 @@
       <div class="t1" id="mBookTitle">book1</div>
       <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
     </div>
-    <div class="mBtn" id="mMenu">Menu</div>
+    <div class="mBtn" id="mTheme">Theme</div>
   </div>
 
   <!-- Desktop top -->
@@ -409,9 +318,6 @@
     <div class="row">
       <div class="chip" id="prevBtn">Prev</div>
       <div class="chip" id="nextBtn">Next</div>
-      <div class="chip" id="speakBtn">Speak</div>
-      <div class="chip" id="stopBtn">Stop</div>
-      <select id="voiceSelect" title="Voice"></select>
     </div>
   </div>
 
@@ -419,20 +325,6 @@
   <div class="mBottom">
     <div class="mBtn" id="mPrev">Prev</div>
     <div class="mBtn" id="mNext">Next</div>
-  </div>
-
-  <!-- Mobile sheet -->
-  <div class="sheetBackdrop" id="sheetBackdrop"></div>
-  <div class="sheet" id="sheet">
-    <h4>Reader Settings</h4>
-    <div class="sheetRow">
-      <div class="mBtn" id="mTheme">Theme</div>
-      <div class="mBtn" id="mSpeak">Speak</div>
-      <div class="mBtn" id="mStop">Stop</div>
-      <div class="mBtn" id="mClose">Close</div>
-    </div>
-    <div class="divider"></div>
-    <select id="mVoiceSelect" title="Voice"></select>
   </div>
 
   <div class="stage">
@@ -462,26 +354,23 @@
     </div>
   </div>
 
-  <div class="measureWrap" id="measureWrap">
-    <div class="measurePage" id="measureLeft"></div>
-    <div class="measureSingle" id="measureSingle"></div>
+  <!-- Offscreen measurer -->
+  <div class="measureHost" id="measureHost">
+    <div class="measureBox" id="measureBox">
+      <div class="measureInner" id="measureInner"></div>
+    </div>
   </div>
 
   <script type="module">
-    // IMPORTANT: books/ path
-    const BOOK_FILES = {
-      book1: "./books/book1.html",
-      coming: "./books/coming-soon.html"
-    };
-
+    const BOOK_FILES = { book1: "./books/book1.html", coming:"./books/coming-soon.html" };
     const params = new URLSearchParams(location.search);
     const bookId = params.get("book") || "book1";
     const bookFile = BOOK_FILES[bookId] || "./books/coming-soon.html";
 
+    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
+
     document.getElementById("bookTitle").textContent = bookId;
     document.getElementById("mBookTitle").textContent = bookId;
-
-    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -493,23 +382,14 @@
       paginateAndRender();
     }
     document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-
-    // Sheet
-    const sheet = document.getElementById("sheet");
-    const sheetBackdrop = document.getElementById("sheetBackdrop");
-    function openSheet(){ sheet.classList.add("open"); sheetBackdrop.classList.add("open"); }
-    function closeSheet(){ sheet.classList.remove("open"); sheetBackdrop.classList.remove("open"); }
-    document.getElementById("mMenu").addEventListener("click", openSheet);
-    document.getElementById("mClose").addEventListener("click", closeSheet);
-    sheetBackdrop.addEventListener("click", closeSheet);
-    document.getElementById("mTheme").addEventListener("click", ()=>{ toggleTheme(); closeSheet(); });
+    document.getElementById("mTheme").addEventListener("click", toggleTheme);
 
     // Nav
     function goLibrary(){ location.href = "./"; }
     document.getElementById("backBtn").addEventListener("click", goLibrary);
     document.getElementById("mBack").addEventListener("click", goLibrary);
 
-    // Page DOM
+    // DOM
     const leftPage = document.getElementById("leftPage");
     const rightPage = document.getElementById("rightPage");
     const leftNum = document.getElementById("leftNum");
@@ -522,22 +402,19 @@
     const mPageLabel = document.getElementById("mPageLabel");
     const mPageTotal = document.getElementById("mPageTotal");
 
-    // Flip DOM
     const flip = document.getElementById("flip");
     const flipFront = document.getElementById("flipFront");
     const flipBack  = document.getElementById("flipBack");
 
-    // Measurers
-    const measureLeft = document.getElementById("measureLeft");
-    const measureSingle = document.getElementById("measureSingle");
+    const measureBox = document.getElementById("measureBox");
+    const measureInner = document.getElementById("measureInner");
 
     // Progress
     const progressKey = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKey) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
 
-    // Load book html
-    let BOOK_HTML = "<p class='muted'>Loading…</p>";
+    let BOOK_HTML = "";
     let PAGES = [];
 
     async function loadBook(){
@@ -546,149 +423,64 @@
       BOOK_HTML = await res.text();
     }
 
-    // Hard pagebreak before chapter titles
+    // Force chapter titles to start on new page
     function injectChapterBreaks(html){
       return html.replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
     }
 
-    function getMeasurer(){
-      return isMobile() ? measureSingle : measureLeft;
+    // ✅ Make measurer EXACTLY match visible page box size
+    function syncMeasurerSize(){
+      if(isMobile()){
+        const page = document.querySelector("#single .page");
+        const r = page.getBoundingClientRect();
+        measureBox.style.width  = r.width + "px";
+        measureBox.style.height = r.height + "px";
+      }else{
+        const page = document.querySelector("#spread .page");
+        const r = page.getBoundingClientRect();
+        measureBox.style.width  = r.width + "px";
+        measureBox.style.height = r.height + "px";
+      }
     }
 
-    // ✅ Robust pagination that DOES NOT drop words
-    function paginate(html){
-      const src = injectChapterBreaks(html);
-      const container = document.createElement("div");
-      container.innerHTML = src;
+    // Helper: split a paragraph by words ONLY if needed
+    function splitParagraphHTML(pHTML, currentHTML, fits){
+      // extract class if any
+      const clsMatch = pHTML.match(/<p[^>]*class="([^"]+)"/i);
+      const cls = clsMatch ? clsMatch[1] : "";
+      const text = stripTags(pHTML).trim();
+      const words = text.split(/\s+/).filter(Boolean);
 
-      // Collect blocks (top-level)
-      const blocks = Array.from(container.childNodes).filter(n => {
-        if(n.nodeType === 3) return n.textContent.trim().length; // text
-        if(n.nodeType === 1) return true; // element
-        return false;
-      });
+      const pieces = [];
+      let buf = "";
 
-      const measurer = getMeasurer();
-      const maxH = measurer.clientHeight || 600;
-
-      const pages = [];
-      let pageHTML = "";
-
-      function fits(testHTML){
-        measurer.innerHTML = testHTML;
-        // use a tiny safety margin so last line never clips
-        return measurer.scrollHeight <= (maxH - 2);
-      }
-
-      function pushPage(){
-        if(pageHTML.length){
-          pages.push(pageHTML);
-          pageHTML = "";
-        }
-      }
-
-      function splitParagraphNode(pNode){
-        // Split a <p> word-by-word if it doesn't fit alone.
-        const clone = pNode.cloneNode(true);
-        const text = clone.textContent || "";
-        const words = text.split(/\s+/).filter(Boolean);
-        // keep class like dropcap
-        const cls = pNode.getAttribute("class");
-        let out = [];
-        let buf = "";
-
-        for(const w of words){
-          const next = buf ? (buf + " " + w) : w;
-          const test = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
-          const testHTML = pageHTML + test;
-          if(fits(testHTML)){
-            buf = next;
-          }else{
-            // commit current buffer
-            if(buf){
-              out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-              buf = w;
-              // if even single word doesn't fit on current page, start new page
-              const test2 = pageHTML + `<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`;
-              if(!fits(test2)){
-                pushPage();
-              }
-            }else{
-              // buffer empty but this word can't fit: force new page then place it
-              pushPage();
-              buf = w;
-            }
-          }
-        }
-        if(buf){
-          out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-        }
-        return out;
-      }
-
-      // Walk blocks, add them safely
-      for(const node of blocks){
-        // hard pagebreak marker
-        if(node.nodeType === 8 && node.data.includes("PAGEBREAK")){
-          pushPage();
-          continue;
-        }
-
-        // convert node to HTML string
-        let nodeHTML = "";
-        if(node.nodeType === 3){
-          nodeHTML = `<p>${escapeHtml(node.textContent)}</p>`;
+      for(const w of words){
+        const next = buf ? (buf + " " + w) : w;
+        const piece = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
+        if(fits(currentHTML + piece)){
+          buf = next;
         }else{
-          nodeHTML = node.outerHTML || "";
-        }
-
-        // If node is <section class="chapter-title"> => start on new page
-        if(node.nodeType === 1 && node.matches && node.matches("section.chapter-title")){
-          pushPage();
-        }
-
-        // Try to add as a whole
-        const test = pageHTML + nodeHTML;
-        if(fits(test)){
-          pageHTML = test;
-          continue;
-        }
-
-        // If current page has content, push it and retry
-        if(pageHTML.length){
-          pushPage();
-          const test2 = pageHTML + nodeHTML;
-          if(fits(test2)){
-            pageHTML = test2;
-            continue;
+          if(buf){
+            pieces.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+            buf = w;
+          }else{
+            // first word doesn't fit: force it anyway (rare)
+            pieces.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(w)}</p>`);
+            buf = "";
           }
         }
-
-        // Still doesn't fit on an empty page:
-        // If paragraph, split it word-by-word safely
-        if(node.nodeType === 1 && node.tagName === "P"){
-          const parts = splitParagraphNode(node);
-          for(const part of parts){
-            const t = pageHTML + part;
-            if(fits(t)){
-              pageHTML = t;
-            }else{
-              pushPage();
-              pageHTML = part;
-            }
-          }
-          continue;
-        }
-
-        // Otherwise: force it into its own page (rare: big headers)
-        pageHTML = nodeHTML;
-        pushPage();
       }
-
-      pushPage();
-      return pages.filter(p => p.trim().length);
+      if(buf){
+        pieces.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
+      }
+      return pieces;
     }
 
+    function stripTags(html){
+      const d = document.createElement("div");
+      d.innerHTML = html;
+      return d.textContent || "";
+    }
     function escapeHtml(str){
       return String(str)
         .replaceAll("&","&amp;")
@@ -696,6 +488,89 @@
         .replaceAll(">","&gt;")
         .replaceAll('"',"&quot;")
         .replaceAll("'","&#039;");
+    }
+
+    // ✅ Stable pagination: never loses words, never 1-word pages
+    function paginate(html){
+      const src = injectChapterBreaks(html);
+      const container = document.createElement("div");
+      container.innerHTML = src;
+
+      // Build list of blocks (elements + meaningful text)
+      const blocks = Array.from(container.childNodes).filter(n=>{
+        if(n.nodeType === 3) return n.textContent.trim().length;
+        if(n.nodeType === 1) return true;
+        return false;
+      }).map(n=>{
+        if(n.nodeType === 3) return `<p>${escapeHtml(n.textContent)}</p>`;
+        return n.outerHTML || "";
+      });
+
+      const pages = [];
+      let pageHTML = "";
+
+      const boxH = measureBox.getBoundingClientRect().height;
+      const maxH = Math.max(200, boxH); // safety
+
+      const fits = (testHTML)=>{
+        measureInner.innerHTML = testHTML;
+        return measureInner.scrollHeight <= (maxH - 2);
+      };
+
+      const push = ()=>{
+        if(pageHTML.length){
+          pages.push(pageHTML);
+          pageHTML = "";
+        }
+      };
+
+      for(const blockHTML of blocks){
+        // hard page break
+        if(blockHTML.includes("PAGEBREAK")){
+          push();
+          continue;
+        }
+
+        // chapter title should start new page
+        if(blockHTML.includes('class="chapter-title"')){
+          push();
+        }
+
+        const test = pageHTML + blockHTML;
+        if(fits(test)){
+          pageHTML = test;
+          continue;
+        }
+
+        if(pageHTML.length){
+          push();
+          if(fits(blockHTML)){
+            pageHTML = blockHTML;
+            continue;
+          }
+        }
+
+        // If still doesn't fit on empty page, split only if <p>
+        if(blockHTML.trim().startsWith("<p")){
+          const parts = splitParagraphHTML(blockHTML, pageHTML, fits);
+          for(const part of parts){
+            const t = pageHTML + part;
+            if(fits(t)){
+              pageHTML = t;
+            }else{
+              push();
+              pageHTML = part;
+            }
+          }
+        }else{
+          // Big headers etc: force alone
+          pageHTML = blockHTML;
+          push();
+        }
+      }
+
+      push();
+      return pages.filter(p=>p.trim().length);
     }
 
     function normalizeIndex(){
@@ -718,10 +593,11 @@
 
     function render(){
       if(PAGES.length === 0){
+        const msg = "<p class='muted'>No content yet.</p>";
         if(isMobile()){
-          singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
+          singlePage.innerHTML = msg;
         }else{
-          leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
+          leftPage.innerHTML = msg;
           rightPage.innerHTML = "";
         }
         updateCounters();
@@ -735,20 +611,17 @@
         singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
         singleNum.textContent = String(i+1);
       }else{
-        const leftIdx = i;
-        const rightIdx = i+1;
+        const leftIdx = i, rightIdx = i+1;
         leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
         rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
         leftNum.textContent = String(leftIdx+1);
         rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
       }
-
       saveProgress();
     }
 
     function animateFlip(nextIndex){
       if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
-
       const forward = nextIndex > i;
 
       flip.classList.remove("animForward","animBackward","fromLeft","fromRight","full");
@@ -756,11 +629,9 @@
 
       if(isMobile()){
         flip.classList.add("full");
-        if(forward){
-          flip.classList.add("fromRight","animForward");
-        }else{
-          flip.classList.add("fromLeft","animBackward");
-        }
+        if(forward){ flip.classList.add("fromRight","animForward"); }
+        else{ flip.classList.add("fromLeft","animBackward"); }
+
         flipFront.innerHTML = PAGES[i] || "";
         flipBack.innerHTML  = PAGES[nextIndex] || "";
       }else{
@@ -807,7 +678,7 @@
       if(e.key==="ArrowLeft") prev();
     });
 
-    // Tap zones (mobile): left side prev, right side next
+    // Mobile tap zones
     document.querySelector(".book").addEventListener("click",(e)=>{
       if(!isMobile()) return;
       const rect = e.currentTarget.getBoundingClientRect();
@@ -816,72 +687,8 @@
       else if(x > rect.width * 0.55) next();
     });
 
-    // Speech
-    const voiceSelect = document.getElementById("voiceSelect");
-    const mVoiceSelect = document.getElementById("mVoiceSelect");
-
-    function loadVoices(){
-      const voices = speechSynthesis.getVoices();
-      const fill = (sel)=>{
-        sel.innerHTML = "";
-        voices.forEach((v, idx)=>{
-          const opt = document.createElement("option");
-          opt.value = String(idx);
-          opt.textContent = `${v.name} — ${v.lang}`;
-          sel.appendChild(opt);
-        });
-      };
-      fill(voiceSelect);
-      fill(mVoiceSelect);
-
-      const saved = localStorage.getItem("voiceIndex");
-      if(saved){
-        voiceSelect.value = saved;
-        mVoiceSelect.value = saved;
-      }
-    }
-    if("speechSynthesis" in window){
-      loadVoices();
-      speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    function getChosenVoice(){
-      const idx = parseInt((isMobile()? mVoiceSelect.value : voiceSelect.value) || "0",10);
-      localStorage.setItem("voiceIndex", String(idx));
-      const voices = speechSynthesis.getVoices();
-      return voices[idx] || null;
-    }
-
-    function visibleText(){
-      const temp = document.createElement("div");
-      if(isMobile()){
-        temp.innerHTML = PAGES[i] || "";
-      }else{
-        temp.innerHTML = (PAGES[i]||"") + " " + (PAGES[i+1]||"");
-      }
-      return temp.textContent || "";
-    }
-
-    function speak(){
-      if(!("speechSynthesis" in window)){ alert("Speech not supported."); return; }
-      speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(visibleText());
-      const v = getChosenVoice();
-      if(v) utter.voice = v;
-      utter.rate = 1; utter.pitch = 1;
-      speechSynthesis.speak(utter);
-    }
-    function stop(){ if("speechSynthesis" in window) speechSynthesis.cancel(); }
-
-    document.getElementById("speakBtn").addEventListener("click", speak);
-    document.getElementById("stopBtn").addEventListener("click", stop);
-    document.getElementById("mSpeak").addEventListener("click", ()=>{ speak(); closeSheet(); });
-    document.getElementById("mStop").addEventListener("click", ()=>{ stop(); closeSheet(); });
-
-    voiceSelect.addEventListener("change", ()=>{ mVoiceSelect.value = voiceSelect.value; localStorage.setItem("voiceIndex", voiceSelect.value); });
-    mVoiceSelect.addEventListener("change", ()=>{ voiceSelect.value = mVoiceSelect.value; localStorage.setItem("voiceIndex", mVoiceSelect.value); });
-
     function paginateAndRender(){
+      syncMeasurerSize();
       PAGES = paginate(BOOK_HTML);
       render();
     }
@@ -892,8 +699,10 @@
       }catch(e){
         BOOK_HTML = `<p class="muted">${String(e)}</p>`;
       }
+      // double RAF ensures layout is ready (important for GitHub Pages + iOS)
       requestAnimationFrame(()=>requestAnimationFrame(()=>paginateAndRender()));
       window.addEventListener("resize", ()=> paginateAndRender());
+      setTimeout(()=>paginateAndRender(), 300);
     })();
   </script>
 </body>
