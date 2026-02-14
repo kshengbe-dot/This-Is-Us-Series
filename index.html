@@ -1,1 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THIS IS US — Library</title>
 
+<style>
+body{
+  margin:0;
+  font-family: system-ui;
+  background:#0b1020;
+  color:white;
+  text-align:center;
+}
+
+header{
+  padding:20px;
+  font-size:22px;
+  letter-spacing:2px;
+}
+
+.grid{
+  display:flex;
+  justify-content:center;
+  margin-top:40px;
+}
+
+.book{
+  width:260px;
+  transition:0.3s;
+  cursor:pointer;
+}
+
+.book:hover{
+  transform:scale(1.05);
+}
+
+button{
+  padding:10px 18px;
+  margin:10px;
+  border:none;
+  border-radius:20px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header>THIS IS US — by Shengbe Koker</header>
+
+<button id="loginBtn">Login</button>
+
+<div class="grid">
+  <img src="assets/cover-book1.png" class="book" id="book1">
+</div>
+
+<script type="module">
+import { firebaseConfig } from "./firebase-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+document.getElementById("loginBtn").onclick = async ()=>{
+  const email = prompt("Email:");
+  const pass = prompt("Password:");
+  try{
+    await signInWithEmailAndPassword(auth,email,pass);
+    alert("Logged in!");
+  }catch(e){
+    alert("Login failed");
+  }
+};
+
+document.getElementById("book1").onclick = ()=>{
+  if(!auth.currentUser){
+    alert("Please login first");
+    return;
+  }
+  location.href="read.html";
+};
+</script>
+
+</body>
+</html>
