@@ -1,6 +1,7 @@
 // terms-gate.js
 // Shared Terms gate used by index.html, read.html, settings.html
-// Guest: localStorage | Signed-in: Firestore users/{uid}
+// Signed-in: Firestore users/{uid} remembers acceptance
+// Guest: shows EVERY refresh (NO localStorage saving). Accept closes only for current session.
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -14,15 +15,12 @@ const db = getFirestore(app);
 // bump this ONLY when you change terms text and want everyone to accept again
 export const TERMS_VERSION = 1;
 
-// ---- prefs local keys ----
-const LS_PREFS = "notifyPrefs:v1"; // { email,sms,emailVal,phoneVal }
-const LS_OPT_PROMPTED = "optInPrompted"; // "1"
-
 function lockScroll(lock) {
   document.body.style.overflow = lock ? "hidden" : "";
 }
 
 async function hasAcceptedTerms(user) {
+  // Signed-in users: remember in Firestore
   if (user) {
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
@@ -32,11 +30,13 @@ async function hasAcceptedTerms(user) {
       return false;
     }
   }
-  const v = Number(localStorage.getItem("termsAcceptedVersion") || "0");
-  return v >= TERMS_VERSION;
+
+  // Guests: ALWAYS false so it shows every refresh
+  return false;
 }
 
 async function saveTermsAccepted(user) {
+  // Signed-in: save acceptance
   if (user) {
     await setDoc(
       doc(db, "users", user.uid),
@@ -47,104 +47,26 @@ async function saveTermsAccepted(user) {
       },
       { merge: true }
     );
-  } else {
-    localStorage.setItem("termsAcceptedVersion", String(TERMS_VERSION));
-    localStorage.setItem("termsAcceptedAt", String(Date.now()));
-  }
-}
-
-// ---- notification prefs helpers ----
-export async function getNotifyPrefs(user = auth.currentUser) {
-  if (user) {
-    try {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      const d = snap.exists() ? snap.data() : {};
-      return {
-        email: !!d.notificationEmail,
-        sms: !!d.notificationSMS,
-        emailVal: (d.notifyEmailValue || "")?.toString?.() || "",
-        phoneVal: (d.notifyPhoneValue || "")?.toString?.() || "",
-      };
-    } catch {}
+    return;
   }
 
-  try {
-    const raw = localStorage.getItem(LS_PREFS);
-    if (!raw) return { email: false, sms: false, emailVal: "", phoneVal: "" };
-    const o = JSON.parse(raw);
-    return {
-      email: !!o.email,
-      sms: !!o.sms,
-      emailVal: (o.emailVal || "").toString(),
-      phoneVal: (o.phoneVal || "").toString(),
-    };
-  } catch {
-    return { email: false, sms: false, emailVal: "", phoneVal: "" };
-  }
+  // Guest: do NOT persist. (They’ll see it again next refresh.)
+  // Accept will just close the modal for this session.
 }
 
-export async function saveNotifyPrefs(prefs, user = auth.currentUser) {
-  const clean = {
-    email: !!prefs.email,
-    sms: !!prefs.sms,
-    emailVal: (prefs.emailVal || "").trim(),
-    phoneVal: (prefs.phoneVal || "").trim(),
-  };
-
-  localStorage.setItem(LS_PREFS, JSON.stringify(clean));
-  if (!user) return;
-
-  await setDoc(
-    doc(db, "users", user.uid),
-    {
-      notificationEmail: clean.email,
-      notificationSMS: clean.sms,
-      notifyEmailValue: clean.email ? clean.emailVal : null,
-      notifyPhoneValue: clean.sms ? clean.phoneVal : null,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
-
-export async function prefillSubscribeModal({
-  emailId = "subEmail",
-  phoneId = "subPhone",
-  optEmailId = "optEmail",
-  optSMSId = "optSMS",
-} = {}) {
-  const prefs = await getNotifyPrefs(auth.currentUser);
-
-  const emailEl = document.getElementById(emailId);
-  const phoneEl = document.getElementById(phoneId);
-  const optEmail = document.getElementById(optEmailId);
-  const optSMS = document.getElementById(optSMSId);
-
-  if (optEmail) optEmail.checked = !!prefs.email;
-  if (optSMS) optSMS.checked = !!prefs.sms;
-  if (emailEl && prefs.emailVal) emailEl.value = prefs.emailVal;
-  if (phoneEl && prefs.phoneVal) phoneEl.value = prefs.phoneVal;
-}
-
-export function markOptPromptedOnce() {
-  localStorage.setItem(LS_OPT_PROMPTED, "1");
-}
-export function wasOptPrompted() {
-  return localStorage.getItem(LS_OPT_PROMPTED) === "1";
-}
-
-// ---- main wire ----
 export function wireTermsGate({
   termsModalId = "termsModal",
   agreeCheckboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
+  guestNoteId = "guestTermsHint", // optional element in your modal to show guest message
   onAccepted = null,
 } = {}) {
   const termsModal = document.getElementById(termsModalId);
   const agree = document.getElementById(agreeCheckboxId);
   const acceptBtn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
+  const guestHint = document.getElementById(guestNoteId);
 
   if (!termsModal || !agree || !acceptBtn) return;
 
@@ -159,6 +81,16 @@ export function wireTermsGate({
 
   async function showIfNeeded(user) {
     const ok = await hasAcceptedTerms(user);
+
+    if (!user) {
+      if (guestHint) {
+        guestHint.textContent =
+          "Guest mode: Terms will pop up every refresh. Sign in to stop it.";
+      }
+    } else {
+      if (guestHint) guestHint.textContent = "";
+    }
+
     if (!ok) openTermsHard();
     else closeTerms();
   }
@@ -169,6 +101,7 @@ export function wireTermsGate({
       if (msg) msg.textContent = "Please check the agreement box to continue.";
       return;
     }
+
     try {
       await saveTermsAccepted(auth.currentUser);
       closeTerms();
