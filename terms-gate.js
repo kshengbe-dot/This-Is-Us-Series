@@ -1,7 +1,7 @@
 // terms-gate.js
 // Shared Terms gate used by index.html, read.html, settings.html
-// Signed-in: Firestore users/{uid} remembers acceptance
-// Guest: shows EVERY refresh (NO localStorage saving). Accept closes only for current session.
+// Signed-in: Firestore users/{uid} saves acceptance (one time)
+// Guests: shows EVERY refresh (NO localStorage saving). We only close it for this session.
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -12,7 +12,7 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// bump this ONLY when you change terms text and want everyone to accept again
+// bump ONLY when you change terms text and want signed-in users to accept again
 export const TERMS_VERSION = 1;
 
 function lockScroll(lock) {
@@ -20,7 +20,7 @@ function lockScroll(lock) {
 }
 
 async function hasAcceptedTerms(user) {
-  // Signed-in users: remember in Firestore
+  // ✅ Signed-in: one-time gate (Firestore)
   if (user) {
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
@@ -31,12 +31,12 @@ async function hasAcceptedTerms(user) {
     }
   }
 
-  // Guests: ALWAYS false so it shows every refresh
+  // ✅ Guest: ALWAYS show every refresh (no saving)
   return false;
 }
 
 async function saveTermsAccepted(user) {
-  // Signed-in: save acceptance
+  // ✅ Signed-in: save acceptance
   if (user) {
     await setDoc(
       doc(db, "users", user.uid),
@@ -50,23 +50,23 @@ async function saveTermsAccepted(user) {
     return;
   }
 
-  // Guest: do NOT persist. (They’ll see it again next refresh.)
-  // Accept will just close the modal for this session.
+  // ✅ Guest: DO NOT save anything (so it shows every refresh)
+  // Just close modal for this session.
 }
 
+// ---- main wire ----
 export function wireTermsGate({
   termsModalId = "termsModal",
   agreeCheckboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
-  guestNoteId = "guestTermsHint", // optional element in your modal to show guest message
+  // optional: run after accept (ex: open opt-in modal once)
   onAccepted = null,
 } = {}) {
   const termsModal = document.getElementById(termsModalId);
   const agree = document.getElementById(agreeCheckboxId);
   const acceptBtn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
-  const guestHint = document.getElementById(guestNoteId);
 
   if (!termsModal || !agree || !acceptBtn) return;
 
@@ -81,16 +81,6 @@ export function wireTermsGate({
 
   async function showIfNeeded(user) {
     const ok = await hasAcceptedTerms(user);
-
-    if (!user) {
-      if (guestHint) {
-        guestHint.textContent =
-          "Guest mode: Terms will pop up every refresh. Sign in to stop it.";
-      }
-    } else {
-      if (guestHint) guestHint.textContent = "";
-    }
-
     if (!ok) openTermsHard();
     else closeTerms();
   }
@@ -101,16 +91,23 @@ export function wireTermsGate({
       if (msg) msg.textContent = "Please check the agreement box to continue.";
       return;
     }
-
     try {
       await saveTermsAccepted(auth.currentUser);
       closeTerms();
+
+      // ✅ Guest reminder (you requested this)
+      if (!auth.currentUser && msg) {
+        msg.textContent =
+          "Guest mode: Terms will pop up every refresh. Sign in to stop it.";
+      }
+
       if (typeof onAccepted === "function") onAccepted(auth.currentUser);
     } catch {
       if (msg) msg.textContent = "Could not save. Please try again.";
     }
   });
 
+  // IMPORTANT: run gate for guests AND signed-in
   onAuthStateChanged(auth, async (user) => {
     await showIfNeeded(user);
   });
