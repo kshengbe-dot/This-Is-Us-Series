@@ -22,10 +22,22 @@ function escapeHtml(str) {
     .replaceAll("'","&#039;");
 }
 
-// ------------------------ ANNOUNCEMENTS (ACTIVE WINDOW) ------------------------
+function toMs(ts){
+  return ts?.toMillis ? ts.toMillis() : null;
+}
+
+function isActiveWindow(a, now){
+  const startMs = toMs(a.startAt);
+  const endMs = toMs(a.endAt);
+  const okStart = (startMs == null) ? true : (now >= startMs);
+  const okEnd = (endMs == null) ? true : (now <= endMs);
+  return okStart && okEnd;
+}
+
+// ------------------------ ANNOUNCEMENTS (AUTO TOP SECTION) ------------------------
 export async function renderAnnouncementBanner({
   mountId = "announceBanner",
-  max = 5
+  max = 6
 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -40,41 +52,48 @@ export async function renderAnnouncementBanner({
 
     const now = Date.now();
 
-    let active = null;
+    // show ALL active announcements (newest first), up to max
+    const active = [];
     snap.forEach(d => {
-      if (active) return;
       const a = d.data() || {};
-      const startMs = a.startAt?.toMillis ? a.startAt.toMillis() : null;
-      const endMs   = a.endAt?.toMillis ? a.endAt.toMillis() : null;
-
-      const okStart = (startMs == null) ? true : (now >= startMs);
-      const okEnd   = (endMs == null) ? true : (now <= endMs);
-
-      if (okStart && okEnd && (a.title || a.body)) active = a;
+      if (isActiveWindow(a, now) && (a.title || a.body)) active.push(a);
     });
 
-    if (!active) return;
+    if (!active.length) return;
 
-    const title = escapeHtml(active.title || "Announcement");
-    const body = escapeHtml(active.body || "");
+    const cards = active.map(a => {
+      const title = escapeHtml(a.title || "Announcement");
+      const body = escapeHtml(a.body || "");
+      return `
+        <div style="
+          border:1px solid rgba(255,255,255,.12);
+          background: rgba(124,92,255,.12);
+          border-radius:18px;
+          padding:12px;
+          margin-top:10px;
+        ">
+          <div style="font-weight:950; letter-spacing:.06em">${title}</div>
+          <div style="opacity:.9; margin-top:6px; line-height:1.55">${body}</div>
+        </div>
+      `;
+    });
+
     mount.innerHTML = `
-      <div style="
-        border:1px solid rgba(255,255,255,.12);
-        background: rgba(124,92,255,.12);
-        border-radius:18px;
-        padding:12px;
-        margin-top:14px;
-      ">
-        <div style="font-weight:950; letter-spacing:.06em">${title}</div>
-        <div style="opacity:.9; margin-top:6px; line-height:1.55">${body}</div>
+      <div style="margin-top:14px">
+        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; opacity:.85; margin-bottom:6px">
+          Announcements
+        </div>
+        ${cards.join("")}
       </div>
     `;
     mount.style.display = "block";
-  } catch {}
+  } catch {
+    // fail quietly
+  }
 }
 
 // optional: modal list
-export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 6 } = {}) {
+export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 10 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
 
@@ -93,13 +112,8 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
 
     snap.forEach(docu => {
       const d = docu.data() || {};
-      const startMs = d.startAt?.toMillis ? d.startAt.toMillis() : null;
-      const endMs   = d.endAt?.toMillis ? d.endAt.toMillis() : null;
+      const badge = isActiveWindow(d, now) ? "LIVE" : "ARCHIVED";
 
-      const okStart = (startMs == null) ? true : (now >= startMs);
-      const okEnd   = (endMs == null) ? true : (now <= endMs);
-
-      const badge = (okStart && okEnd) ? "LIVE" : "ARCHIVED";
       cards.push(`
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
@@ -210,7 +224,9 @@ export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
       updatedAt: serverTimestamp()
     }, { merge: true });
     localStorage.setItem(key, "1");
-  } catch {}
+  } catch {
+    // ignore
+  }
 }
 
 export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
