@@ -14,6 +14,10 @@ const db = getFirestore(app);
 // bump this ONLY when you change terms text and want everyone to accept again
 export const TERMS_VERSION = 1;
 
+// ---- prefs local keys ----
+const LS_PREFS = "notifyPrefs:v1"; // { email,sms,emailVal,phoneVal }
+const LS_OPT_PROMPTED = "optInPrompted"; // "1"
+
 function lockScroll(lock) {
   document.body.style.overflow = lock ? "hidden" : "";
 }
@@ -49,6 +53,95 @@ async function saveTermsAccepted(user) {
   }
 }
 
+// ---- notification prefs helpers ----
+export async function getNotifyPrefs(user = auth.currentUser) {
+  // signed in: read from users/{uid}
+  if (user) {
+    try {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      const d = snap.exists() ? snap.data() : {};
+      return {
+        email: !!d.notificationEmail,
+        sms: !!d.notificationSMS,
+        emailVal: (d.notifyEmailValue || "")?.toString?.() || "",
+        phoneVal: (d.notifyPhoneValue || "")?.toString?.() || "",
+      };
+    } catch {
+      // fall back to local
+    }
+  }
+
+  // guest/local fallback
+  try {
+    const raw = localStorage.getItem(LS_PREFS);
+    if (!raw) return { email: false, sms: false, emailVal: "", phoneVal: "" };
+    const o = JSON.parse(raw);
+    return {
+      email: !!o.email,
+      sms: !!o.sms,
+      emailVal: (o.emailVal || "").toString(),
+      phoneVal: (o.phoneVal || "").toString(),
+    };
+  } catch {
+    return { email: false, sms: false, emailVal: "", phoneVal: "" };
+  }
+}
+
+export async function saveNotifyPrefs(prefs, user = auth.currentUser) {
+  const clean = {
+    email: !!prefs.email,
+    sms: !!prefs.sms,
+    emailVal: (prefs.emailVal || "").trim(),
+    phoneVal: (prefs.phoneVal || "").trim(),
+  };
+
+  // always store locally too (so the form pre-fills even if offline)
+  localStorage.setItem(LS_PREFS, JSON.stringify(clean));
+
+  if (!user) return;
+
+  // store on user doc
+  await setDoc(
+    doc(db, "users", user.uid),
+    {
+      notificationEmail: clean.email,
+      notificationSMS: clean.sms,
+      notifyEmailValue: clean.email ? clean.emailVal : null,
+      notifyPhoneValue: clean.sms ? clean.phoneVal : null,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function prefillSubscribeModal({
+  // these match your index.html IDs
+  emailId = "subEmail",
+  phoneId = "subPhone",
+  optEmailId = "optEmail",
+  optSMSId = "optSMS",
+} = {}) {
+  const prefs = await getNotifyPrefs(auth.currentUser);
+
+  const emailEl = document.getElementById(emailId);
+  const phoneEl = document.getElementById(phoneId);
+  const optEmail = document.getElementById(optEmailId);
+  const optSMS = document.getElementById(optSMSId);
+
+  if (optEmail) optEmail.checked = !!prefs.email;
+  if (optSMS) optSMS.checked = !!prefs.sms;
+  if (emailEl && prefs.emailVal) emailEl.value = prefs.emailVal;
+  if (phoneEl && prefs.phoneVal) phoneEl.value = prefs.phoneVal;
+}
+
+export function markOptPromptedOnce() {
+  localStorage.setItem(LS_OPT_PROMPTED, "1");
+}
+export function wasOptPrompted() {
+  return localStorage.getItem(LS_OPT_PROMPTED) === "1";
+}
+
+// ---- main wire ----
 export function wireTermsGate({
   termsModalId = "termsModal",
   agreeCheckboxId = "agreeTerms",
