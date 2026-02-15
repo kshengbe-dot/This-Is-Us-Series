@@ -386,7 +386,10 @@
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, serverTimestamp,
+      collection, getDocs, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     // ---- Books mapping ----
     const BOOK_FILES = {
@@ -528,6 +531,32 @@
       const res = await fetch(bookFile, { cache:"no-store" });
       if(!res.ok) throw new Error("Could not load: " + res.status);
       BOOK_HTML = await res.text();
+    }
+
+    // ✅ NEW: load Firestore-published chapters and append to BOOK_HTML
+    async function loadChaptersFromCloud(){
+      // only do this for real books you publish chapters into
+      if(bookId !== "book1") return "";
+
+      try{
+        const q = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
+        const snap = await getDocs(q);
+        if(snap.empty) return "";
+
+        const parts = [];
+        snap.forEach(docSnap=>{
+          const d = docSnap.data() || {};
+          if(d && typeof d.html === "string" && d.html.trim().length){
+            parts.push(d.html.trim());
+          }
+        });
+
+        if(parts.length === 0) return "";
+        return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
+      }catch(e){
+        // fail quietly so reader still works even if Firestore is blocked/offline
+        return "";
+      }
     }
 
     // Force pagebreaks before each chapter-title (and cover)
@@ -844,9 +873,7 @@
 
     // ---- paginate + render ----
     function paginateAndRender(forceReflow=false){
-      // ensure DOM sizes are accurate
       if(forceReflow){
-        // quick reflow
         void document.body.offsetHeight;
       }
       PAGES = paginate(BOOK_HTML);
@@ -856,16 +883,20 @@
     (async ()=>{
       try{
         await loadBook();
+
+        // ✅ NEW: append Firestore chapters AFTER base book HTML
+        const cloud = await loadChaptersFromCloud();
+        if(cloud && cloud.trim().length){
+          BOOK_HTML = BOOK_HTML + "\n\n" + cloud;
+        }
       }catch(e){
         BOOK_HTML = `<p class="muted">${String(e)}</p>`;
       }
 
-      // Wait 2 frames so the page has real height (fixes 1-word page bug)
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         paginateAndRender(true);
       }));
 
-      // Resize debounce
       let t=null;
       window.addEventListener("resize", ()=>{
         clearTimeout(t);
