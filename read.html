@@ -318,6 +318,68 @@
       visibility:hidden;
       pointer-events:none;
     }
+
+    /* ===== TERMS MODAL (MANDATORY) ===== */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.60);
+      z-index:1000;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .modalCard{
+      width:min(860px, 96vw);
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.96);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 6px 10px;
+    }
+    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
+    .termsBox{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:12px;
+      background: rgba(255,255,255,.06);
+      max-height: 56vh;
+      overflow:auto;
+      font-family: ui-sans-serif, system-ui;
+      color: var(--ink);
+    }
+    .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
+    .checkRow{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 6px 0;
+      font-family: ui-sans-serif, system-ui;
+    }
+    .checkRow input{ width:auto; margin-top:3px; }
+    .btn2{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .15s ease, background .15s ease;
+      user-select:none;
+      font-family: ui-sans-serif, system-ui;
+    }
+    .btn2:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn2.primary{
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
   </style>
 </head>
 
@@ -382,6 +444,76 @@
 
   <div class="measureHost" id="measureHost"></div>
 
+  <!-- TERMS MODAL (MANDATORY) -->
+  <div class="modal" id="termsModal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Terms & Conditions</h3>
+        <div></div>
+      </div>
+
+      <!-- Same terms text you already use (kept consistent) -->
+      <div class="termsBox" id="termsText">
+        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
+        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+
+        <p><strong>1) Acceptance</strong><br>
+          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
+        </p>
+
+        <p><strong>2) Eligibility</strong><br>
+          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
+        </p>
+
+        <p><strong>3) Content & Reader Experience</strong><br>
+          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
+        </p>
+
+        <p><strong>4) Accounts</strong><br>
+          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
+        </p>
+
+        <p><strong>5) User Submissions</strong><br>
+          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
+        </p>
+
+        <p><strong>6) Notifications (Optional)</strong><br>
+          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
+        </p>
+
+        <p><strong>7) Privacy</strong><br>
+          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
+        </p>
+
+        <p><strong>8) Availability & Changes</strong><br>
+          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
+        </p>
+
+        <p><strong>9) Disclaimer</strong><br>
+          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
+        </p>
+
+        <p><strong>10) Limitation of Liability</strong><br>
+          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
+        </p>
+
+        <p><strong>11) Contact</strong><br>
+          For questions, removal requests, or opt-out requests, contact the site owner.
+        </p>
+      </div>
+
+      <div class="checkRow">
+        <input type="checkbox" id="agreeTerms">
+        <div class="note">I have read and agree to the Terms & Conditions.</div>
+      </div>
+
+      <div style="display:grid; gap:10px; padding-top:10px">
+        <button class="btn2 primary" id="acceptTermsBtn">Accept & Continue</button>
+        <div class="note" id="termsMsg"></div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -390,6 +522,12 @@
       getFirestore, doc, getDoc, setDoc, serverTimestamp,
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    // ✅ NEW: shared terms gate (so it remembers everywhere)
+    import { wireTermsGate } from "./terms-gate.js";
+
+    // ✅ NEW: stats bump so Readers count grows
+    import { bumpReaderCountOnce } from "./public-feed.js";
 
     // ---- Books mapping ----
     const BOOK_FILES = {
@@ -448,6 +586,12 @@
     const db = getFirestore(app);
     let UID = null;
 
+    // ✅ Enforce terms on reader page too (same keys as index)
+    wireTermsGate();
+
+    // ✅ Bump readers once per device per book
+    bumpReaderCountOnce({ bookId });
+
     // ---- Progress keys ----
     const progressKeyLocal = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
@@ -465,7 +609,6 @@
         if(snap.exists()){
           const d = snap.data() || {};
           if(Number.isFinite(d.index) && d.index >= 0){
-            // choose the bigger progress (so user never loses progress)
             i = Math.max(i, Math.floor(d.index));
           }
         }
@@ -492,7 +635,6 @@
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
         syncText.textContent = "Synced";
-        // load user theme (if any)
         try{
           const u = await getDoc(doc(db,"users",UID));
           if(u.exists()){
@@ -503,9 +645,8 @@
             }
           }
         }catch{}
-        // cloud progress
         await loadCloudProgressIfAny();
-        render(); // safe even before paginate finishes; will correct after
+        render();
       }else{
         syncDot.style.color = "rgba(255,255,255,.65)";
         syncText.textContent = "Guest";
@@ -533,9 +674,8 @@
       BOOK_HTML = await res.text();
     }
 
-    // ✅ NEW: load Firestore-published chapters and append to BOOK_HTML
+    // load Firestore-published chapters and append to BOOK_HTML
     async function loadChaptersFromCloud(){
-      // only do this for real books you publish chapters into
       if(bookId !== "book1") return "";
 
       try{
@@ -553,13 +693,11 @@
 
         if(parts.length === 0) return "";
         return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
-      }catch(e){
-        // fail quietly so reader still works even if Firestore is blocked/offline
+      }catch{
         return "";
       }
     }
 
-    // Force pagebreaks before each chapter-title (and cover)
     function injectChapterBreaks(html){
       return html
         .replaceAll('<section class="chapter-cover">','<!--PAGEBREAK--><section class="chapter-cover">')
@@ -575,7 +713,6 @@
         .replaceAll("'","&#039;");
     }
 
-    // Build measurer that matches current visible page typography + width
     function buildMeasurer(){
       const innerVisible = isMobile() ? singlePage : leftPage;
       const pageVisible  = isMobile() ? pageS : pageL;
@@ -594,10 +731,9 @@
 
       measureHost.innerHTML = "";
       measureHost.appendChild(meas);
-      return { meas, cs, pageVisible, innerVisible };
+      return { meas, pageVisible, innerVisible };
     }
 
-    // IMPORTANT: available text height is based on REAL page height minus inner padding
     function getAvailableTextHeight(pageEl, innerEl){
       const pageH = Math.max(240, pageEl.getBoundingClientRect().height);
       const cs = getComputedStyle(innerEl);
@@ -606,7 +742,6 @@
       return Math.max(140, Math.floor(pageH - padTop - padBot - 2));
     }
 
-    // Robust paginate that fills pages and never turns into one-word pages
     function paginate(html){
       const src = injectChapterBreaks(html);
       const container = document.createElement("div");
@@ -640,7 +775,6 @@
 
       function splitParagraphNode(pNode){
         const cls = pNode.getAttribute("class");
-        // keep <br> lines by converting them to spaces (still readable)
         const text = (pNode.innerText || pNode.textContent || "").trim();
         const words = text.split(/\s+/).filter(Boolean);
 
@@ -657,7 +791,6 @@
               out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
               buf = w;
             }else{
-              // even first word doesn't fit in current page; start new page
               pushPage();
               buf = w;
             }
@@ -671,7 +804,6 @@
       }
 
       for(const node of blocks){
-        // comment pagebreak
         if(node.nodeType === 8 && String(node.data||"").includes("PAGEBREAK")){
           pushPage();
           continue;
@@ -686,13 +818,11 @@
           continue;
         }
 
-        // If it fits, add it
         if(fits(pageHTML + nodeHTML)){
           pageHTML += nodeHTML;
           continue;
         }
 
-        // If current page already has content, push and retry
         if(pageHTML.length){
           pushPage();
           if(fits(pageHTML + nodeHTML)){
@@ -701,7 +831,6 @@
           }
         }
 
-        // Still doesn't fit on an empty page: split paragraphs
         if(node.nodeType === 1 && node.tagName === "P"){
           const parts = splitParagraphNode(node);
           for(const part of parts){
@@ -715,7 +844,6 @@
           continue;
         }
 
-        // Otherwise: force element on its own page
         pageHTML = nodeHTML;
         pushPage();
       }
@@ -777,7 +905,6 @@
       saveProgressAll();
     }
 
-    // ---- Flip animation ----
     function animateFlip(nextIndex){
       if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
 
@@ -796,12 +923,10 @@
       }else{
         if(forward){
           flip.classList.add("fromRight","animForward");
-          // right page flips forward
           flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
           flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
         }else{
           flip.classList.add("fromLeft","animBackward");
-          // left page flips backward
           flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
           flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
         }
@@ -840,7 +965,6 @@
       if(e.key==="ArrowLeft") prev();
     });
 
-    // Mobile tap zones
     document.getElementById("bookTap").addEventListener("click",(e)=>{
       if(!isMobile()) return;
 
@@ -851,7 +975,6 @@
       else if(x > rect.width * 0.58) next();
     });
 
-    // Swipe (mobile)
     let sx=0, sy=0, st=0;
     document.getElementById("bookTap").addEventListener("touchstart",(e)=>{
       if(!isMobile()) return;
@@ -871,7 +994,6 @@
       }
     }, {passive:true});
 
-    // ---- paginate + render ----
     function paginateAndRender(forceReflow=false){
       if(forceReflow){
         void document.body.offsetHeight;
@@ -883,8 +1005,6 @@
     (async ()=>{
       try{
         await loadBook();
-
-        // ✅ NEW: append Firestore chapters AFTER base book HTML
         const cloud = await loadChaptersFromCloud();
         if(cloud && cloud.trim().length){
           BOOK_HTML = BOOK_HTML + "\n\n" + cloud;
