@@ -260,7 +260,7 @@
     }
     .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
-    /* Auth/Terms/News modal */
+    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -401,7 +401,6 @@
       </div>
     </div>
 
-    <!-- AUTO ANNOUNCEMENT BANNER (NO TAB REQUIRED) -->
     <div id="announceBanner"></div>
 
     <div class="sectionTitle">
@@ -680,8 +679,14 @@
       renderReaderCount
     } from "./public-feed.js";
 
-    // ===== TERMS VERSION =====
-    const TERMS_VERSION = 1;
+    import {
+      wireTermsGate,
+      prefillSubscribeModal,
+      wasOptPrompted,
+      markOptPromptedOnce,
+      saveNotifyPrefs,
+      getNotifyPrefs
+    } from "./terms-gate.js";
 
     // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -692,13 +697,14 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // theme toggle (save to user if signed in)
     document.getElementById("themeBtn").onclick = async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
-      if(window.__UID){
+      if(auth.currentUser){
         try{
-          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+          await setDoc(doc(db,"users",auth.currentUser.uid), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
         }catch{}
       }
     };
@@ -720,14 +726,16 @@
     // ===== NEWS MODAL =====
     const newsModal = document.getElementById("newsModal");
     const newsClose = document.getElementById("newsClose");
-    document.getElementById("openNewsBtn").onclick = ()=>{
+
+    async function openNews(){
       newsModal.classList.add("show");
       renderAnnouncementsList({ mountId:"announcementsMount", max: 6 });
-    };
-    document.getElementById("openSubBtn").onclick = ()=>{
-      newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 6 });
-    };
+      await prefillSubscribeModal(); // ✅ fills checkboxes + values if saved
+    }
+
+    document.getElementById("openNewsBtn").onclick = openNews;
+    document.getElementById("openSubBtn").onclick = openNews;
+
     newsClose.onclick = ()=> newsModal.classList.remove("show");
     newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) newsModal.classList.remove("show"); });
 
@@ -769,12 +777,7 @@
       }
     }
 
-    // ===== TERMS + OPT-IN FLOW =====
-    const termsModal = document.getElementById("termsModal");
-    const agreeTerms = document.getElementById("agreeTerms");
-    const acceptTermsBtn = document.getElementById("acceptTermsBtn");
-    const termsMsg = document.getElementById("termsMsg");
-
+    // ===== OPT-IN MODAL (AFTER TERMS) =====
     const optInModal = document.getElementById("optInModal");
     const optClose = document.getElementById("optClose");
     const optInEmail = document.getElementById("optInEmail");
@@ -784,14 +787,6 @@
     const saveOptBtn = document.getElementById("saveOptBtn");
     const optMsg = document.getElementById("optMsg");
 
-    function openTermsHard(){
-      termsModal.classList.add("show");
-      document.body.style.overflow = "hidden";
-    }
-    function closeTerms(){
-      termsModal.classList.remove("show");
-      document.body.style.overflow = "";
-    }
     function openOptIn(){
       optInModal.classList.add("show");
       document.body.style.overflow = "hidden";
@@ -803,60 +798,24 @@
     optClose.onclick = closeOptIn;
     optInModal.addEventListener("click",(e)=>{ if(e.target === optInModal) closeOptIn(); });
 
-    async function hasAcceptedTerms(user){
-      // Signed-in: check Firestore
-      if(user){
-        try{
-          const snap = await getDoc(doc(db,"users",user.uid));
-          const d = snap.exists() ? snap.data() : {};
-          return Number(d.acceptedTermsVersion || 0) >= TERMS_VERSION;
-        }catch{
-          return false;
-        }
-      }
-      // Guest: localStorage
-      const v = Number(localStorage.getItem("termsAcceptedVersion") || "0");
-      return v >= TERMS_VERSION;
-    }
+    // ✅ Terms gate wired ONCE, shared everywhere
+    wireTermsGate({
+      onAccepted: async ()=>{
+        // show optional opt-in only once
+        if(!wasOptPrompted()){
+          markOptPromptedOnce();
 
-    async function saveTermsAccepted(user){
-      if(user){
-        await setDoc(doc(db,"users",user.uid), {
-          acceptedTermsVersion: TERMS_VERSION,
-          acceptedTermsAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }, { merge:true });
-      }else{
-        localStorage.setItem("termsAcceptedVersion", String(TERMS_VERSION));
-        localStorage.setItem("termsAcceptedAt", String(Date.now()));
-      }
-    }
+          // preload any existing prefs
+          const prefs = await getNotifyPrefs(auth.currentUser);
+          optInEmail.checked = !!prefs.email;
+          optInSMS.checked = !!prefs.sms;
+          optEmailVal.value = prefs.emailVal || "";
+          optPhoneVal.value = prefs.phoneVal || "";
 
-    async function showTermsIfNeeded(user){
-      const ok = await hasAcceptedTerms(user);
-      if(!ok) openTermsHard();
-      else closeTerms();
-    }
-
-    acceptTermsBtn.onclick = async ()=>{
-      termsMsg.textContent = "";
-      if(!agreeTerms.checked){
-        termsMsg.textContent = "Please check the agreement box to continue.";
-        return;
-      }
-      try{
-        await saveTermsAccepted(auth.currentUser);
-        closeTerms();
-        // After terms: show optional opt-in once
-        const optDone = localStorage.getItem("optInPrompted") === "1";
-        if(!optDone){
-          localStorage.setItem("optInPrompted","1");
           openOptIn();
         }
-      }catch(e){
-        termsMsg.textContent = "Could not save. Please try again.";
       }
-    };
+    });
 
     saveOptBtn.onclick = async ()=>{
       optMsg.textContent = "";
@@ -874,35 +833,22 @@
         return;
       }
 
-      const user = auth.currentUser;
-      if(!user){
-        // guest: store locally; when they sign in later, we can migrate
-        localStorage.setItem("optEmail", wantsEmail ? "1":"0");
-        localStorage.setItem("optSMS", wantsSMS ? "1":"0");
-        localStorage.setItem("optEmailVal", emailVal);
-        localStorage.setItem("optPhoneVal", phoneVal);
-        closeOptIn();
-        return;
-      }
-
       try{
-        await setDoc(doc(db,"users",user.uid), {
-          notificationEmail: wantsEmail,
-          notificationSMS: wantsSMS,
-          notifyEmailValue: wantsEmail ? emailVal : null,
-          notifyPhoneValue: wantsSMS ? phoneVal : null,
-          updatedAt: serverTimestamp()
-        }, { merge:true });
+        await saveNotifyPrefs({
+          email: wantsEmail,
+          sms: wantsSMS,
+          emailVal,
+          phoneVal
+        }, auth.currentUser);
+
         closeOptIn();
-      }catch(e){
+      }catch{
         optMsg.textContent = "Could not save preferences.";
       }
     };
 
     // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user)=>{
-      window.__UID = user ? user.uid : null;
-
       if(user){
         statusText.textContent = "Synced";
         authText.textContent = "Account";
@@ -926,9 +872,6 @@
         syncHint.textContent = "Sign in to save to cloud";
         setAvatar("");
       }
-
-      // mandatory terms for BOTH signed & guest
-      await showTermsIfNeeded(user);
     });
 
     loginBtn.onclick = async ()=>{
