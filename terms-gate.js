@@ -55,7 +55,6 @@ async function saveTermsAccepted(user) {
 
 // ---- notification prefs helpers ----
 export async function getNotifyPrefs(user = auth.currentUser) {
-  // signed in: read from users/{uid}
   if (user) {
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
@@ -66,12 +65,9 @@ export async function getNotifyPrefs(user = auth.currentUser) {
         emailVal: (d.notifyEmailValue || "")?.toString?.() || "",
         phoneVal: (d.notifyPhoneValue || "")?.toString?.() || "",
       };
-    } catch {
-      // fall back to local
-    }
+    } catch {}
   }
 
-  // guest/local fallback
   try {
     const raw = localStorage.getItem(LS_PREFS);
     if (!raw) return { email: false, sms: false, emailVal: "", phoneVal: "" };
@@ -95,12 +91,9 @@ export async function saveNotifyPrefs(prefs, user = auth.currentUser) {
     phoneVal: (prefs.phoneVal || "").trim(),
   };
 
-  // always store locally too (so the form pre-fills even if offline)
   localStorage.setItem(LS_PREFS, JSON.stringify(clean));
-
   if (!user) return;
 
-  // store on user doc
   await setDoc(
     doc(db, "users", user.uid),
     {
@@ -115,7 +108,6 @@ export async function saveNotifyPrefs(prefs, user = auth.currentUser) {
 }
 
 export async function prefillSubscribeModal({
-  // these match your index.html IDs
   emailId = "subEmail",
   phoneId = "subPhone",
   optEmailId = "optEmail",
@@ -147,7 +139,6 @@ export function wireTermsGate({
   agreeCheckboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
-  // optional: run after accept (ex: open opt-in modal once)
   onAccepted = null,
 } = {}) {
   const termsModal = document.getElementById(termsModalId);
@@ -187,7 +178,6 @@ export function wireTermsGate({
     }
   });
 
-  // IMPORTANT: run gate for guests AND signed-in
   onAuthStateChanged(auth, async (user) => {
     await showIfNeeded(user);
   });
