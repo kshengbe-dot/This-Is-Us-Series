@@ -3,32 +3,50 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>Dashboard</title>
-
-  <!-- discourage indexing -->
-  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>THIS IS US — Admin</title>
 
   <style>
     :root{
-      --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12); --shadow:0 28px 90px rgba(0,0,0,.55);
-      --glass:rgba(0,0,0,.30); --accent:#7c5cff;
-      --safeTop: env(safe-area-inset-top); --safeBot: env(safe-area-inset-bottom);
+      --bg:#0B1020;
+      --card:#0F1731;
+      --ink:#EAF0FF;
+      --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12);
+      --shadow: 0 28px 90px rgba(0,0,0,.55);
+      --glow: rgba(124,92,255,.45);
+      --accent:#7c5cff;
+      --accent2: rgba(0,255,198,.18);
+      --glass: rgba(0,0,0,.30);
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
     }
     [data-theme="light"]{
-      --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
-      --stroke:rgba(2,6,23,.10); --shadow:0 18px 60px rgba(2,6,23,.10);
+      --bg:#F7F8FB;
+      --card:#FFFFFF;
+      --ink:#0F172A;
+      --muted:#475569;
+      --stroke:rgba(2,6,23,.10);
+      --shadow: 0 18px 60px rgba(2,6,23,.10);
+      --glow: rgba(124,92,255,.18);
+      --accent:#7c5cff;
+      --accent2: rgba(2,6,23,.04);
       --glass: rgba(255,255,255,.78);
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
       margin:0;
-      background: radial-gradient(900px 700px at 20% 10%, rgba(124,92,255,.20), transparent 60%), var(--bg);
       color:var(--ink);
+      background:
+        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
+        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
+        var(--bg);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
+    a{color:inherit;text-decoration:none}
+
     .top{
-      position:sticky; top:0; z-index:10;
+      position:sticky; top:0; z-index:50;
       backdrop-filter: blur(14px);
       background: var(--glass);
       border-bottom:1px solid var(--stroke);
@@ -36,39 +54,87 @@
     .nav{
       max-width:1100px; margin:0 auto;
       padding: calc(10px + var(--safeTop)) 16px 10px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
     }
+    .brand{
+      display:flex; flex-direction:column; gap:2px;
+      letter-spacing:.14em; text-transform:uppercase;
+      font-weight:950;
+      min-width:0;
+    }
+    .brand small{
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:46vw;
+    }
+    .right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width:66vw;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom:2px;
+    }
+    .right::-webkit-scrollbar{height:0}
+
     .pill{
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
+      color:var(--muted);
       padding:9px 12px;
       border-radius:999px;
-      cursor:pointer;
       font-size:12px;
-      color:var(--muted);
-      font-weight:900;
+      cursor:pointer;
       user-select:none;
       display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease;
       white-space:nowrap;
+      flex:0 0 auto;
     }
+    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .pill strong{color:var(--ink)}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px 16px 70px;}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-    @media(max-width:980px){ .grid{grid-template-columns:1fr;} }
+    .dot{font-size:12px; opacity:.9}
 
+    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 90px;}
     .card{
       border:1px solid var(--stroke);
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
       border-radius:22px;
       box-shadow: var(--shadow);
-      padding:16px;
+      position:relative;
       overflow:hidden;
+      padding:16px;
+      margin-top:16px;
     }
-    h1{margin:0 0 10px; font-size:18px; letter-spacing:.10em; text-transform:uppercase}
-    h2{margin:0 0 10px; font-size:14px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted)}
-    .small{color:var(--muted); font-size:13px; line-height:1.45}
-    label{font-size:12px;color:var(--muted);font-weight:900;letter-spacing:.06em;text-transform:uppercase}
-    input, textarea, select{
+    h1{
+      margin:0 0 8px;
+      font-size:22px;
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      font-weight:950;
+    }
+    h2{
+      margin:18px 0 10px;
+      font-size:14px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .small{color:var(--muted); font-size:12px; line-height:1.45}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .grid{display:grid; gap:10px}
+    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+    label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    input, select, textarea{
       width:100%;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.08);
@@ -77,44 +143,124 @@
       color:var(--ink);
       outline:none;
       font-size:14px;
-      font-family: ui-sans-serif, system-ui;
     }
-    textarea{min-height:170px; resize:vertical}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    textarea{min-height:160px; resize:vertical}
     .btn{
       border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
+      background: rgba(255,255,255,.06);
       color:var(--ink);
       padding:10px 12px;
       border-radius:14px;
-      font-weight:950;
+      font-weight:900;
       cursor:pointer;
-      display:inline-flex; align-items:center; gap:8px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .15s ease, background .15s ease;
+      user-select:none;
     }
-    .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
-    .ok{color:rgba(0,255,198,.95); font-weight:950}
-    .bad{color:rgba(255,120,120,.95); font-weight:950}
-    hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
-    code{color:var(--muted)}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
+    hr{
+      border:0;
+      border-top:1px solid var(--stroke);
+      margin:14px 0;
+    }
     .preview{
       border:1px solid var(--stroke);
+      background: rgba(0,0,0,.12);
       border-radius:16px;
       padding:12px;
-      background: rgba(0,0,0,.10);
       overflow:auto;
-      max-height:260px;
-      white-space:pre-wrap;
-      word-break:break-word;
+      max-height:360px;
+    }
+    [data-theme="light"] .preview{ background: rgba(2,6,23,.04); }
+    .hintLine{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .badge{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    [data-theme="light"] .badge{ background: rgba(2,6,23,.06); }
+    .danger{
+      border-color: rgba(255,100,100,.35);
+      background: rgba(255,100,100,.08);
+    }
+
+    /* Auth Modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.60);
+      z-index:100;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .modalCard{
+      width:min(560px, 96vw);
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.96);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 6px 10px;
+    }
+    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+    }
+
+    /* Private gate */
+    .locked{ display:none; }
+    .locked.show{ display:block; }
+    .lockScreen{
+      display:none;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:16px;
+      margin-top:16px;
+    }
+    .lockScreen.show{ display:block; }
+
+    @media (max-width:980px){
+      .row3{grid-template-columns:1fr}
+      .row2{grid-template-columns:1fr}
+      .right{max-width:74vw;}
     }
   </style>
 </head>
+
 <body>
   <div class="top">
     <div class="nav">
-      <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
-      <div class="row">
+      <div class="brand">
+        THIS IS US
+        <small>Creator Dashboard (Private)</small>
+      </div>
+      <div class="right">
+        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+        <div class="pill" id="statusPill">
+          <span class="dot">●</span>
+          <strong id="statusText">Not signed in</strong>
+        </div>
       </div>
     </div>
   </div>
@@ -122,45 +268,59 @@
   <div class="wrap">
     <div class="card">
       <h1>Dashboard</h1>
-      <div class="small">
-        Not linked anywhere. Publishing is locked to your UID in Firestore rules.
-      </div>
+      <div class="small">Not linked anywhere. Publishing is locked to your UID in Firestore rules.</div>
+
       <hr>
+
       <div class="row">
-        <div class="pill">UID: <strong id="uidLine" class="mono">—</strong></div>
-        <div class="pill">Status: <strong id="statusLine">Not signed in</strong></div>
+        <div class="badge">UID: <span class="mono" id="uidLine">—</span></div>
+        <div class="badge">Status: <span id="statusLine">Not signed in</span></div>
       </div>
+
       <div class="small" style="margin-top:10px;">
-        Step: sign in → copy UID → paste UID into Firestore Rules (next steps below).
+        Step: sign in → copy UID → paste UID into Firestore Rules (admin-only publishing).
       </div>
     </div>
 
-    <div class="grid" style="margin-top:14px;">
-      <div class="card">
-        <h2>Publish Chapter (paste text → auto-format)</h2>
+    <div class="lockScreen" id="lockScreen">
+      <h1>Access denied</h1>
+      <div class="small">
+        This dashboard is private. Please sign in with the admin account.
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn primary" id="openAuth2">Sign in</button>
+      </div>
+    </div>
 
-        <div class="row">
-          <div style="flex:1; min-width:220px;">
+    <div class="locked" id="adminApp">
+
+      <div class="card">
+        <h1>Publish Chapter (paste text → auto-format)</h1>
+
+        <div class="row3">
+          <div>
             <label>Book</label>
             <select id="bookId">
               <option value="book1">book1</option>
               <option value="coming">coming</option>
             </select>
           </div>
-          <div style="flex:1; min-width:220px;">
+          <div>
             <label>Chapter #</label>
-            <input id="chapterNumber" type="number" min="1" step="1" placeholder="7">
+            <input id="chapterNumber" type="number" placeholder="99" min="1" />
           </div>
+          <div></div>
         </div>
 
-        <div style="margin-top:10px;">
-          <label>Chapter Title (e.g., Chapter Seven)</label>
-          <input id="chapterTitle" placeholder="Chapter Seven">
-        </div>
-
-        <div style="margin-top:10px;">
-          <label>Chapter Subtitle (e.g., Storm Lines)</label>
-          <input id="chapterSubtitle" placeholder="Storm Lines">
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Chapter Title (e.g., Chapter Seven)</label>
+            <input id="chapterTitle" placeholder="Chapter Ninety-Nine" />
+          </div>
+          <div>
+            <label>Chapter Subtitle (e.g., Storm Lines)</label>
+            <input id="chapterSubtitle" placeholder="Test Drop" />
+          </div>
         </div>
 
         <div style="margin-top:10px;">
@@ -172,68 +332,88 @@ Blank line = new paragraph.
 Write ✦ on its own line for a scene break.
 
 Use **bold** for bold."></textarea>
-          <div class="small" style="margin-top:8px;">
-            Scene break line: <code>✦</code><br/>
-            Bold: <code>**text**</code>
-          </div>
         </div>
 
-        <div class="row" style="margin-top:10px;">
+        <div class="hintLine" style="margin-top:10px;">
+          <div class="small">Scene break line: <span class="mono">✦</span></div>
+          <div class="small">Bold: <span class="mono">**text**</span></div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
           <button class="btn" id="formatBtn">✨ Format</button>
-          <button class="btn primary" id="publishChapter">🚀 Publish</button>
-          <div class="small" id="chapterMsg"></div>
+          <button class="btn primary" id="publishBtn">🚀 Publish</button>
+          <div class="small" id="publishMsg"></div>
         </div>
 
-        <hr>
         <h2>Formatted Preview (auto-generated HTML)</h2>
         <div class="preview mono" id="htmlPreview">—</div>
+
+        <hr>
+        <h2>Manage Chapters (delete mistakes)</h2>
+        <div class="small">This lists published chapters from Firestore. Delete removes it immediately.</div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="refreshChapters">🔄 Refresh List</button>
+        </div>
+        <div class="preview" id="chaptersList" style="margin-top:10px;">—</div>
       </div>
 
       <div class="card">
-        <h2>Announcements</h2>
-        <div>
-          <label>Title</label>
-          <input id="annTitle" placeholder="New chapter is live!">
+        <h1>Announcements</h1>
+        <div class="small">Post a message that your library page can mirror later.</div>
+
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Title</label>
+            <input id="announceTitle" placeholder="New chapter is live!" />
+          </div>
+          <div>
+            <label>Body</label>
+            <input id="announceBody" placeholder="Chapter 7 is out. See you next Friday." />
+          </div>
         </div>
-        <div style="margin-top:10px;">
-          <label>Body</label>
-          <textarea id="annBody" placeholder="Chapter 7 is out. See you next Friday."></textarea>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" id="publishAnnounce">📣 Publish Announcement</button>
+          <div class="small" id="announceMsg"></div>
         </div>
-        <div class="row" style="margin-top:10px;">
-          <button class="btn primary" id="publishAnn">📣 Publish Announcement</button>
-          <div class="small" id="annMsg"></div>
-        </div>
+
+        <hr>
+        <div class="small">Tip: your main library page will show announcements after we wire it in.</div>
       </div>
+
     </div>
   </div>
 
-  <!-- Auth modal -->
-  <div id="modal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.60);z-index:100;padding:16px;">
-    <div style="width:min(560px,96vw);border:1px solid var(--stroke);background:rgba(15,20,40,.96);border-radius:22px;box-shadow:var(--shadow);padding:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 6px 10px;">
-        <h3 style="margin:0;font-size:16px;letter-spacing:.04em">Account</h3>
-        <div class="btn" id="closeModal" style="padding:8px 10px;border-radius:12px;">✕</div>
+  <!-- AUTH MODAL -->
+  <div class="modal" id="modal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Account</h3>
+        <div class="x" id="close">✕</div>
       </div>
 
-      <div style="display:grid;gap:10px;padding:6px;">
-        <div class="row">
-          <div style="flex:1">
+      <div class="grid">
+        <div class="row2">
+          <div>
             <label>Email</label>
             <input id="email" type="email" placeholder="Email">
           </div>
-          <div style="flex:1">
+          <div>
             <label>Password</label>
             <input id="password" type="password" placeholder="Password">
           </div>
         </div>
 
-        <div class="row">
+        <div class="row2">
           <button class="btn primary" id="loginBtn">Sign In</button>
           <button class="btn" id="signupBtn">Create Account</button>
-          <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
         </div>
 
-        <p class="small">Only your UID (set in Firestore rules) can publish.</p>
+        <button class="btn danger" id="logoutBtn" style="display:none;">Sign Out</button>
+
+        <p class="small">
+          This page is private. Publishing is restricted by Firestore rules and your admin UID.
+        </p>
       </div>
     </div>
   </div>
@@ -246,12 +426,20 @@ Use **bold** for bold."></textarea>
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
     import {
-      getFirestore, collection, addDoc, serverTimestamp
+      getFirestore,
+      collection, addDoc, serverTimestamp,
+      getDocs, query, orderBy,
+      deleteDoc, doc,
+      setDoc
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // Theme
+    // ====== CONFIG ======
+    const ADMIN_UID = "He8L60fKude0nLHXQcTAjJohK2k1";
+
+    // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+
     document.getElementById("themeBtn").onclick = ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
@@ -260,19 +448,26 @@ Use **bold** for bold."></textarea>
 
     // Modal
     const modal = document.getElementById("modal");
-    const openAuth = ()=> modal.style.display = "flex";
-    const closeAuth = ()=> modal.style.display = "none";
-    document.getElementById("authBtn").onclick = openAuth;
-    document.getElementById("closeModal").onclick = closeAuth;
-    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeAuth(); });
+    const authBtn  = document.getElementById("authBtn");
+    const close = document.getElementById("close");
+    const openAuth2 = document.getElementById("openAuth2");
+    function openModal(){ modal.classList.add("show"); }
+    function closeModal(){ modal.classList.remove("show"); }
+    authBtn.onclick = openModal;
+    openAuth2.onclick = openModal;
+    close.onclick = closeModal;
+    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
 
+    // Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // UI refs
+    const statusText = document.getElementById("statusText");
+    const authText = document.getElementById("authText");
     const uidLine = document.getElementById("uidLine");
     const statusLine = document.getElementById("statusLine");
-    const authText = document.getElementById("authText");
 
     const email = document.getElementById("email");
     const password = document.getElementById("password");
@@ -280,161 +475,270 @@ Use **bold** for bold."></textarea>
     const signupBtn = document.getElementById("signupBtn");
     const logoutBtn = document.getElementById("logoutBtn");
 
+    const lockScreen = document.getElementById("lockScreen");
+    const adminApp = document.getElementById("adminApp");
+
     let UID = null;
 
-    loginBtn.onclick = async ()=>{
-      try{ await signInWithEmailAndPassword(auth, email.value.trim(), password.value); closeAuth(); }
-      catch(e){ alert(e.message); }
-    };
-    signupBtn.onclick = async ()=>{
-      try{ await createUserWithEmailAndPassword(auth, email.value.trim(), password.value); closeAuth(); }
-      catch(e){ alert(e.message); }
-    };
-    logoutBtn.onclick = async ()=>{ await signOut(auth); closeAuth(); };
-
-    onAuthStateChanged(auth, (user)=>{
-      UID = user ? user.uid : null;
-      uidLine.textContent = UID || "—";
-      statusLine.textContent = user ? "Signed in" : "Not signed in";
-      authText.textContent = user ? "Account" : "Sign in";
-      logoutBtn.style.display = user ? "inline-flex" : "none";
-    });
-
-    // -------- Text → HTML formatter --------
-    function esc(s){
-      return String(s||"").replace(/[&<>"']/g, m=>({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[m]));
-    }
-    function boldify(s){
-      return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    }
-
-    function formatChapterToHtml({chapterTitle, chapterSubtitle, text}){
-      const lines = String(text||"").replace(/\r\n/g,"\n").split("\n");
-
-      const blocks = [];
-      let buf = [];
-      const flush = ()=>{
-        const p = buf.join(" ").replace(/\s+/g," ").trim();
-        if(p) blocks.push({type:"p", text:p});
-        buf = [];
-      };
-
-      for(const raw of lines){
-        const line = raw.trim();
-        if(line === "✦"){
-          flush();
-          blocks.push({type:"break"});
-          continue;
-        }
-        if(line === ""){
-          flush();
-          continue;
-        }
-        buf.push(line);
+    function applyGate(){
+      const ok = (UID && UID === ADMIN_UID);
+      if(ok){
+        lockScreen.classList.remove("show");
+        adminApp.classList.add("show");
+      }else{
+        adminApp.classList.remove("show");
+        lockScreen.classList.add("show");
       }
-      flush();
-
-      let firstPUsed = false;
-
-      let html = "";
-      html += `<section class="chapter-title">\n`;
-      html += `  <h3>${esc(chapterTitle || "Chapter")}</h3>\n`;
-      html += `  <h4>${esc(chapterSubtitle || "")}</h4>\n`;
-      html += `</section>\n\n`;
-
-      for(const b of blocks){
-        if(b.type === "break"){
-          html += `<div class="scene-break">✦</div>\n\n`;
-          continue;
-        }
-        const content = boldify(esc(b.text));
-        if(!firstPUsed){
-          html += `<p class="dropcap">${content}</p>\n\n`;
-          firstPUsed = true;
-        }else{
-          html += `<p>${content}</p>\n\n`;
-        }
-      }
-
-      return html.trim();
     }
 
-    // UI
+    // ====== Formatter ======
+    const bookIdEl = document.getElementById("bookId");
+    const chapterNumberEl = document.getElementById("chapterNumber");
+    const chapterTitleEl = document.getElementById("chapterTitle");
+    const chapterSubtitleEl = document.getElementById("chapterSubtitle");
+    const chapterTextEl = document.getElementById("chapterText");
     const htmlPreview = document.getElementById("htmlPreview");
-    const chapterMsg = document.getElementById("chapterMsg");
+    const publishMsg = document.getElementById("publishMsg");
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function inlineBold(text){
+      // **bold** -> <strong>bold</strong>
+      return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function formatChapterToHTML({title, subtitle, text}){
+      const safeTitle = escapeHtml(title || "").trim();
+      const safeSub = escapeHtml(subtitle || "").trim();
+
+      const lines = String(text || "").replaceAll("\r\n","\n").split("\n");
+      const blocks = [];
+      let para = [];
+
+      function flushPara(){
+        const raw = para.join(" ").replace(/\s+/g," ").trim();
+        para = [];
+        if(!raw) return;
+        const withBold = inlineBold(escapeHtml(raw)).replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
+        // dropcap only for first paragraph in this chapter block
+        const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
+        blocks.push(`<p${cls}>${withBold}</p>`);
+      }
+
+      // header
+      blocks.push(
+        `<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`
+      );
+
+      for(const line of lines){
+        const t = line.trim();
+        if(t === "✦"){
+          flushPara();
+          blocks.push(`<div class="scene-break">✦</div>`);
+          continue;
+        }
+        if(t === ""){
+          flushPara();
+          continue;
+        }
+        para.push(t);
+      }
+      flushPara();
+
+      return blocks.join("\n\n");
+    }
 
     document.getElementById("formatBtn").onclick = ()=>{
-      const chapterTitle = document.getElementById("chapterTitle").value.trim();
-      const chapterSubtitle = document.getElementById("chapterSubtitle").value.trim();
-      const text = document.getElementById("chapterText").value;
-      const html = formatChapterToHtml({ chapterTitle, chapterSubtitle, text });
-      htmlPreview.textContent = html || "—";
-      chapterMsg.textContent = "Preview updated.";
+      const html = formatChapterToHTML({
+        title: chapterTitleEl.value,
+        subtitle: chapterSubtitleEl.value,
+        text: chapterTextEl.value
+      });
+      htmlPreview.textContent = html;
     };
 
-    // Publish Chapter → Firestore: books/{bookId}/chapters
-    document.getElementById("publishChapter").onclick = async ()=>{
-      chapterMsg.textContent = "";
-      if(!UID){ chapterMsg.innerHTML = '<span class="bad">Sign in first.</span>'; return; }
+    // ====== Publish Chapter ======
+    document.getElementById("publishBtn").onclick = async ()=>{
+      publishMsg.textContent = "";
+      if(!UID){ alert("Sign in first."); return; }
+      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
 
-      const bookId = document.getElementById("bookId").value.trim();
-      const chapterNumber = Number(document.getElementById("chapterNumber").value);
-      const chapterTitle = document.getElementById("chapterTitle").value.trim();
-      const chapterSubtitle = document.getElementById("chapterSubtitle").value.trim();
-      const text = document.getElementById("chapterText").value;
-
-      if(!bookId || !Number.isFinite(chapterNumber) || chapterNumber < 1){
-        chapterMsg.innerHTML = '<span class="bad">Fill Book and Chapter #.</span>';
-        return;
-      }
-      if(!chapterTitle || !chapterSubtitle || !text.trim()){
-        chapterMsg.innerHTML = '<span class="bad">Fill Title, Subtitle, and Text.</span>';
+      const bookId = bookIdEl.value.trim() || "book1";
+      const chapterNumber = Number(chapterNumberEl.value || 0);
+      if(!Number.isFinite(chapterNumber) || chapterNumber <= 0){
+        alert("Please enter a valid Chapter # (1+).");
         return;
       }
 
-      const html = formatChapterToHtml({ chapterTitle, chapterSubtitle, text });
-      htmlPreview.textContent = html || "—";
+      const title = (chapterTitleEl.value || "").trim();
+      const subtitle = (chapterSubtitleEl.value || "").trim();
+      const text = (chapterTextEl.value || "").trim();
+
+      if(!title || !subtitle || !text){
+        alert("Please fill Title, Subtitle, and Text.");
+        return;
+      }
+
+      const html = formatChapterToHTML({ title, subtitle, text });
+      htmlPreview.textContent = html;
 
       try{
         await addDoc(collection(db, "books", bookId, "chapters"), {
           chapterNumber,
-          title: `${chapterTitle} — ${chapterSubtitle}`,
+          title,
+          subtitle,
           html,
-          publishedAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          createdBy: UID
         });
-        chapterMsg.innerHTML = '<span class="ok">Published!</span>';
-        document.getElementById("chapterText").value = "";
+
+        // also touch a small book meta doc (optional)
+        await setDoc(doc(db, "books", bookId), { updatedAt: serverTimestamp() }, { merge:true });
+
+        publishMsg.textContent = "Published!";
+        await renderChapters();
       }catch(e){
-        chapterMsg.innerHTML = `<span class="bad">Denied or error:</span> ${e.message}`;
+        alert("Denied or error: " + e.message);
       }
     };
 
-    // Publish Announcement → Firestore: announcements
-    const annMsg = document.getElementById("annMsg");
-    document.getElementById("publishAnn").onclick = async ()=>{
-      annMsg.textContent = "";
-      if(!UID){ annMsg.innerHTML = '<span class="bad">Sign in first.</span>'; return; }
+    // ====== Announcements ======
+    const announceTitle = document.getElementById("announceTitle");
+    const announceBody = document.getElementById("announceBody");
+    const announceMsg = document.getElementById("announceMsg");
 
-      const title = document.getElementById("annTitle").value.trim();
-      const body  = document.getElementById("annBody").value.trim();
-      if(!title || !body){
-        annMsg.innerHTML = '<span class="bad">Title + body required.</span>';
+    document.getElementById("publishAnnounce").onclick = async ()=>{
+      announceMsg.textContent = "";
+      if(!UID){ alert("Sign in first."); return; }
+      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
+
+      const t = (announceTitle.value || "").trim();
+      const b = (announceBody.value || "").trim();
+      if(!t || !b){
+        alert("Please fill Title and Body.");
         return;
       }
 
       try{
         await addDoc(collection(db, "announcements"), {
-          title, body,
-          createdAt: serverTimestamp()
+          title: t,
+          body: b,
+          createdAt: serverTimestamp(),
+          createdBy: UID
         });
-        annMsg.innerHTML = '<span class="ok">Announcement published!</span>';
-        document.getElementById("annTitle").value = "";
-        document.getElementById("annBody").value = "";
+        announceMsg.textContent = "Published!";
       }catch(e){
-        annMsg.innerHTML = `<span class="bad">Denied or error:</span> ${e.message}`;
+        alert("Denied or error: " + e.message);
       }
+    };
+
+    // ====== Manage chapters (list + delete) ======
+    const chaptersList = document.getElementById("chaptersList");
+    const refreshChapters = document.getElementById("refreshChapters");
+
+    async function renderChapters(){
+      const bookId = bookIdEl.value.trim() || "book1";
+      chaptersList.textContent = "Loading…";
+
+      try{
+        const q = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","asc"));
+        const snap = await getDocs(q);
+
+        if(snap.empty){
+          chaptersList.textContent = "No chapters published yet.";
+          return;
+        }
+
+        const rows = [];
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          const num = (d.chapterNumber ?? "?");
+          const title = (d.title || "(no title)");
+          const sub = (d.subtitle || "");
+          rows.push(`
+            <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--stroke);">
+              <div style="min-width:0">
+                <div style="font-weight:950">#${num} — ${escapeHtml(title)}</div>
+                <div class="small">${escapeHtml(sub)}</div>
+                <div class="small mono">docId: ${s.id}</div>
+              </div>
+              <button class="btn danger" data-del="${s.id}">🗑 Delete</button>
+            </div>
+          `);
+        });
+
+        chaptersList.innerHTML = rows.join("");
+
+        chaptersList.querySelectorAll("[data-del]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            if(!UID){ alert("Sign in first."); return; }
+            if(UID !== ADMIN_UID){ alert("Access denied."); return; }
+
+            const id = btn.getAttribute("data-del");
+            const ok = confirm("Delete this chapter permanently?");
+            if(!ok) return;
+
+            try{
+              await deleteDoc(doc(db, "books", bookId, "chapters", id));
+              await renderChapters();
+              alert("Deleted.");
+            }catch(e){
+              alert("Denied or error: " + e.message);
+            }
+          });
+        });
+
+      }catch(e){
+        chaptersList.textContent = "Error: " + e.message;
+      }
+    }
+
+    refreshChapters.addEventListener("click", renderChapters);
+    bookIdEl.addEventListener("change", renderChapters);
+
+    // ====== Auth ======
+    onAuthStateChanged(auth, (user)=>{
+      UID = user ? user.uid : null;
+
+      uidLine.textContent = UID || "—";
+      statusLine.textContent = user ? "Signed in" : "Not signed in";
+      statusText.textContent = user ? "Signed in" : "Not signed in";
+      authText.textContent = user ? "Account" : "Sign in";
+      logoutBtn.style.display = user ? "inline-flex" : "none";
+
+      applyGate();
+
+      if(user && UID === ADMIN_UID){
+        renderChapters();
+      }else{
+        chaptersList.textContent = "—";
+      }
+    });
+
+    loginBtn.onclick = async ()=>{
+      try{
+        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    signupBtn.onclick = async ()=>{
+      try{
+        await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    logoutBtn.onclick = async ()=>{
+      await signOut(auth);
+      closeModal();
     };
   </script>
 </body>
