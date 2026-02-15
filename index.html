@@ -45,7 +45,6 @@
     }
     a{color:inherit;text-decoration:none}
 
-    /* Top Bar */
     .top{
       position:sticky; top:0; z-index:50;
       backdrop-filter: blur(14px);
@@ -74,8 +73,6 @@
       text-overflow:ellipsis;
       max-width:46vw;
     }
-
-    /* Pills */
     .right{
       display:flex;
       align-items:center;
@@ -105,7 +102,6 @@
     .pill strong{color:var(--ink)}
     .dot{font-size:12px; opacity:.9}
 
-    /* Layout */
     .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
     .hero{
       display:grid;
@@ -166,7 +162,6 @@
       border-color: rgba(124,92,255,.55);
       background: rgba(124,92,255,.16);
     }
-
     .heroSide{ padding:16px; min-height:260px; display:grid; gap:10px; }
     .stat{
       border:1px solid var(--stroke);
@@ -190,7 +185,6 @@
       color:var(--muted);
     }
 
-    /* Shelf */
     .shelf{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -230,7 +224,6 @@
       display:block;
     }
     .bookCard:hover .cover img{ transform: scale(1.06); }
-
     .meta{ padding:12px 12px 14px; }
     .meta .name{ font-weight:950; margin:0; font-size:16px; }
     .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
@@ -267,18 +260,18 @@
     }
     .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
-    /* Auth Modal */
+    /* Auth/Terms/News modal */
     .modal{
       position:fixed; inset:0;
       display:none;
       align-items:center; justify-content:center;
       background: rgba(0,0,0,.60);
-      z-index:100;
+      z-index:1000;
       padding:16px;
     }
     .modal.show{display:flex}
     .modalCard{
-      width:min(560px, 96vw);
+      width:min(860px, 96vw);
       border:1px solid var(--stroke);
       background: rgba(15,20,40,.96);
       border-radius:22px;
@@ -310,7 +303,6 @@
     }
     .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
     .note{color:var(--muted); font-size:12px; line-height:1.45}
-
     .mini{
       display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
       margin-top:14px; position:relative;
@@ -327,65 +319,30 @@
     .who{font-weight:950}
     .small{color:var(--muted); font-size:12px}
 
-    /* NEW: Announcement / Subscribe Modal */
-    .panelTabs{
-      display:flex; gap:10px; flex-wrap:wrap;
-      padding:6px;
-    }
-    .tabBtn{
+    .termsBox{
       border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--ink);
-      padding:9px 12px;
-      border-radius:999px;
-      font-weight:950;
-      cursor:pointer;
-      display:inline-flex; align-items:center; gap:8px;
-      transition: transform .15s ease, background .15s ease;
-    }
-    .tabBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .tabBtn.active{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .panelBody{
-      padding:10px 6px 6px;
-    }
-    .box{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
       border-radius:18px;
       padding:12px;
+      background: rgba(255,255,255,.06);
+      max-height: 56vh;
+      overflow:auto;
     }
-    .boxTitle{
-      font:950 14px ui-sans-serif,system-ui;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-      color:var(--muted);
-      margin:0 0 10px;
+    .checkRow{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 6px 0;
     }
-    .subGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap:10px;
-      align-items:center;
-    }
-    .subMsg{
-      margin-top:10px;
-      font:800 12px ui-sans-serif,system-ui;
-      opacity:.85;
-    }
+    .checkRow input{ width:auto; margin-top:3px; }
 
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
       h1{font-size:38px}
-      .subGrid{grid-template-columns:1fr}
     }
     @media (max-width:520px){
       .shelf{grid-template-columns:1fr}
       h1{font-size:34px}
       .right{max-width:72vw;}
+      .row2{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -399,11 +356,8 @@
       </div>
       <div class="right">
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
-
-        <!-- NEW -->
         <div class="pill" id="openNewsBtn">📣 <strong>Announcements</strong></div>
         <div class="pill" id="openSubBtn">🔔 <strong>Subscribe</strong></div>
-
         <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
         <div class="pill" id="statusPill">
@@ -441,11 +395,14 @@
       </div>
 
       <div class="card heroSide">
-        <div class="stat"><div class="k">Reading</div><div class="v">Filled Pages + Flip</div></div>
+        <div class="stat"><div class="k">Readers</div><div class="v"><span id="readerCount">—</span> Total</div></div>
         <div class="stat"><div class="k">Theme</div><div class="v">Light / Dark</div></div>
         <div class="stat"><div class="k">Cloud</div><div class="v">Optional Firebase Sync</div></div>
       </div>
     </div>
+
+    <!-- AUTO ANNOUNCEMENT BANNER (NO TAB REQUIRED) -->
+    <div id="announceBanner"></div>
 
     <div class="sectionTitle">
       <h2>Library</h2>
@@ -525,7 +482,7 @@
 
   <!-- AUTH MODAL -->
   <div class="modal" id="modal">
-    <div class="modalCard">
+    <div class="modalCard" style="width:min(560px, 96vw);">
       <div class="modalHead">
         <h3>Account</h3>
         <div class="x" id="close">✕</div>
@@ -557,43 +514,150 @@
     </div>
   </div>
 
-  <!-- NEW: ANNOUNCEMENTS + SUBSCRIBE MODAL -->
+  <!-- NEWS/SUBSCRIBE MODAL -->
   <div class="modal" id="newsModal">
-    <div class="modalCard" style="width:min(860px, 96vw);">
+    <div class="modalCard">
       <div class="modalHead">
         <h3>Updates</h3>
         <div class="x" id="newsClose">✕</div>
       </div>
 
-      <div class="panelTabs">
-        <button class="tabBtn active" id="tabAnnouncements">📣 Announcements</button>
-        <button class="tabBtn" id="tabSubscribe">🔔 Notifications</button>
+      <div class="grid">
+        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Announcements</div>
+        <div id="announcementsMount">Loading…</div>
+
+        <hr style="border:0;border-top:1px solid var(--stroke);margin:10px 0;">
+
+        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Subscribe</div>
+
+        <form id="subscribeForm" class="grid">
+          <div class="row2">
+            <input id="subEmail" type="email" placeholder="Email (required if Email is checked)">
+            <input id="subPhone" type="tel" placeholder="Phone (required if SMS is checked)">
+          </div>
+
+          <div class="row2">
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+              <input type="checkbox" id="optEmail"> Email notifications
+            </label>
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+              <input type="checkbox" id="optSMS"> SMS notifications
+            </label>
+          </div>
+
+          <button class="btn primary" type="submit">Subscribe</button>
+          <div class="note" style="margin-top:-2px">
+            SMS may be subject to carrier rates. You can opt out anytime by contacting the site owner.
+          </div>
+          <div class="note" id="subMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMS MODAL (MANDATORY) -->
+  <div class="modal" id="termsModal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Terms & Conditions</h3>
+        <div></div>
       </div>
 
-      <div class="panelBody">
-        <div id="panelAnnouncements" class="box">
-          <div class="boxTitle">Announcements</div>
-          <div id="announcementsMount">Loading…</div>
+      <div class="termsBox" id="termsText">
+        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
+        <p class="note" style="margin-top:10px">
+          Last updated: February 15, 2026
+        </p>
+
+        <p><strong>1) Acceptance</strong><br>
+          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
+        </p>
+
+        <p><strong>2) Eligibility</strong><br>
+          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
+        </p>
+
+        <p><strong>3) Content & Reader Experience</strong><br>
+          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
+        </p>
+
+        <p><strong>4) Accounts</strong><br>
+          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
+        </p>
+
+        <p><strong>5) User Submissions</strong><br>
+          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
+        </p>
+
+        <p><strong>6) Notifications (Optional)</strong><br>
+          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
+        </p>
+
+        <p><strong>7) Privacy</strong><br>
+          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
+        </p>
+
+        <p><strong>8) Availability & Changes</strong><br>
+          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
+        </p>
+
+        <p><strong>9) Disclaimer</strong><br>
+          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
+        </p>
+
+        <p><strong>10) Limitation of Liability</strong><br>
+          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
+        </p>
+
+        <p><strong>11) Contact</strong><br>
+          For questions, removal requests, or opt-out requests, contact the site owner.
+        </p>
+      </div>
+
+      <div class="checkRow">
+        <input type="checkbox" id="agreeTerms">
+        <div class="note">
+          I have read and agree to the Terms & Conditions.
+        </div>
+      </div>
+
+      <div class="grid" style="padding-top:10px">
+        <button class="btn primary" id="acceptTermsBtn">Accept & Continue</button>
+        <div class="note" id="termsMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION OPT-IN (AFTER TERMS) -->
+  <div class="modal" id="optInModal">
+    <div class="modalCard" style="width:min(560px, 96vw);">
+      <div class="modalHead">
+        <h3>Notifications (Optional)</h3>
+        <div class="x" id="optClose">✕</div>
+      </div>
+
+      <div class="grid">
+        <div class="note">
+          Would you like to receive new chapter announcements?
+          <br>SMS may be subject to carrier rates.
         </div>
 
-        <div id="panelSubscribe" class="box" style="display:none;margin-top:12px;">
-          <div class="boxTitle">Get notified</div>
-
-          <form id="subscribeForm" class="subGrid">
-            <input id="subEmail" type="email" placeholder="Email (optional)">
-            <input id="subPhone" type="tel" placeholder="Phone (optional)">
-            <button class="btn primary" type="submit">Subscribe</button>
-          </form>
-
-          <div class="subMsg" id="subMsg"></div>
-
-          <hr style="border:0;border-top:1px solid var(--stroke);margin:14px 0;">
-
-          <div class="note">
-            ✅ Default setup stores your email/phone in Firestore.<br>
-            ❗ To auto-send email/SMS, you’ll add a Firebase backend trigger (next steps below).
-          </div>
+        <div class="row2">
+          <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+            <input type="checkbox" id="optInEmail"> Email
+          </label>
+          <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+            <input type="checkbox" id="optInSMS"> SMS
+          </label>
         </div>
+
+        <div class="row2">
+          <input id="optEmailVal" type="email" placeholder="Email (if Email checked)">
+          <input id="optPhoneVal" type="tel" placeholder="Phone (if SMS checked)">
+        </div>
+
+        <button class="btn primary" id="saveOptBtn">Save Preferences</button>
+        <div class="note" id="optMsg"></div>
       </div>
     </div>
   </div>
@@ -609,8 +673,15 @@
       getFirestore, doc, setDoc, getDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // NEW: announcements + subscribe helper
-    import { renderAnnouncements, setupSubscribeForm } from "./public-feed.js";
+    import {
+      renderAnnouncementBanner,
+      renderAnnouncementsList,
+      setupSubscribeForm,
+      renderReaderCount
+    } from "./public-feed.js";
+
+    // ===== TERMS VERSION =====
+    const TERMS_VERSION = 1;
 
     // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -634,7 +705,7 @@
 
     document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
 
-    // Auth Modal
+    // ===== AUTH MODAL =====
     const modal = document.getElementById("modal");
     const openAuth = document.getElementById("openAuth");
     const authBtn  = document.getElementById("authBtn");
@@ -646,43 +717,24 @@
     close.onclick = closeModal;
     modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
 
-    // NEW: News/Subscribe Modal
+    // ===== NEWS MODAL =====
     const newsModal = document.getElementById("newsModal");
     const newsClose = document.getElementById("newsClose");
-    const openNewsBtn = document.getElementById("openNewsBtn");
-    const openSubBtn  = document.getElementById("openSubBtn");
-
-    function openNews(tab="announcements"){
+    document.getElementById("openNewsBtn").onclick = ()=>{
       newsModal.classList.add("show");
-      setTab(tab);
-      // refresh announcements whenever opened
-      renderAnnouncements({ mountId: "announcementsMount", max: 5 });
-    }
-    function closeNews(){ newsModal.classList.remove("show"); }
-    openNewsBtn.onclick = ()=> openNews("announcements");
-    openSubBtn.onclick  = ()=> openNews("subscribe");
-    newsClose.onclick = closeNews;
-    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) closeNews(); });
+      renderAnnouncementsList({ mountId:"announcementsMount", max: 6 });
+    };
+    document.getElementById("openSubBtn").onclick = ()=>{
+      newsModal.classList.add("show");
+      renderAnnouncementsList({ mountId:"announcementsMount", max: 6 });
+    };
+    newsClose.onclick = ()=> newsModal.classList.remove("show");
+    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) newsModal.classList.remove("show"); });
 
-    const tabAnnouncements = document.getElementById("tabAnnouncements");
-    const tabSubscribe = document.getElementById("tabSubscribe");
-    const panelAnnouncements = document.getElementById("panelAnnouncements");
-    const panelSubscribe = document.getElementById("panelSubscribe");
+    // Subscribe form (requires sign-in)
+    setupSubscribeForm({ bookId:"book1" });
 
-    function setTab(which){
-      const isA = which === "announcements";
-      tabAnnouncements.classList.toggle("active", isA);
-      tabSubscribe.classList.toggle("active", !isA);
-      panelAnnouncements.style.display = isA ? "block" : "none";
-      panelSubscribe.style.display = isA ? "none" : "block";
-    }
-    tabAnnouncements.onclick = ()=> setTab("announcements");
-    tabSubscribe.onclick = ()=> setTab("subscribe");
-
-    // Wire subscribe form (stores subscribers in Firestore)
-    setupSubscribeForm({ bookId: "book1" });
-
-    // Profile UI
+    // ===== PROFILE UI =====
     const statusText = document.getElementById("statusText");
     const authText = document.getElementById("authText");
     const whoLine = document.getElementById("whoLine");
@@ -717,6 +769,137 @@
       }
     }
 
+    // ===== TERMS + OPT-IN FLOW =====
+    const termsModal = document.getElementById("termsModal");
+    const agreeTerms = document.getElementById("agreeTerms");
+    const acceptTermsBtn = document.getElementById("acceptTermsBtn");
+    const termsMsg = document.getElementById("termsMsg");
+
+    const optInModal = document.getElementById("optInModal");
+    const optClose = document.getElementById("optClose");
+    const optInEmail = document.getElementById("optInEmail");
+    const optInSMS = document.getElementById("optInSMS");
+    const optEmailVal = document.getElementById("optEmailVal");
+    const optPhoneVal = document.getElementById("optPhoneVal");
+    const saveOptBtn = document.getElementById("saveOptBtn");
+    const optMsg = document.getElementById("optMsg");
+
+    function openTermsHard(){
+      termsModal.classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+    function closeTerms(){
+      termsModal.classList.remove("show");
+      document.body.style.overflow = "";
+    }
+    function openOptIn(){
+      optInModal.classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+    function closeOptIn(){
+      optInModal.classList.remove("show");
+      document.body.style.overflow = "";
+    }
+    optClose.onclick = closeOptIn;
+    optInModal.addEventListener("click",(e)=>{ if(e.target === optInModal) closeOptIn(); });
+
+    async function hasAcceptedTerms(user){
+      // Signed-in: check Firestore
+      if(user){
+        try{
+          const snap = await getDoc(doc(db,"users",user.uid));
+          const d = snap.exists() ? snap.data() : {};
+          return Number(d.acceptedTermsVersion || 0) >= TERMS_VERSION;
+        }catch{
+          return false;
+        }
+      }
+      // Guest: localStorage
+      const v = Number(localStorage.getItem("termsAcceptedVersion") || "0");
+      return v >= TERMS_VERSION;
+    }
+
+    async function saveTermsAccepted(user){
+      if(user){
+        await setDoc(doc(db,"users",user.uid), {
+          acceptedTermsVersion: TERMS_VERSION,
+          acceptedTermsAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+      }else{
+        localStorage.setItem("termsAcceptedVersion", String(TERMS_VERSION));
+        localStorage.setItem("termsAcceptedAt", String(Date.now()));
+      }
+    }
+
+    async function showTermsIfNeeded(user){
+      const ok = await hasAcceptedTerms(user);
+      if(!ok) openTermsHard();
+      else closeTerms();
+    }
+
+    acceptTermsBtn.onclick = async ()=>{
+      termsMsg.textContent = "";
+      if(!agreeTerms.checked){
+        termsMsg.textContent = "Please check the agreement box to continue.";
+        return;
+      }
+      try{
+        await saveTermsAccepted(auth.currentUser);
+        closeTerms();
+        // After terms: show optional opt-in once
+        const optDone = localStorage.getItem("optInPrompted") === "1";
+        if(!optDone){
+          localStorage.setItem("optInPrompted","1");
+          openOptIn();
+        }
+      }catch(e){
+        termsMsg.textContent = "Could not save. Please try again.";
+      }
+    };
+
+    saveOptBtn.onclick = async ()=>{
+      optMsg.textContent = "";
+      const wantsEmail = !!optInEmail.checked;
+      const wantsSMS = !!optInSMS.checked;
+      const emailVal = (optEmailVal.value || "").trim();
+      const phoneVal = (optPhoneVal.value || "").trim();
+
+      if(wantsEmail && !emailVal){
+        optMsg.textContent = "Enter your email (or turn off Email).";
+        return;
+      }
+      if(wantsSMS && !phoneVal){
+        optMsg.textContent = "Enter your phone (or turn off SMS).";
+        return;
+      }
+
+      const user = auth.currentUser;
+      if(!user){
+        // guest: store locally; when they sign in later, we can migrate
+        localStorage.setItem("optEmail", wantsEmail ? "1":"0");
+        localStorage.setItem("optSMS", wantsSMS ? "1":"0");
+        localStorage.setItem("optEmailVal", emailVal);
+        localStorage.setItem("optPhoneVal", phoneVal);
+        closeOptIn();
+        return;
+      }
+
+      try{
+        await setDoc(doc(db,"users",user.uid), {
+          notificationEmail: wantsEmail,
+          notificationSMS: wantsSMS,
+          notifyEmailValue: wantsEmail ? emailVal : null,
+          notifyPhoneValue: wantsSMS ? phoneVal : null,
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+        closeOptIn();
+      }catch(e){
+        optMsg.textContent = "Could not save preferences.";
+      }
+    };
+
+    // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user)=>{
       window.__UID = user ? user.uid : null;
 
@@ -743,6 +926,9 @@
         syncHint.textContent = "Sign in to save to cloud";
         setAvatar("");
       }
+
+      // mandatory terms for BOTH signed & guest
+      await showTermsIfNeeded(user);
     });
 
     loginBtn.onclick = async ()=>{
@@ -768,6 +954,10 @@
       await signOut(auth);
       closeModal();
     };
+
+    // ===== PUBLIC FEEDS =====
+    renderAnnouncementBanner({ mountId:"announceBanner", max: 6 });
+    renderReaderCount({ bookId:"book1", mountId:"readerCount" });
   </script>
 </body>
 </html>
