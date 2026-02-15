@@ -75,7 +75,7 @@
       max-width:46vw;
     }
 
-    /* Pills: scroll on mobile instead of wrapping everywhere */
+    /* Pills */
     .right{
       display:flex;
       align-items:center;
@@ -327,10 +327,60 @@
     .who{font-weight:950}
     .small{color:var(--muted); font-size:12px}
 
+    /* NEW: Announcement / Subscribe Modal */
+    .panelTabs{
+      display:flex; gap:10px; flex-wrap:wrap;
+      padding:6px;
+    }
+    .tabBtn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:9px 12px;
+      border-radius:999px;
+      font-weight:950;
+      cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .tabBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .tabBtn.active{
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
+    .panelBody{
+      padding:10px 6px 6px;
+    }
+    .box{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      border-radius:18px;
+      padding:12px;
+    }
+    .boxTitle{
+      font:950 14px ui-sans-serif,system-ui;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin:0 0 10px;
+    }
+    .subGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+    .subMsg{
+      margin-top:10px;
+      font:800 12px ui-sans-serif,system-ui;
+      opacity:.85;
+    }
+
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
       h1{font-size:38px}
+      .subGrid{grid-template-columns:1fr}
     }
     @media (max-width:520px){
       .shelf{grid-template-columns:1fr}
@@ -349,6 +399,11 @@
       </div>
       <div class="right">
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+
+        <!-- NEW -->
+        <div class="pill" id="openNewsBtn">📣 <strong>Announcements</strong></div>
+        <div class="pill" id="openSubBtn">🔔 <strong>Subscribe</strong></div>
+
         <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
         <div class="pill" id="statusPill">
@@ -502,6 +557,47 @@
     </div>
   </div>
 
+  <!-- NEW: ANNOUNCEMENTS + SUBSCRIBE MODAL -->
+  <div class="modal" id="newsModal">
+    <div class="modalCard" style="width:min(860px, 96vw);">
+      <div class="modalHead">
+        <h3>Updates</h3>
+        <div class="x" id="newsClose">✕</div>
+      </div>
+
+      <div class="panelTabs">
+        <button class="tabBtn active" id="tabAnnouncements">📣 Announcements</button>
+        <button class="tabBtn" id="tabSubscribe">🔔 Notifications</button>
+      </div>
+
+      <div class="panelBody">
+        <div id="panelAnnouncements" class="box">
+          <div class="boxTitle">Announcements</div>
+          <div id="announcementsMount">Loading…</div>
+        </div>
+
+        <div id="panelSubscribe" class="box" style="display:none;margin-top:12px;">
+          <div class="boxTitle">Get notified</div>
+
+          <form id="subscribeForm" class="subGrid">
+            <input id="subEmail" type="email" placeholder="Email (optional)">
+            <input id="subPhone" type="tel" placeholder="Phone (optional)">
+            <button class="btn primary" type="submit">Subscribe</button>
+          </form>
+
+          <div class="subMsg" id="subMsg"></div>
+
+          <hr style="border:0;border-top:1px solid var(--stroke);margin:14px 0;">
+
+          <div class="note">
+            ✅ Default setup stores your email/phone in Firestore.<br>
+            ❗ To auto-send email/SMS, you’ll add a Firebase backend trigger (next steps below).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -513,15 +609,22 @@
       getFirestore, doc, setDoc, getDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+    // NEW: announcements + subscribe helper
+    import { renderAnnouncements, setupSubscribeForm } from "./public-feed.js";
+
     // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     document.getElementById("themeBtn").onclick = async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
-      // also save to cloud when signed-in (below)
       if(window.__UID){
         try{
           await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
@@ -531,7 +634,7 @@
 
     document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
 
-    // Modal
+    // Auth Modal
     const modal = document.getElementById("modal");
     const openAuth = document.getElementById("openAuth");
     const authBtn  = document.getElementById("authBtn");
@@ -543,11 +646,43 @@
     close.onclick = closeModal;
     modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
 
-    // Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    // NEW: News/Subscribe Modal
+    const newsModal = document.getElementById("newsModal");
+    const newsClose = document.getElementById("newsClose");
+    const openNewsBtn = document.getElementById("openNewsBtn");
+    const openSubBtn  = document.getElementById("openSubBtn");
 
+    function openNews(tab="announcements"){
+      newsModal.classList.add("show");
+      setTab(tab);
+      // refresh announcements whenever opened
+      renderAnnouncements({ mountId: "announcementsMount", max: 5 });
+    }
+    function closeNews(){ newsModal.classList.remove("show"); }
+    openNewsBtn.onclick = ()=> openNews("announcements");
+    openSubBtn.onclick  = ()=> openNews("subscribe");
+    newsClose.onclick = closeNews;
+    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) closeNews(); });
+
+    const tabAnnouncements = document.getElementById("tabAnnouncements");
+    const tabSubscribe = document.getElementById("tabSubscribe");
+    const panelAnnouncements = document.getElementById("panelAnnouncements");
+    const panelSubscribe = document.getElementById("panelSubscribe");
+
+    function setTab(which){
+      const isA = which === "announcements";
+      tabAnnouncements.classList.toggle("active", isA);
+      tabSubscribe.classList.toggle("active", !isA);
+      panelAnnouncements.style.display = isA ? "block" : "none";
+      panelSubscribe.style.display = isA ? "none" : "block";
+    }
+    tabAnnouncements.onclick = ()=> setTab("announcements");
+    tabSubscribe.onclick = ()=> setTab("subscribe");
+
+    // Wire subscribe form (stores subscribers in Firestore)
+    setupSubscribeForm({ bookId: "book1" });
+
+    // Profile UI
     const statusText = document.getElementById("statusText");
     const authText = document.getElementById("authText");
     const whoLine = document.getElementById("whoLine");
