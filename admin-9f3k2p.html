@@ -599,9 +599,7 @@ Use **bold** for bold."></textarea>
           createdBy: UID
         });
 
-        // also touch a small book meta doc (optional)
-        await setDoc(doc(db, "books", bookId), { updatedAt: serverTimestamp() }, { merge:true });
-
+        
         publishMsg.textContent = "Published!";
         await renderChapters();
       }catch(e){
