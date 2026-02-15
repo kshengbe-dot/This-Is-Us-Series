@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Dashboard</title>
+
+  <!-- discourage indexing -->
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+
+  <style>
+    :root{
+      --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12); --shadow:0 28px 90px rgba(0,0,0,.55);
+      --glass:rgba(0,0,0,.30); --accent:#7c5cff;
+      --safeTop: env(safe-area-inset-top); --safeBot: env(safe-area-inset-bottom);
+    }
+    [data-theme="light"]{
+      --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
+      --stroke:rgba(2,6,23,.10); --shadow:0 18px 60px rgba(2,6,23,.10);
+      --glass: rgba(255,255,255,.78);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background: radial-gradient(900px 700px at 20% 10%, rgba(124,92,255,.20), transparent 60%), var(--bg);
+      color:var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    .top{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(14px);
+      background: var(--glass);
+      border-bottom:1px solid var(--stroke);
+    }
+    .nav{
+      max-width:1100px; margin:0 auto;
+      padding: calc(10px + var(--safeTop)) 16px 10px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .pill{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      padding:9px 12px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:900;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:8px;
+      white-space:nowrap;
+    }
+    .pill strong{color:var(--ink)}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px 16px 70px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:980px){ .grid{grid-template-columns:1fr;} }
+
+    .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:16px;
+      overflow:hidden;
+    }
+    h1{margin:0 0 10px; font-size:18px; letter-spacing:.10em; text-transform:uppercase}
+    h2{margin:0 0 10px; font-size:14px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted)}
+    .small{color:var(--muted); font-size:13px; line-height:1.45}
+    label{font-size:12px;color:var(--muted);font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    input, textarea, select{
+      width:100%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:14px;
+      color:var(--ink);
+      outline:none;
+      font-size:14px;
+      font-family: ui-sans-serif, system-ui;
+    }
+    textarea{min-height:170px; resize:vertical}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:950;
+      cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
+    .ok{color:rgba(0,255,198,.95); font-weight:950}
+    .bad{color:rgba(255,120,120,.95); font-weight:950}
+    hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
+    code{color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .preview{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
+      overflow:auto;
+      max-height:260px;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="nav">
+      <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+      <div class="row">
+        <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Dashboard</h1>
+      <div class="small">
+        Not linked anywhere. Publishing is locked to your UID in Firestore rules.
+      </div>
+      <hr>
+      <div class="row">
+        <div class="pill">UID: <strong id="uidLine" class="mono">—</strong></div>
+        <div class="pill">Status: <strong id="statusLine">Not signed in</strong></div>
+      </div>
+      <div class="small" style="margin-top:10px;">
+        Step: sign in → copy UID → paste UID into Firestore Rules (next steps below).
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:14px;">
+      <div class="card">
+        <h2>Publish Chapter (paste text → auto-format)</h2>
+
+        <div class="row">
+          <div style="flex:1; min-width:220px;">
+            <label>Book</label>
+            <select id="bookId">
+              <option value="book1">book1</option>
+              <option value="coming">coming</option>
+            </select>
+          </div>
+          <div style="flex:1; min-width:220px;">
+            <label>Chapter #</label>
+            <input id="chapterNumber" type="number" min="1" step="1" placeholder="7">
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Chapter Title (e.g., Chapter Seven)</label>
+          <input id="chapterTitle" placeholder="Chapter Seven">
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Chapter Subtitle (e.g., Storm Lines)</label>
+          <input id="chapterSubtitle" placeholder="Storm Lines">
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Paste Chapter Text (plain text)</label>
+          <textarea id="chapterText" placeholder="Paste here.
+
+Blank line = new paragraph.
+
+Write ✦ on its own line for a scene break.
+
+Use **bold** for bold."></textarea>
+          <div class="small" style="margin-top:8px;">
+            Scene break line: <code>✦</code><br/>
+            Bold: <code>**text**</code>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="formatBtn">✨ Format</button>
+          <button class="btn primary" id="publishChapter">🚀 Publish</button>
+          <div class="small" id="chapterMsg"></div>
+        </div>
+
+        <hr>
+        <h2>Formatted Preview (auto-generated HTML)</h2>
+        <div class="preview mono" id="htmlPreview">—</div>
+      </div>
+
+      <div class="card">
+        <h2>Announcements</h2>
+        <div>
+          <label>Title</label>
+          <input id="annTitle" placeholder="New chapter is live!">
+        </div>
+        <div style="margin-top:10px;">
+          <label>Body</label>
+          <textarea id="annBody" placeholder="Chapter 7 is out. See you next Friday."></textarea>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="publishAnn">📣 Publish Announcement</button>
+          <div class="small" id="annMsg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth modal -->
+  <div id="modal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.60);z-index:100;padding:16px;">
+    <div style="width:min(560px,96vw);border:1px solid var(--stroke);background:rgba(15,20,40,.96);border-radius:22px;box-shadow:var(--shadow);padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 6px 10px;">
+        <h3 style="margin:0;font-size:16px;letter-spacing:.04em">Account</h3>
+        <div class="btn" id="closeModal" style="padding:8px 10px;border-radius:12px;">✕</div>
+      </div>
+
+      <div style="display:grid;gap:10px;padding:6px;">
+        <div class="row">
+          <div style="flex:1">
+            <label>Email</label>
+            <input id="email" type="email" placeholder="Email">
+          </div>
+          <div style="flex:1">
+            <label>Password</label>
+            <input id="password" type="password" placeholder="Password">
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn primary" id="loginBtn">Sign In</button>
+          <button class="btn" id="signupBtn">Create Account</button>
+          <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
+        </div>
+
+        <p class="small">Only your UID (set in Firestore rules) can publish.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { firebaseConfig } from "./firebase-config.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import {
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    // Theme
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+    document.getElementById("themeBtn").onclick = ()=>{
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+    };
+
+    // Modal
+    const modal = document.getElementById("modal");
+    const openAuth = ()=> modal.style.display = "flex";
+    const closeAuth = ()=> modal.style.display = "none";
+    document.getElementById("authBtn").onclick = openAuth;
+    document.getElementById("closeModal").onclick = closeAuth;
+    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeAuth(); });
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const uidLine = document.getElementById("uidLine");
+    const statusLine = document.getElementById("statusLine");
+    const authText = document.getElementById("authText");
+
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let UID = null;
+
+    loginBtn.onclick = async ()=>{
+      try{ await signInWithEmailAndPassword(auth, email.value.trim(), password.value); closeAuth(); }
+      catch(e){ alert(e.message); }
+    };
+    signupBtn.onclick = async ()=>{
+      try{ await createUserWithEmailAndPassword(auth, email.value.trim(), password.value); closeAuth(); }
+      catch(e){ alert(e.message); }
+    };
+    logoutBtn.onclick = async ()=>{ await signOut(auth); closeAuth(); };
+
+    onAuthStateChanged(auth, (user)=>{
+      UID = user ? user.uid : null;
+      uidLine.textContent = UID || "—";
+      statusLine.textContent = user ? "Signed in" : "Not signed in";
+      authText.textContent = user ? "Account" : "Sign in";
+      logoutBtn.style.display = user ? "inline-flex" : "none";
+    });
+
+    // -------- Text → HTML formatter --------
+    function esc(s){
+      return String(s||"").replace(/[&<>"']/g, m=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+    function boldify(s){
+      return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function formatChapterToHtml({chapterTitle, chapterSubtitle, text}){
+      const lines = String(text||"").replace(/\r\n/g,"\n").split("\n");
+
+      const blocks = [];
+      let buf = [];
+      const flush = ()=>{
+        const p = buf.join(" ").replace(/\s+/g," ").trim();
+        if(p) blocks.push({type:"p", text:p});
+        buf = [];
+      };
+
+      for(const raw of lines){
+        const line = raw.trim();
+        if(line === "✦"){
+          flush();
+          blocks.push({type:"break"});
+          continue;
+        }
+        if(line === ""){
+          flush();
+          continue;
+        }
+        buf.push(line);
+      }
+      flush();
+
+      let firstPUsed = false;
+
+      let html = "";
+      html += `<section class="chapter-title">\n`;
+      html += `  <h3>${esc(chapterTitle || "Chapter")}</h3>\n`;
+      html += `  <h4>${esc(chapterSubtitle || "")}</h4>\n`;
+      html += `</section>\n\n`;
+
+      for(const b of blocks){
+        if(b.type === "break"){
+          html += `<div class="scene-break">✦</div>\n\n`;
+          continue;
+        }
+        const content = boldify(esc(b.text));
+        if(!firstPUsed){
+          html += `<p class="dropcap">${content}</p>\n\n`;
+          firstPUsed = true;
+        }else{
+          html += `<p>${content}</p>\n\n`;
+        }
+      }
+
+      return html.trim();
+    }
+
+    // UI
+    const htmlPreview = document.getElementById("htmlPreview");
+    const chapterMsg = document.getElementById("chapterMsg");
+
+    document.getElementById("formatBtn").onclick = ()=>{
+      const chapterTitle = document.getElementById("chapterTitle").value.trim();
+      const chapterSubtitle = document.getElementById("chapterSubtitle").value.trim();
+      const text = document.getElementById("chapterText").value;
+      const html = formatChapterToHtml({ chapterTitle, chapterSubtitle, text });
+      htmlPreview.textContent = html || "—";
+      chapterMsg.textContent = "Preview updated.";
+    };
+
+    // Publish Chapter → Firestore: books/{bookId}/chapters
+    document.getElementById("publishChapter").onclick = async ()=>{
+      chapterMsg.textContent = "";
+      if(!UID){ chapterMsg.innerHTML = '<span class="bad">Sign in first.</span>'; return; }
+
+      const bookId = document.getElementById("bookId").value.trim();
+      const chapterNumber = Number(document.getElementById("chapterNumber").value);
+      const chapterTitle = document.getElementById("chapterTitle").value.trim();
+      const chapterSubtitle = document.getElementById("chapterSubtitle").value.trim();
+      const text = document.getElementById("chapterText").value;
+
+      if(!bookId || !Number.isFinite(chapterNumber) || chapterNumber < 1){
+        chapterMsg.innerHTML = '<span class="bad">Fill Book and Chapter #.</span>';
+        return;
+      }
+      if(!chapterTitle || !chapterSubtitle || !text.trim()){
+        chapterMsg.innerHTML = '<span class="bad">Fill Title, Subtitle, and Text.</span>';
+        return;
+      }
+
+      const html = formatChapterToHtml({ chapterTitle, chapterSubtitle, text });
+      htmlPreview.textContent = html || "—";
+
+      try{
+        await addDoc(collection(db, "books", bookId, "chapters"), {
+          chapterNumber,
+          title: `${chapterTitle} — ${chapterSubtitle}`,
+          html,
+          publishedAt: serverTimestamp()
+        });
+        chapterMsg.innerHTML = '<span class="ok">Published!</span>';
+        document.getElementById("chapterText").value = "";
+      }catch(e){
+        chapterMsg.innerHTML = `<span class="bad">Denied or error:</span> ${e.message}`;
+      }
+    };
+
+    // Publish Announcement → Firestore: announcements
+    const annMsg = document.getElementById("annMsg");
+    document.getElementById("publishAnn").onclick = async ()=>{
+      annMsg.textContent = "";
+      if(!UID){ annMsg.innerHTML = '<span class="bad">Sign in first.</span>'; return; }
+
+      const title = document.getElementById("annTitle").value.trim();
+      const body  = document.getElementById("annBody").value.trim();
+      if(!title || !body){
+        annMsg.innerHTML = '<span class="bad">Title + body required.</span>';
+        return;
+      }
+
+      try{
+        await addDoc(collection(db, "announcements"), {
+          title, body,
+          createdAt: serverTimestamp()
+        });
+        annMsg.innerHTML = '<span class="ok">Announcement published!</span>';
+        document.getElementById("annTitle").value = "";
+        document.getElementById("annBody").value = "";
+      }catch(e){
+        annMsg.innerHTML = `<span class="bad">Denied or error:</span> ${e.message}`;
+      }
+    };
+  </script>
+</body>
+</html>
