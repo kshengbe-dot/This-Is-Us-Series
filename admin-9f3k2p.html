@@ -429,8 +429,7 @@ Use **bold** for bold."></textarea>
       getFirestore,
       collection, addDoc, serverTimestamp,
       getDocs, query, orderBy,
-      deleteDoc, doc,
-      setDoc
+      deleteDoc, doc
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     // ====== CONFIG ======
@@ -510,7 +509,6 @@ Use **bold** for bold."></textarea>
     }
 
     function inlineBold(text){
-      // **bold** -> <strong>bold</strong>
       return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     }
 
@@ -526,13 +524,15 @@ Use **bold** for bold."></textarea>
         const raw = para.join(" ").replace(/\s+/g," ").trim();
         para = [];
         if(!raw) return;
-        const withBold = inlineBold(escapeHtml(raw)).replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
-        // dropcap only for first paragraph in this chapter block
+
+        const withBold = inlineBold(escapeHtml(raw))
+          .replaceAll("&lt;strong&gt;","<strong>")
+          .replaceAll("&lt;/strong&gt;","</strong>");
+
         const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
         blocks.push(`<p${cls}>${withBold}</p>`);
       }
 
-      // header
       blocks.push(
         `<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`
       );
@@ -598,8 +598,6 @@ Use **bold** for bold."></textarea>
           createdAt: serverTimestamp(),
           createdBy: UID
         });
-
-        
         publishMsg.textContent = "Published!";
         await renderChapters();
       }catch(e){
