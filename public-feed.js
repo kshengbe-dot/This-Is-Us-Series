@@ -40,7 +40,6 @@ export async function renderAnnouncementBanner({
 
     const now = Date.now();
 
-    // pick first active
     let active = null;
     snap.forEach(d => {
       if (active) return;
@@ -71,9 +70,7 @@ export async function renderAnnouncementBanner({
       </div>
     `;
     mount.style.display = "block";
-  } catch {
-    // fail quietly
-  }
+  } catch {}
 }
 
 // optional: modal list
@@ -143,7 +140,6 @@ export function setupSubscribeForm({
     e.preventDefault();
     if (msgEl) msgEl.textContent = "";
 
-    // Require account (your requirement)
     const user = auth.currentUser;
     if (!user) {
       if (msgEl) msgEl.textContent = "Please sign in (or create an account) to subscribe.";
@@ -174,7 +170,6 @@ export function setupSubscribeForm({
     }
 
     try {
-      // store in subscribers (admin can view)
       await addDoc(collection(db, "subscribers"), {
         uid: user.uid,
         email: wantsEmail ? email : null,
@@ -187,7 +182,6 @@ export function setupSubscribeForm({
         source: location.pathname
       });
 
-      // also store on user profile
       await setDoc(doc(db, "users", user.uid), {
         notificationEmail: wantsEmail,
         notificationSMS: wantsSMS,
@@ -207,7 +201,6 @@ export function setupSubscribeForm({
 
 // ------------------------ STATS: TOTAL READERS (PUBLIC) ------------------------
 export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
-  // Only once per device per book
   const key = `readerCounted:${bookId}`;
   if (localStorage.getItem(key) === "1") return;
 
@@ -217,9 +210,7 @@ export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
       updatedAt: serverTimestamp()
     }, { merge: true });
     localStorage.setItem(key, "1");
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
