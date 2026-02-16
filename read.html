@@ -113,6 +113,8 @@
       height:100%;
       padding: var(--padT) var(--padX) var(--padB);
       overflow:hidden;
+      /* important for stable measurement */
+      contain: content;
     }
 
     .inner h1,.inner h2,.inner h3,.inner h4{
@@ -129,6 +131,8 @@
       margin:0 0 14px;
       font-size:16px;
       color:var(--ink);
+      overflow-wrap:anywhere;
+      word-break:normal;
     }
     .muted{color:var(--muted)}
 
@@ -165,6 +169,7 @@
       padding: var(--padT) var(--padX) var(--padB);
       height:100%;
       overflow:hidden;
+      contain: content;
     }
     .flip .back{ transform: rotateY(180deg); }
 
@@ -708,11 +713,13 @@
       window.scrollTo(0, __scrollY);
     }
 
+    // Terms gate
     import { wireTermsGate } from "./terms-gate.js";
-    // IMPORTANT: our terms gate uses these callbacks so the modal doesn't glitch on iPhone
+    // (extra args are safe even if terms-gate ignores them)
     wireTermsGate({ lockScroll, unlockScroll });
 
-    import { bumpBookOpen, bumpBookRead } from "./public-feed.js";
+    // ✅ Reader counting (matches fixed public-feed.js + admin paths)
+    import { bumpReaderCountOnce } from "./public-feed.js";
 
     import {
       renderComments,
@@ -783,8 +790,15 @@
     const db = getFirestore(app);
     let UID = null;
 
-    // Count open (once per device handled in public-feed.js)
-    bumpBookOpen({ bookId }).catch(()=>{});
+    // ✅ Prevent double counting if guest then later signs in
+    const countKey = `readerCounted:${bookId}`;
+    async function countReaderOnce(uidOrNull){
+      if(localStorage.getItem(countKey) === "1") return;
+      try{
+        await bumpReaderCountOnce({ bookId, uid: uidOrNull || null });
+        localStorage.setItem(countKey, "1");
+      }catch{}
+    }
 
     // progress
     const progressKeyLocal = `progress:${bookId}`;
@@ -831,6 +845,9 @@
           ? "Signed in — you can post comments and rate."
           : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
       }
+
+      // ✅ Count reader once (after auth resolves)
+      await countReaderOnce(UID);
 
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
@@ -903,7 +920,7 @@
     }
 
     function escapeHtml(str){
-      return String(str)
+      return String(str ?? "")
         .replaceAll("&","&amp;")
         .replaceAll("<","&lt;")
         .replaceAll(">","&gt;")
@@ -929,15 +946,14 @@
 
       measureHost.innerHTML = "";
       measureHost.appendChild(meas);
-      return { meas, pageVisible, innerVisible };
+      return { meas, pageVisible };
     }
 
-    function getAvailableTextHeight(pageEl, innerEl){
-      const pageH = Math.max(240, pageEl.getBoundingClientRect().height);
-      const cs = getComputedStyle(innerEl);
-      const padTop = parseFloat(cs.paddingTop) || 0;
-      const padBot = parseFloat(cs.paddingBottom) || 0;
-      return Math.max(140, Math.floor(pageH - padTop - padBot - 2));
+    // ✅ FIX: measure against full page inner height (padding included),
+    // so we don't subtract padding twice (this is what caused overflow / missing words).
+    function getMaxMeasureHeight(pageEl){
+      const h = Math.max(240, pageEl.getBoundingClientRect().height);
+      return Math.max(180, Math.floor(h - 2)); // 2px safety
     }
 
     function paginate(html){
@@ -952,8 +968,8 @@
         return false;
       });
 
-      const { meas, pageVisible, innerVisible } = buildMeasurer();
-      const maxH = getAvailableTextHeight(pageVisible, innerVisible);
+      const { meas, pageVisible } = buildMeasurer();
+      const maxH = getMaxMeasureHeight(pageVisible);
 
       const pages = [];
       let pageHTML = "";
@@ -973,7 +989,7 @@
 
       function splitParagraphNode(pNode){
         const cls = pNode.getAttribute("class");
-        const text = (pNode.innerText || pNode.textContent || "").trim();
+        const text = (pNode.textContent || "").trim();
         const words = text.split(/\s+/).filter(Boolean);
 
         let buf = "";
@@ -1147,27 +1163,17 @@
 
     function next(){
       if(isMobile()){
-        if(i+1 <= PAGES.length-1){
-          animateFlip(i+1);
-          bumpBookRead({ bookId, by: 1 }).catch(()=>{});
-        }
+        if(i+1 <= PAGES.length-1) animateFlip(i+1);
       }else{
-        if(i+2 <= PAGES.length-1){
-          animateFlip(i+2);
-          bumpBookRead({ bookId, by: 1 }).catch(()=>{});
-        }
+        if(i+2 <= PAGES.length-1) animateFlip(i+2);
       }
     }
 
     function prev(){
       if(isMobile()){
-        if(i-1 >= 0){
-          animateFlip(i-1);
-        }
+        if(i-1 >= 0) animateFlip(i-1);
       }else{
-        if(i-2 >= 0){
-          animateFlip(i-2);
-        }
+        if(i-2 >= 0) animateFlip(i-2);
       }
     }
 
@@ -1233,7 +1239,6 @@
 
       document.getElementById("guideMount").innerHTML = guidelinesHTML();
 
-      // Always load comments first (so deep-link works)
       await renderComments({ bookId, mountId:"commentsList", max: 60 });
 
       renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
@@ -1246,7 +1251,6 @@
 
       if(scrollToCommentId){
         setTab("commentsTab");
-        // FIX: reader-community renders id="comment-<id>"
         const el = document.getElementById(`comment-${scrollToCommentId}`);
         if(el){
           el.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -1316,7 +1320,7 @@
           BOOK_HTML = BOOK_HTML + "\n\n" + cloud;
         }
       }catch(e){
-        BOOK_HTML = `<p class="muted">${String(e)}</p>`;
+        BOOK_HTML = `<p class="muted">${escapeHtml(String(e))}</p>`;
       }
 
       requestAnimationFrame(()=>requestAnimationFrame(()=> paginateAndRender(true)));
@@ -1327,8 +1331,7 @@
         t=setTimeout(()=>paginateAndRender(true), 160);
       });
 
-      // Deep link support from library carousel:
-      // read.html?book=book1&open=community&comment=<commentId>
+      // Deep link support:
       if(deepOpen === "community"){
         setTimeout(()=>{
           openCommunity({ scrollToCommentId: deepCommentId || "" }).catch(()=>{});
