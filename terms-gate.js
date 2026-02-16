@@ -16,8 +16,7 @@ export function wireTermsGate({
   modalId = "termsModal",
   checkboxId = "agreeTerms",
   btnId = "acceptTermsBtn",
-  msgId = "termsMsg",
-  allowEscClose = false // keep false if you want it strictly mandatory
+  msgId = "termsMsg"
 } = {}) {
   const modal = document.getElementById(modalId);
   const box = document.getElementById(checkboxId);
@@ -26,13 +25,14 @@ export function wireTermsGate({
 
   if (!modal || !btn || !box) return;
 
-  // ✅ prevent duplicate wiring
+  // ✅ prevent duplicate wiring if file imported twice
   if (btn.dataset.wired === "1") return;
   btn.dataset.wired = "1";
 
   const show = () => {
     modal.classList.add("show");
     document.body.style.overflow = "hidden";
+    // reset checkbox each time so it’s intentional
     box.checked = false;
     if (msg) msg.textContent = "";
   };
@@ -74,13 +74,13 @@ export function wireTermsGate({
   }
 
   async function run(uid) {
-    // ✅ device already accepted
+    // device already accepted
     if (localAccepted()) {
       hide();
       return;
     }
 
-    // ✅ if signed-in accepted in cloud, sync local
+    // signed-in accepted in cloud
     if (uid) {
       const ok = await cloudAccepted(uid);
       if (ok) {
@@ -100,24 +100,18 @@ export function wireTermsGate({
       if (msg) msg.textContent = "Please check the box first.";
       return;
     }
+
     setLocalAccepted();
     const uid = auth.currentUser?.uid || null;
     if (uid) await setCloudAccepted(uid);
     hide();
   });
 
-  // ✅ show immediately for guests (prevents “flash” delay)
+  // ✅ run immediately (helps guest mode)
   run(auth.currentUser?.uid || null);
 
-  // ✅ then run again after auth resolves (so signed-in users don’t get nagged)
+  // run again after auth resolves
   onAuthStateChanged(auth, (user) => {
     run(user?.uid || null);
   });
-
-  // optional ESC close (I left OFF by default)
-  if (allowEscClose) {
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") hide();
-    });
-  }
 }
