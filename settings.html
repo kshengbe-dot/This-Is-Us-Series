@@ -166,7 +166,7 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
     </div>
   </div>
 
-  <!-- TERMS MODAL (MANDATORY) -->
+  <!-- TERMS MODAL -->
   <div class="modal" id="termsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -177,50 +177,17 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
       <div class="termsBox" id="termsText">
         <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
         <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
-
-        <p><strong>1) Acceptance</strong><br>
-          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
-        </p>
-
-        <p><strong>2) Eligibility</strong><br>
-          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
-        </p>
-
-        <p><strong>3) Content & Reader Experience</strong><br>
-          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
-        </p>
-
-        <p><strong>4) Accounts</strong><br>
-          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
-        </p>
-
-        <p><strong>5) User Submissions</strong><br>
-          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
-        </p>
-
-        <p><strong>6) Notifications (Optional)</strong><br>
-          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees.
-        </p>
-
-        <p><strong>7) Privacy</strong><br>
-          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details.
-        </p>
-
-        <p><strong>8) Availability & Changes</strong><br>
-          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
-        </p>
-
-        <p><strong>9) Disclaimer</strong><br>
-          The Site is provided “as is” without warranties of any kind.
-        </p>
-
-        <p><strong>10) Limitation of Liability</strong><br>
-          To the maximum extent permitted by law, the owner will not be liable for indirect damages arising from your use of the Site.
-        </p>
-
-        <p><strong>11) Contact</strong><br>
-          For questions or opt-out requests, contact the site owner.
-        </p>
+        <p><strong>1) Acceptance</strong><br>By accessing or using THIS IS US (the “Site”), you agree to these Terms.</p>
+        <p><strong>2) Eligibility</strong><br>You represent that you are able to form a legally binding agreement.</p>
+        <p><strong>3) Content</strong><br>Personal use only. No redistribution without permission.</p>
+        <p><strong>4) Accounts</strong><br>You are responsible for keeping your login credentials secure.</p>
+        <p><strong>5) Submissions</strong><br>No illegal, harmful, abusive, or infringing content.</p>
+        <p><strong>6) Notifications</strong><br>Opt in to Email/SMS updates. Carrier fees may apply.</p>
+        <p><strong>7) Privacy</strong><br>May store email, progress, notification contact details.</p>
+        <p><strong>8) Changes</strong><br>Features may change without notice.</p>
+        <p><strong>9) Disclaimer</strong><br>Provided “as is”.</p>
+        <p><strong>10) Liability</strong><br>No indirect damages to the maximum extent allowed by law.</p>
+        <p><strong>11) Contact</strong><br>Contact the site owner.</p>
       </div>
 
       <div class="checkRow">
@@ -237,21 +204,20 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
 
 <script type="module">
   import { firebaseConfig } from "./firebase-config.js";
-  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-  // ✅ shared terms gate
   import { wireTermsGate } from "./terms-gate.js";
   wireTermsGate();
 
-  // Theme
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-  document.getElementById("backBtn").onclick = ()=> location.href="./";
+  // ✅ ensure it always goes to the library file
+  document.getElementById("backBtn").onclick = ()=> location.href="index.html";
 
-  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
