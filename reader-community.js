@@ -1,4 +1,4 @@
-// reader-community.js
+// reader-community.js (DROP-IN REPLACEMENT)
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {
@@ -6,7 +6,8 @@ import {
   collection, addDoc, serverTimestamp,
   getDocs, query, orderBy, limit,
   doc, setDoc, getDoc, updateDoc, deleteDoc,
-  Timestamp, where
+  Timestamp,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
@@ -54,7 +55,6 @@ function getGuestToken(){
   const k = "guestCommentToken";
   let v = localStorage.getItem(k);
   if(v && v.length >= 16) return v;
-  // crypto random
   const arr = new Uint8Array(16);
   crypto.getRandomValues(arr);
   v = Array.from(arr).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -71,19 +71,16 @@ function ratingsDoc(bookId, uid){ return doc(db, "books", bookId, "ratings", uid
 function achDoc(bookId, uid){ return doc(db, "users", uid, "achievements", bookId); }
 function reactDoc(bookId, commentId, uid){ return doc(db, "books", bookId, "comments", commentId, "reactions", uid); }
 
-// --------- COMMENTS + REPLIES RENDER ----------
+// --------- EDIT WINDOW ----------
 function canEdit(d){
   const now = Date.now();
   const editableUntil = d.editableUntil?.toMillis ? d.editableUntil.toMillis() : 0;
   if(editableUntil && now > editableUntil) return false;
 
-  // admin always can
   if(isAdmin()) return true;
 
-  // signed-in owner
   if(UID && d.uid && d.uid === UID) return true;
 
-  // guest token owner
   const tok = getGuestToken();
   if(!UID && d.token && d.token === tok) return true;
 
@@ -103,11 +100,63 @@ function starLine(n){
   return "";
 }
 
+// --------- REACTIONS (COUNTS + TOGGLE) ----------
+async function toggleReaction({ bookId, commentId, kind }){
+  if(!UID){ toast("Sign in to react."); return; }
+  if(kind !== "like" && kind !== "love") return;
+
+  const cRef = commentDoc(bookId, commentId);
+  const rRef = reactDoc(bookId, commentId, UID);
+
+  try{
+    await runTransaction(db, async (tx)=>{
+      const [cSnap, rSnap] = await Promise.all([tx.get(cRef), tx.get(rRef)]);
+      if(!cSnap.exists()) throw new Error("Missing comment");
+
+      const c = cSnap.data() || {};
+      const likeCount = Number(c.reactLikeCount || 0);
+      const loveCount = Number(c.reactLoveCount || 0);
+
+      const prevKind = rSnap.exists() ? (rSnap.data()?.kind || null) : null;
+
+      let nextLike = likeCount;
+      let nextLove = loveCount;
+
+      // If same kind -> remove reaction (toggle off)
+      if(prevKind === kind){
+        tx.delete(rRef);
+        if(kind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(kind === "love") nextLove = Math.max(0, nextLove - 1);
+      }else{
+        // switching kinds or adding new
+        tx.set(rRef, { uid: UID, kind, updatedAt: serverTimestamp() }, { merge:true });
+
+        // remove previous
+        if(prevKind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(prevKind === "love") nextLove = Math.max(0, nextLove - 1);
+
+        // add new
+        if(kind === "like") nextLike += 1;
+        if(kind === "love") nextLove += 1;
+      }
+
+      tx.update(cRef, { reactLikeCount: nextLike, reactLoveCount: nextLove, reactedAt: serverTimestamp() });
+    });
+
+    toast(kind === "like" ? "👍 Updated" : "❤️ Updated");
+    trackEngagement({ bookId, event: "react" }).catch(()=>{});
+  }catch{
+    toast("Could not react.");
+  }
+}
+
+// --------- REPLIES RENDER ----------
 async function renderReplies({ bookId, commentId }){
   try{
-    const qy = query(repliesCol(bookId, commentId), orderBy("createdAt","asc"), limit(50));
+    const qy = query(repliesCol(bookId, commentId), orderBy("createdAt","asc"), limit(60));
     const snap = await getDocs(qy);
     if(snap.empty) return "";
+
     const out = [];
     snap.forEach(s=>{
       const d = s.data() || {};
@@ -124,21 +173,35 @@ async function renderReplies({ bookId, commentId }){
             <div style="opacity:.72;font-size:12px">${editOk && mins ? `editable ${mins}m` : ""}</div>
           </div>
           <div style="opacity:.92;margin-top:6px;line-height:1.55">${txt}</div>
+
           ${editOk ? `
             <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-              <button data-edit-reply="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Edit</button>
-              <button data-del-reply="${s.id}" style="border:1px solid rgba(255,120,120,.25);background:rgba(255,120,120,.08);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Delete</button>
+              <button
+                data-edit-reply="1"
+                data-comment="${commentId}"
+                data-reply="${s.id}"
+                style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+              >Edit</button>
+
+              <button
+                data-del-reply="1"
+                data-comment="${commentId}"
+                data-reply="${s.id}"
+                style="border:1px solid rgba(255,120,120,.25);background:rgba(255,120,120,.08);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+              >Delete</button>
             </div>
           `:``}
         </div>
       `);
     });
+
     return out.join("");
   }catch{
     return "";
   }
 }
 
+// --------- COMMENTS RENDER ----------
 export async function renderComments({ bookId="book1", mountId="commentsList", max=30 } = {}){
   const mount = document.getElementById(mountId);
   if(!mount) return;
@@ -162,6 +225,9 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       const mins = timeLeftMinutes(d);
       const editOk = canEdit(d);
 
+      const likeCount = Number(d.reactLikeCount || 0);
+      const loveCount = Number(d.reactLoveCount || 0);
+
       const replyHtml = await renderReplies({ bookId, commentId: s.id });
 
       rows.push(`
@@ -174,11 +240,22 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
           <div style="opacity:.92;margin-top:6px;line-height:1.6">${text}</div>
 
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button data-reply="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Reply</button>
+            <button
+              data-reply="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >Reply</button>
 
-            <button data-like="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">👍 Like</button>
+            <button
+              data-react="like"
+              data-comment="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >👍 Like <span style="opacity:.8">(${likeCount})</span></button>
 
-            <button data-love="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">❤️ Love</button>
+            <button
+              data-react="love"
+              data-comment="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >❤️ Love <span style="opacity:.8">(${loveCount})</span></button>
 
             <span style="opacity:.72;font-size:12px;margin-left:auto">${editOk && mins ? `editable ${mins}m` : ""}</span>
           </div>
@@ -207,7 +284,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
 
     mount.innerHTML = rows.join("");
 
-    // Wire buttons (reply/edit/delete/reactions)
+    // Reply open/close
     mount.querySelectorAll("[data-reply]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const id = btn.getAttribute("data-reply");
@@ -224,6 +301,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
+    // Reply send
     mount.querySelectorAll("[data-replysend]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const id = btn.getAttribute("data-replysend");
@@ -256,6 +334,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
+    // Comment edit
     mount.querySelectorAll("[data-edit]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const id = btn.getAttribute("data-edit");
@@ -276,6 +355,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
+    // Comment delete
     mount.querySelectorAll("[data-del]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const id = btn.getAttribute("data-del");
@@ -293,43 +373,62 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
+    // Reply edit
     mount.querySelectorAll("[data-edit-reply]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
-        const rid = btn.getAttribute("data-edit-reply");
-        // need commentId: find closest card by DOM search
-        const card = btn.closest("[data-replybox]")?.parentElement;
-        // easier: store commentId on button? (skip complexity here)
-        // We'll re-render after admin uses dashboard for heavy moderation.
-        alert("Reply editing is supported, but easiest from Admin dashboard. (We keep this lightweight.)");
+        const commentId = btn.getAttribute("data-comment");
+        const replyId = btn.getAttribute("data-reply");
+        if(!commentId || !replyId) return;
+
+        const snap = await getDoc(replyDoc(bookId, commentId, replyId));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d)){ alert("Edit window ended (1 hour)."); return; }
+
+        const next = prompt("Edit your reply:", d.text || "");
+        if(next == null) return;
+        const val = next.trim();
+        if(!val){ alert("Cannot set empty."); return; }
+
+        try{
+          await updateDoc(replyDoc(bookId, commentId, replyId), { text: val, editedAt: serverTimestamp() });
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
       });
     });
 
+    // Reply delete
     mount.querySelectorAll("[data-del-reply]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
-        alert("Reply deleting is supported, but easiest from Admin dashboard. (We keep this lightweight.)");
+        const commentId = btn.getAttribute("data-comment");
+        const replyId = btn.getAttribute("data-reply");
+        if(!commentId || !replyId) return;
+
+        const snap = await getDoc(replyDoc(bookId, commentId, replyId));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d) && !isAdmin()){ alert("You can’t delete this anymore."); return; }
+        if(!confirm("Delete this reply?")) return;
+
+        try{
+          await deleteDoc(replyDoc(bookId, commentId, replyId));
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
       });
     });
 
-    mount.querySelectorAll("[data-like],[data-love]").forEach(btn=>{
+    // Reactions toggle (with counts)
+    mount.querySelectorAll("[data-react]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
-        const commentId = btn.getAttribute("data-like") || btn.getAttribute("data-love");
-        const kind = btn.getAttribute("data-like") ? "like" : "love";
-
-        if(!UID){
-          toast("Sign in to react.");
-          return;
-        }
-        try{
-          await setDoc(reactDoc(bookId, commentId, UID), {
-            uid: UID,
-            kind,
-            updatedAt: serverTimestamp()
-          }, { merge:true });
-          toast(kind === "like" ? "Liked ✅" : "Loved ✅");
-          trackEngagement({ bookId, event: "react" }).catch(()=>{});
-        }catch{
-          toast("Could not react.");
-        }
+        const kind = btn.getAttribute("data-react");
+        const commentId = btn.getAttribute("data-comment");
+        if(!commentId) return;
+        await toggleReaction({ bookId, commentId, kind });
+        await renderComments({ bookId, mountId, max }); // refresh counts
       });
     });
 
@@ -380,7 +479,11 @@ export function setupCommentForm({
         text,
         rating: (rating>=1 && rating<=5) ? rating : null,
         createdAt: serverTimestamp(),
-        editableUntil
+        editableUntil,
+
+        // reaction counts stored on comment doc
+        reactLikeCount: 0,
+        reactLoveCount: 0
       });
 
       if(msgEl) msgEl.textContent = "Posted ✅";
@@ -428,7 +531,7 @@ export async function renderRatingSummary({ bookId="book1", mountId="ratingSumma
 
   mount.innerHTML = `<div style="opacity:.75">Loading rating…</div>`;
   try{
-    const qy = query(collection(db,"books",bookId,"ratings"), limit(500));
+    const qy = query(collection(db,"books",bookId,"ratings"), limit(800));
     const snap = await getDocs(qy);
     if(snap.empty){
       mount.innerHTML = `<div style="opacity:.75">No ratings yet.</div>`;
@@ -450,13 +553,51 @@ export async function renderRatingSummary({ bookId="book1", mountId="ratingSumma
   }
 }
 
-// ---------- ENGAGEMENT + ACHIEVEMENTS (50+) ----------
+// ---------- COMMENT PREVIEW (LIBRARY WIDGET) ----------
+export async function renderCommentPreview({ bookId="book1", mountId="commentPreview", max=4 } = {}){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+
+  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
+  try{
+    const qy = query(commentsCol(bookId), orderBy("createdAt","desc"), limit(max));
+    const snap = await getDocs(qy);
+    if(snap.empty){
+      mount.innerHTML = `<div style="opacity:.75">No comments yet.</div>`;
+      return;
+    }
+
+    const rows = [];
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      const who = escapeHtml(d.name || (d.isAdmin ? "Admin" : "Reader"));
+      const txt = escapeHtml((d.text || "").slice(0, 140)) + ((d.text||"").length > 140 ? "…" : "");
+      const like = Number(d.reactLikeCount || 0);
+      const love = Number(d.reactLoveCount || 0);
+
+      rows.push(`
+        <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <div style="font-weight:950">${d.isAdmin ? "🛡️ " : ""}${who}</div>
+            <div style="opacity:.75;font:900 12px ui-sans-serif,system-ui">👍 ${like} · ❤️ ${love}</div>
+          </div>
+          <div style="opacity:.90;margin-top:6px;line-height:1.55">${txt}</div>
+        </div>
+      `);
+    });
+
+    mount.innerHTML = rows.join("");
+  }catch{
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load preview.</div>`;
+  }
+}
+
+// ---------- ENGAGEMENT ----------
 function engagementRef(uid, bookId){
   return doc(db, "users", uid, "meta", `engagement_${bookId}`);
 }
 
 async function trackEngagement({ bookId="book1", event="read" } = {}){
-  // guest: store in local only
   const key = `eng:${bookId}`;
   const local = JSON.parse(localStorage.getItem(key) || "{}");
   local[event] = (local[event] || 0) + 1;
@@ -475,92 +616,191 @@ async function trackEngagement({ bookId="book1", event="read" } = {}){
   }catch{}
 }
 
+// ---------- ACHIEVEMENTS (50+ UNIQUE) ----------
+const ACH = [
+  // Reading
+  ["first_page","First Step"],
+  ["page_5","Five Pages Deep"],
+  ["page_10","Ten-Page Lock-in"],
+  ["page_25","Quarter Stack"],
+  ["page_50","Fifty-Page Fighter"],
+  ["page_75","Seventy-Five Strong"],
+  ["page_100","Centurion Reader"],
+
+  ["pct_10","10% In"],
+  ["pct_20","20% In"],
+  ["pct_33","One-Third Done"],
+  ["pct_50","Halfway Hero"],
+  ["pct_66","Two-Thirds Through"],
+  ["pct_75","75% Done"],
+  ["pct_90","90% Pressure"],
+  ["finished","Book Finished"],
+
+  // Time flavor
+  ["night_owl","Night Owl Reader"],
+  ["early_bird","Early Bird Reader"],
+  ["lunch_break","Lunch Break Chapter"],
+  ["weekend_reader","Weekend Reader"],
+
+  // Community
+  ["first_comment","First Comment"],
+  ["comment_3","Comment Trio"],
+  ["comment_5","Chatty (5)"],
+  ["comment_10","Community Voice (10)"],
+  ["first_reply","First Reply"],
+  ["reply_3","Thread Starter (3)"],
+  ["reply_5","Thread Builder (5)"],
+  ["first_react","First Reaction"],
+  ["react_5","Reaction Runner (5)"],
+  ["react_10","Reaction Machine (10)"],
+  ["first_rating","First Rating"],
+
+  // Mixes
+  ["social_reader","Social Reader"],
+  ["critic","The Critic"],
+  ["superfan","Superfan"],
+  ["closer","The Closer"],
+  ["hype_team","Hype Team"],
+  ["deep_thinker","Deep Thinker"],
+  ["peacekeeper","Peacekeeper"],
+  ["loyal_reader","Loyal Reader"],
+
+  // Progress mini-milestones
+  ["mil_1","Bookmark Keeper"],
+  ["mil_2","Turning Pages"],
+  ["mil_3","Locked In"],
+  ["mil_4","Momentum"],
+  ["mil_5","Page Runner"],
+  ["mil_6","Plot Tracker"],
+  ["mil_7","Deep Dive"],
+  ["mil_8","Almost There"],
+  ["mil_9","Final Stretch"],
+  ["mil_10","No Skips"],
+
+  // Extra “cool” ones
+  ["mood_vibes","Vibes Only"],
+  ["heart_on_sleeve","Heart on Sleeve"],
+  ["sharp_eye","Sharp Eye"],
+  ["storm_chaser","Storm Chaser"],
+  ["quiet_support","Quiet Support"],
+  ["scene_breaker","Scene Breaker"],
+  ["glow_up","Glow Up"],
+  ["legend","Legend Status"],
+];
+
+const ACH_MAP = Object.fromEntries(ACH);
+
 export async function trackAchievements({ bookId="book1", pageIndex=0, totalPages=1 } = {}){
-  const day = new Date();
-  const hour = day.getHours();
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay(); // 0 Sun
+
   const isNight = hour >= 0 && hour <= 4;
   const isEarly = hour >= 5 && hour <= 8;
+  const isLunch = hour >= 11 && hour <= 13;
+  const isWeekend = (day === 0 || day === 6);
 
   const pct = totalPages > 0 ? Math.floor(((pageIndex+1)/totalPages)*100) : 0;
 
-  // Local engagement snapshot (works for guests too)
   const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
   const commentsMade = Number(eng.comment || 0);
   const repliesMade  = Number(eng.reply || 0);
   const reactsMade   = Number(eng.react || 0);
   const rated        = Number(eng.rate || 0);
 
-  const milestones = [
-    // Reading progression
-    { id:"first_page", label:"First Page", when: ()=> pageIndex >= 0 },
-    { id:"page_5", label:"5 Pages Deep", when: ()=> pageIndex >= 4 },
-    { id:"page_10", label:"10 Pages Read", when: ()=> pageIndex >= 9 },
-    { id:"page_25", label:"25 Pages Read", when: ()=> pageIndex >= 24 },
-    { id:"page_50", label:"50 Pages Read", when: ()=> pageIndex >= 49 },
-    { id:"page_75", label:"75 Pages Read", when: ()=> pageIndex >= 74 },
-    { id:"page_100", label:"100 Pages Read", when: ()=> pageIndex >= 99 },
+  const rules = [
+    // pages
+    ["first_page", ()=> pageIndex >= 0],
+    ["page_5", ()=> pageIndex >= 4],
+    ["page_10", ()=> pageIndex >= 9],
+    ["page_25", ()=> pageIndex >= 24],
+    ["page_50", ()=> pageIndex >= 49],
+    ["page_75", ()=> pageIndex >= 74],
+    ["page_100", ()=> pageIndex >= 99],
 
-    // Percentage checkpoints
-    { id:"pct_10", label:"10% In", when: ()=> pct >= 10 },
-    { id:"pct_25", label:"25% In", when: ()=> pct >= 25 },
-    { id:"pct_33", label:"One-Third Done", when: ()=> pct >= 33 },
-    { id:"pct_50", label:"Halfway", when: ()=> pct >= 50 },
-    { id:"pct_66", label:"Two-Thirds Done", when: ()=> pct >= 66 },
-    { id:"pct_75", label:"75% Done", when: ()=> pct >= 75 },
-    { id:"pct_90", label:"90% Done", when: ()=> pct >= 90 },
-    { id:"finished", label:"Finished", when: ()=> totalPages > 0 && pageIndex >= totalPages - 1 },
+    // pct
+    ["pct_10", ()=> pct >= 10],
+    ["pct_20", ()=> pct >= 20],
+    ["pct_33", ()=> pct >= 33],
+    ["pct_50", ()=> pct >= 50],
+    ["pct_66", ()=> pct >= 66],
+    ["pct_75", ()=> pct >= 75],
+    ["pct_90", ()=> pct >= 90],
+    ["finished", ()=> totalPages > 0 && pageIndex >= totalPages - 1],
 
-    // Time-of-day flavor
-    { id:"night_owl", label:"Night Owl Reader", when: ()=> isNight && pageIndex >= 2 },
-    { id:"early_bird", label:"Early Bird Reader", when: ()=> isEarly && pageIndex >= 2 },
+    // time
+    ["night_owl", ()=> isNight && pageIndex >= 2],
+    ["early_bird", ()=> isEarly && pageIndex >= 2],
+    ["lunch_break", ()=> isLunch && pageIndex >= 2],
+    ["weekend_reader", ()=> isWeekend && pageIndex >= 2],
 
-    // Community engagement
-    { id:"first_comment", label:"First Comment", when: ()=> commentsMade >= 1 },
-    { id:"chatty_5", label:"Chatty (5 Comments)", when: ()=> commentsMade >= 5 },
-    { id:"chatty_10", label:"Community Voice (10 Comments)", when: ()=> commentsMade >= 10 },
+    // community counters
+    ["first_comment", ()=> commentsMade >= 1],
+    ["comment_3", ()=> commentsMade >= 3],
+    ["comment_5", ()=> commentsMade >= 5],
+    ["comment_10", ()=> commentsMade >= 10],
 
-    { id:"first_reply", label:"First Reply", when: ()=> repliesMade >= 1 },
-    { id:"threads_5", label:"Thread Builder (5 Replies)", when: ()=> repliesMade >= 5 },
+    ["first_reply", ()=> repliesMade >= 1],
+    ["reply_3", ()=> repliesMade >= 3],
+    ["reply_5", ()=> repliesMade >= 5],
 
-    { id:"first_react", label:"First Reaction", when: ()=> reactsMade >= 1 },
-    { id:"react_10", label:"Reaction Machine (10)", when: ()=> reactsMade >= 10 },
+    ["first_react", ()=> reactsMade >= 1],
+    ["react_5", ()=> reactsMade >= 5],
+    ["react_10", ()=> reactsMade >= 10],
 
-    { id:"first_rating", label:"First Rating", when: ()=> rated >= 1 },
+    ["first_rating", ()=> rated >= 1],
 
-    // Extra fun (unlocks by mixed behavior)
-    { id:"social_reader", label:"Social Reader", when: ()=> commentsMade >= 1 && reactsMade >= 1 },
-    { id:"critic", label:"The Critic", when: ()=> rated >= 1 && commentsMade >= 1 },
-    { id:"superfan", label:"Superfan", when: ()=> pct >= 75 && commentsMade >= 3 },
-    { id:"closer", label:"The Closer", when: ()=> pct >= 90 && reactsMade >= 3 },
+    // mixes
+    ["social_reader", ()=> commentsMade >= 1 && reactsMade >= 1],
+    ["critic", ()=> rated >= 1 && commentsMade >= 1],
+    ["superfan", ()=> pct >= 75 && commentsMade >= 3],
+    ["closer", ()=> pct >= 90 && reactsMade >= 3],
+    ["hype_team", ()=> reactsMade >= 5 && commentsMade >= 1],
+    ["deep_thinker", ()=> commentsMade >= 3 && repliesMade >= 1],
+    ["peacekeeper", ()=> repliesMade >= 3],
+    ["loyal_reader", ()=> pct >= 50 && (isWeekend || isNight || isEarly)],
 
-    // Micro milestones to reach 50+ total
-    { id:"mil_1", label:"Bookmark Keeper", when: ()=> pageIndex >= 1 },
-    { id:"mil_2", label:"Turning Pages", when: ()=> pageIndex >= 6 },
-    { id:"mil_3", label:"Locked In", when: ()=> pageIndex >= 12 },
-    { id:"mil_4", label:"Momentum", when: ()=> pageIndex >= 18 },
-    { id:"mil_5", label:"Page Runner", when: ()=> pageIndex >= 30 },
-    { id:"mil_6", label:"Plot Tracker", when: ()=> pageIndex >= 40 },
-    { id:"mil_7", label:"Deep Dive", when: ()=> pageIndex >= 60 },
-    { id:"mil_8", label:"Almost There", when: ()=> pct >= 85 },
+    // minis
+    ["mil_1", ()=> pageIndex >= 1],
+    ["mil_2", ()=> pageIndex >= 6],
+    ["mil_3", ()=> pageIndex >= 12],
+    ["mil_4", ()=> pageIndex >= 18],
+    ["mil_5", ()=> pageIndex >= 30],
+    ["mil_6", ()=> pageIndex >= 40],
+    ["mil_7", ()=> pageIndex >= 60],
+    ["mil_8", ()=> pct >= 85],
+    ["mil_9", ()=> pct >= 95],
+    ["mil_10", ()=> pct >= 10 && pageIndex >= 10],
 
-    // 50th-ish: completion + community combo
-    { id:"legend", label:"Legend Status", when: ()=> (pct >= 100) && (commentsMade >= 5 || repliesMade >= 5) },
+    // fun
+    ["mood_vibes", ()=> reactsMade >= 1 && pageIndex >= 5],
+    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveCountLocal(bookId) >= 1)],
+    ["sharp_eye", ()=> commentsMade >= 1 && pct >= 20],
+    ["storm_chaser", ()=> pct >= 33 && isNight],
+    ["quiet_support", ()=> repliesMade >= 1 && reactsMade >= 1],
+    ["scene_breaker", ()=> pageIndex >= 8],
+    ["glow_up", ()=> pct >= 50 && reactsMade >= 3],
+
+    ["legend", ()=> (pct >= 100) && (commentsMade >= 5 || repliesMade >= 5)],
   ];
 
-  const unlocked = milestones.filter(m=>m.when()).map(m=>m.id);
+  const unlocked = rules.filter(([id,fn])=>{
+    try{ return !!fn(); }catch{ return false; }
+  }).map(([id])=>id);
+
   if(!unlocked.length) return;
 
   // Guest: toast only
   if(!UID){
     unlocked.forEach(id=>{
-      const label = milestones.find(m=>m.id===id)?.label || id;
+      const label = ACH_MAP[id] || id;
       toast(`Achievement: ${label}`);
     });
     return;
   }
 
-  const baseRef = achDoc(bookId, UID);
-  const snap = await getDoc(baseRef);
+  const ref = achDoc(bookId, UID);
+  const snap = await getDoc(ref);
   const data = snap.exists() ? (snap.data() || {}) : {};
   const had = new Set(Array.isArray(data.unlocked) ? data.unlocked : []);
 
@@ -569,14 +809,20 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
     if(!had.has(id)){
       had.add(id);
       changed = true;
-      const label = milestones.find(m=>m.id===id)?.label || id;
-      toast(`Achievement unlocked: ${label}`);
+      toast(`Achievement unlocked: ${ACH_MAP[id] || id}`);
     }
   }
 
   if(changed){
-    await setDoc(baseRef, { unlocked:[...had], updatedAt: serverTimestamp() }, { merge:true });
+    await setDoc(ref, { unlocked:[...had], updatedAt: serverTimestamp() }, { merge:true });
   }
+}
+
+// helper for one “fun” achievement
+function loveCountLocal(bookId){
+  // approximate using engagement, you can expand later
+  const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
+  return Number(eng.react || 0);
 }
 
 export async function renderMyAchievements({ bookId="book1", mountId="achList" } = {}){
@@ -597,9 +843,14 @@ export async function renderMyAchievements({ bookId="book1", mountId="achList" }
       mount.innerHTML = `<div style="opacity:.75">No achievements yet. Keep reading.</div>`;
       return;
     }
-    mount.innerHTML = arr.map(a=>`
+
+    // newest first if you want (optional)
+    const list = [...arr].slice().reverse();
+
+    mount.innerHTML = list.map(id=>`
       <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:14px;padding:10px;margin:8px 0;">
-        <div style="font-weight:950">${escapeHtml(a)}</div>
+        <div style="font-weight:950">${escapeHtml(ACH_MAP[id] || id)}</div>
+        <div style="opacity:.75;font-size:12px;margin-top:4px">${escapeHtml(id)}</div>
       </div>
     `).join("");
   }catch{
