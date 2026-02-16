@@ -32,22 +32,12 @@ function isActiveAnnouncement(a){
   const now = Date.now();
   const startMs = toMillisMaybe(a.startAt);
   const endMs   = toMillisMaybe(a.endAt);
-
   const okStart = (startMs == null) ? true : (now >= startMs);
   const okEnd   = (endMs == null) ? true : (now <= endMs);
   return okStart && okEnd;
 }
 
-async function getUserOnce(){
-  return await new Promise((resolve)=>{
-    const unsub = onAuthStateChanged(auth, (u)=>{
-      unsub();
-      resolve(u || null);
-    });
-  });
-}
-
-// ------------------------ ANNOUNCEMENTS (ALWAYS VISIBLE SECTION) ------------------------
+// ------------------------ ANNOUNCEMENTS ------------------------
 export async function renderAnnouncementSection({ mountId = "announceBanner", max = 10 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -134,7 +124,7 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
   }
 }
 
-// ------------------------ SUBSCRIBE (STORE ONLY) ------------------------
+// ------------------------ SUBSCRIBE (WRITE OK, READ ADMIN ONLY via rules) ------------------------
 export function setupSubscribeForm({
   formId = "subscribeForm",
   emailId = "subEmail",
@@ -199,6 +189,14 @@ export function setupSubscribeForm({
         source: location.pathname
       });
 
+      await setDoc(doc(db, "users", user.uid), {
+        notificationEmail: wantsEmail,
+        notificationSMS: wantsSMS,
+        notifyEmailValue: wantsEmail ? email : null,
+        notifyPhoneValue: wantsSMS ? phone : null,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
       if (msgEl) msgEl.textContent = "Subscribed ✅";
       if (emailEl) emailEl.value = "";
       if (phoneEl) phoneEl.value = "";
@@ -208,27 +206,55 @@ export function setupSubscribeForm({
   });
 }
 
-// ------------------------ STATS: COUNT ONCE PER DEVICE ------------------------
-// Counts when a reader STARTS reading (open read.html).
-export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
-  const key = `readerCounted:${bookId}`;
-  if (localStorage.getItem(key) === "1") return;
+// ------------------------ STATS: TOTAL + SIGNED-IN + GUEST ------------------------
+// Counts once per device per book.
+// IMPORTANT: waits for auth state so split counts are accurate.
+export function bumpReaderCountsOnce({ bookId = "book1" } = {}) {
+  const keyTotal = `readerCounted:total:${bookId}`;
+  const keyGuest = `readerCounted:guest:${bookId}`;
+  const keySigned = `readerCounted:signed:${bookId}`;
 
-  const user = await getUserOnce();
-  const signed = !!user;
-
-  try {
-    await setDoc(doc(db, "stats", bookId), {
-      totalReaders: increment(1),
-      guestReaders: increment(signed ? 0 : 1),
-      signedInReaders: increment(signed ? 1 : 0),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    localStorage.setItem(key, "1");
-  } catch {
-    // ignore
+  async function inc(fields) {
+    await setDoc(doc(db, "stats", bookId), fields, { merge: true });
   }
+
+  // Always count TOTAL once per device/book
+  (async () => {
+    if (localStorage.getItem(keyTotal) === "1") return;
+    try {
+      await inc({ totalReaders: increment(1), updatedAt: serverTimestamp() });
+      localStorage.setItem(keyTotal, "1");
+    } catch {
+      // ignore
+    }
+  })();
+
+  // Count split AFTER auth resolves (or guest fallback)
+  let resolved = false;
+
+  function runSplit(isSignedIn) {
+    if (isSignedIn) {
+      if (localStorage.getItem(keySigned) === "1") return;
+      inc({ signedInReaders: increment(1), updatedAt: serverTimestamp() })
+        .then(() => localStorage.setItem(keySigned, "1"))
+        .catch(() => {});
+    } else {
+      if (localStorage.getItem(keyGuest) === "1") return;
+      inc({ guestReaders: increment(1), updatedAt: serverTimestamp() })
+        .then(() => localStorage.setItem(keyGuest, "1"))
+        .catch(() => {});
+    }
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    resolved = true;
+    runSplit(!!user);
+  });
+
+  // guest fallback if auth is slow
+  setTimeout(() => {
+    if (!resolved) runSplit(false);
+  }, 1200);
 }
 
 export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
@@ -243,52 +269,4 @@ export async function renderReaderCount({ bookId = "book1", mountId = "readerCou
   } catch {
     el.textContent = "—";
   }
-}
-
-// Admin split renderer
-export async function renderReaderSplitAdmin({
-  bookId="book1",
-  totalId="readerTotalAdmin",
-  guestId="readerGuestAdmin",
-  signedId="readerSignedAdmin"
-} = {}) {
-  const tEl = document.getElementById(totalId);
-  const gEl = document.getElementById(guestId);
-  const sEl = document.getElementById(signedId);
-
-  try{
-    const snap = await getDoc(doc(db,"stats",bookId));
-    const d = snap.exists() ? snap.data() : {};
-    if(tEl) tEl.textContent = Number(d.totalReaders || 0).toLocaleString();
-    if(gEl) gEl.textContent = Number(d.guestReaders || 0).toLocaleString();
-    if(sEl) sEl.textContent = Number(d.signedInReaders || 0).toLocaleString();
-  }catch{
-    if(tEl) tEl.textContent = "—";
-    if(gEl) gEl.textContent = "—";
-    if(sEl) sEl.textContent = "—";
-  }
-}
-
-// Admin baseline/backfill (manual): lets you set starting totals to include past readers
-export async function adminSetReaderBaseline({
-  bookId="book1",
-  total=0,
-  guest=0,
-  signed=0
-} = {}) {
-  // This only works if Firestore rules allow (admin can do it by being signed-in and you do it in admin UI)
-  total = Number(total||0);
-  guest = Number(guest||0);
-  signed = Number(signed||0);
-  if(total < 0 || guest < 0 || signed < 0) throw new Error("Baseline cannot be negative.");
-  if(guest + signed > total) throw new Error("Guest + Signed cannot exceed Total.");
-
-  await setDoc(doc(db,"stats",bookId), {
-    totalReaders: total,
-    guestReaders: guest,
-    signedInReaders: signed,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-
-  return true;
 }
