@@ -8,117 +8,83 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// bump ONLY when you truly change the terms text
 export const TERMS_VERSION = 1;
+const LS_KEY = `termsAccepted:v${TERMS_VERSION}`;
 
-function lockScroll(lock) {
-  document.body.style.overflow = lock ? "hidden" : "";
+function lockScroll(lock) { document.body.style.overflow = lock ? "hidden" : ""; }
+function openModal(modal){ modal.classList.add("show"); lockScroll(true); }
+function closeModal(modal){ modal.classList.remove("show"); lockScroll(false); }
+
+function termsDoc(uid){
+  return doc(db, "users", uid, "meta", "terms");
 }
 
-async function hasAcceptedTermsSignedIn(user) {
-  try {
-    const snap = await getDoc(doc(db, "users", user.uid));
-    const d = snap.exists() ? snap.data() : {};
-    return Number(d.acceptedTermsVersion || 0) >= TERMS_VERSION;
-  } catch {
+async function hasAccepted(uid){
+  if (localStorage.getItem(LS_KEY) === "1") return true;
+  if (!uid) return false;
+
+  try{
+    const snap = await getDoc(termsDoc(uid));
+    if(!snap.exists()) return false;
+    const d = snap.data() || {};
+    return Number(d.version || 0) >= TERMS_VERSION;
+  }catch{
     return false;
   }
 }
 
-async function saveTermsAcceptedSignedIn(user) {
-  await setDoc(
-    doc(db, "users", user.uid),
-    {
-      acceptedTermsVersion: TERMS_VERSION,
-      acceptedTermsAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+async function saveAccepted(uid){
+  localStorage.setItem(LS_KEY, "1");
+  if(!uid) return;
+
+  await setDoc(termsDoc(uid), {
+    version: TERMS_VERSION,
+    acceptedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge:true });
 }
 
-/**
- * Signed-in users: accept ONCE (Firestore)
- * Guests: ALWAYS show every refresh (NO localStorage guest saving)
- */
 export function wireTermsGate({
-  termsModalId = "termsModal",
-  agreeCheckboxId = "agreeTerms",
-  acceptBtnId = "acceptTermsBtn",
-  msgId = "termsMsg",
-  onAcceptedSignedIn = null,
-} = {}) {
-  const termsModal = document.getElementById(termsModalId);
+  termsModalId="termsModal",
+  agreeCheckboxId="agreeTerms",
+  acceptBtnId="acceptTermsBtn",
+  msgId="termsMsg"
+} = {}){
+  const modal = document.getElementById(termsModalId);
   const agree = document.getElementById(agreeCheckboxId);
-  const acceptBtn = document.getElementById(acceptBtnId);
+  const btn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
+  if(!modal || !agree || !btn) return;
 
-  if (!termsModal || !agree || !acceptBtn) return;
+  let authResolved = false;
 
-  function setGuestHint(show) {
-    let hint = termsModal.querySelector("[data-guest-hint]");
-    if (!hint) {
-      hint = document.createElement("div");
-      hint.setAttribute("data-guest-hint", "1");
-      hint.style.cssText =
-        "margin-top:10px;padding:10px 12px;border-radius:14px;" +
-        "border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);" +
-        "font:800 12px ui-sans-serif,system-ui;line-height:1.45;opacity:.92;";
-      hint.textContent =
-        "Guest mode: Terms will pop up on every refresh. Sign in to accept once and stop the popup.";
-      const card = termsModal.querySelector(".modalCard") || termsModal;
-      card.appendChild(hint);
-    }
-    hint.style.display = show ? "block" : "none";
+  async function decide(user){
+    authResolved = true;
+    const uid = user ? user.uid : null;
+    const ok = await hasAccepted(uid);
+    if(ok) closeModal(modal);
+    else openModal(modal);
   }
 
-  function openTermsHard() {
-    termsModal.classList.add("show");
-    lockScroll(true);
-  }
-  function closeTerms() {
-    termsModal.classList.remove("show");
-    lockScroll(false);
-  }
-
-  async function showIfNeeded(user) {
-    if (!user) {
-      setGuestHint(true);
-      openTermsHard();
+  btn.addEventListener("click", async ()=>{
+    if(msg) msg.textContent = "";
+    if(!agree.checked){
+      if(msg) msg.textContent = "Please check the agreement box to continue.";
       return;
     }
-    setGuestHint(false);
-    const ok = await hasAcceptedTermsSignedIn(user);
-    if (!ok) openTermsHard();
-    else closeTerms();
-  }
-
-  acceptBtn.addEventListener("click", async () => {
-    if (msg) msg.textContent = "";
-
-    const user = auth.currentUser;
-
-    if (!agree.checked) {
-      if (msg) msg.textContent = "Please check the agreement box to continue.";
-      return;
-    }
-
-    // Guest: allow continue but will show again next refresh
-    if (!user) {
-      closeTerms();
-      return;
-    }
-
-    try {
-      await saveTermsAcceptedSignedIn(user);
-      closeTerms();
-      if (typeof onAcceptedSignedIn === "function") onAcceptedSignedIn(user);
-    } catch {
-      if (msg) msg.textContent = "Could not save. Please try again.";
+    try{
+      const u = auth.currentUser;
+      await saveAccepted(u ? u.uid : null);
+      closeModal(modal);
+    }catch{
+      if(msg) msg.textContent = "Could not save acceptance. Check Firestore rules.";
     }
   });
 
-  onAuthStateChanged(auth, async (user) => {
-    await showIfNeeded(user);
-  });
+  onAuthStateChanged(auth, (user)=> decide(user));
+
+  // fallback: if auth is slow, treat as guest after 1.2s (but still waits first)
+  setTimeout(()=>{
+    if(!authResolved) decide(null);
+  }, 1200);
 }
