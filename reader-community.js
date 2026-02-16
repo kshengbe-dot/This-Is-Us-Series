@@ -233,7 +233,6 @@ async function renderReplies({ bookId, commentId }){
     const snap = await getDocs(qy);
     if(snap.empty) return "";
 
-    // preload profiles for signed-in replies
     const uids = new Set();
     snap.forEach(s=>{
       const d = s.data() || {};
@@ -251,7 +250,6 @@ async function renderReplies({ bookId, commentId }){
       const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
       const txt = escapeHtml(d.text || "");
 
-      // avatar priority: snapshot on doc -> profile cache -> default
       const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
       const photo = d.photoURL || cached.photoURL || null;
 
@@ -313,7 +311,6 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       return;
     }
 
-    // Preload profiles for signed-in commenters
     const uids = new Set();
     snap.forEach(s=>{
       const d = s.data() || {};
@@ -335,7 +332,6 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       const likeCount = Number(d.reactLikeCount || 0);
       const loveCount = Number(d.reactLoveCount || 0);
 
-      // avatar priority: snapshot on doc -> profile cache -> default
       const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
       const photo = d.photoURL || cached.photoURL || null;
 
@@ -402,7 +398,6 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
 
     mount.innerHTML = rows.join("");
 
-    // Reply open/close
     mount.querySelectorAll("[data-reply]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const id = btn.getAttribute("data-reply");
@@ -419,7 +414,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
-    // Reply send (stores photoURL snapshot if possible)
+    // Reply send
     mount.querySelectorAll("[data-replysend]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const id = btn.getAttribute("data-replysend");
@@ -432,7 +427,6 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
           return;
         }
 
-        // snapshot avatar
         let photoURL = null;
         if(UID){
           const p = await getProfile(UID);
@@ -548,14 +542,14 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
-    // Reactions toggle (with counts)
+    // Reactions toggle
     mount.querySelectorAll("[data-react]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const kind = btn.getAttribute("data-react");
         const commentId = btn.getAttribute("data-comment");
         if(!commentId) return;
         await toggleReaction({ bookId, commentId, kind });
-        await renderComments({ bookId, mountId, max }); // refresh counts
+        await renderComments({ bookId, mountId, max });
       });
     });
 
@@ -595,7 +589,6 @@ export function setupCommentForm({
       return;
     }
 
-    // snapshot avatar for signed-in users
     let photoURL = null;
     if(UID){
       const p = await getProfile(UID);
@@ -615,8 +608,6 @@ export function setupCommentForm({
         rating: (rating>=1 && rating<=5) ? rating : null,
         createdAt: serverTimestamp(),
         editableUntil,
-
-        // reaction counts stored on comment doc
         reactLikeCount: 0,
         reactLoveCount: 0
       });
@@ -702,7 +693,6 @@ export async function renderCommentPreview({ bookId="book1", mountId="commentPre
       return;
     }
 
-    // preload profiles
     const uids = new Set();
     snap.forEach(s=>{
       const d = s.data() || {};
