@@ -1,6 +1,8 @@
-// terms-gate.js (FULL FILE — single clean version, matches your read.html)
-// Purpose: blocks reader until Terms are accepted (local first, optional cloud save).
-// Works with your read.html that passes { lockScroll, unlockScroll } into wireTermsGate().
+// terms-gate.js (FULL FILE — CLEAN + SINGLE SOURCE OF TRUTH)
+// - Shows Terms modal until accepted
+// - Saves acceptance locally (authoritative for gating)
+// - Also saves to Firestore if signed in (optional)
+// - Supports optional lockScroll/unlockScroll callbacks for iOS smoothness
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -11,46 +13,56 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// MUST match the date shown in your Terms modal ("Last updated: ...")
-const TERMS_VERSION = "2026-02-15";
-const LOCAL_KEY = `tiu_termsAccepted:${TERMS_VERSION}`;
+/**
+ * IMPORTANT:
+ * Must match the "Last updated" date shown in the Terms modal inside read.html (and/or index.html).
+ * Change this string whenever you edit the Terms text.
+ */
+export const TERMS_VERSION = "2026-02-15";
+const KEY = `termsAccepted:${TERMS_VERSION}`;
 
+/**
+ * wireTermsGate
+ * @param {Object} opts
+ * @param {string} opts.modalId
+ * @param {string} opts.checkboxId
+ * @param {string} opts.acceptBtnId
+ * @param {string} opts.msgId
+ * @param {Function} opts.lockScroll   optional: () => void
+ * @param {Function} opts.unlockScroll optional: () => void
+ */
 export function wireTermsGate({
   modalId = "termsModal",
   checkboxId = "agreeTerms",
-  btnId = "acceptTermsBtn",
+  acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
-  // optional scroll helpers you pass from read.html
   lockScroll = null,
   unlockScroll = null
 } = {}) {
   const modal = document.getElementById(modalId);
   const agree = document.getElementById(checkboxId);
-  const btn = document.getElementById(btnId);
+  const acceptBtn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
 
-  if (!modal || !agree || !btn) return;
+  if (!modal || !agree || !acceptBtn) return;
 
-  const isAcceptedLocal = () => localStorage.getItem(LOCAL_KEY) === "1";
-  const setAcceptedLocal = () => localStorage.setItem(LOCAL_KEY, "1");
+  const localAccepted = () => localStorage.getItem(KEY) === "1";
+  const setLocalAccepted = () => localStorage.setItem(KEY, "1");
 
   function open() {
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden"; // fallback
+    if (typeof lockScroll === "function") lockScroll();
     if (msg) msg.textContent = "";
     agree.checked = false;
-
-    // Prefer your safe mobile lock helpers if provided
-    if (typeof lockScroll === "function") lockScroll();
-    else document.body.style.overflow = "hidden";
   }
 
   function close() {
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
-
+    document.body.style.overflow = ""; // fallback
     if (typeof unlockScroll === "function") unlockScroll();
-    else document.body.style.overflow = "";
   }
 
   async function cloudAccepted(uid) {
@@ -59,19 +71,10 @@ export function wireTermsGate({
       const snap = await getDoc(doc(db, "users", uid));
       if (!snap.exists()) return false;
       const d = snap.data() || {};
-
-      // Accept either field name (older/newer) to be robust
-      const v =
-        d.termsAcceptedVersion ||
-        d.termsVersion ||
-        d.termsAcceptedVer ||
-        null;
-
-      const ok =
-        (d.termsAccepted === true || !!v) &&
-        String(v || "") === TERMS_VERSION;
-
-      return !!ok;
+      // accept either of these fields (backwards compatible)
+      const v = d.termsAcceptedVersion || d.termsVersion || null;
+      const okFlag = (d.termsAccepted === true) || !!d.termsAcceptedAt;
+      return okFlag && v === TERMS_VERSION;
     } catch {
       return false;
     }
@@ -85,65 +88,61 @@ export function wireTermsGate({
         {
           termsAccepted: true,
           termsAcceptedVersion: TERMS_VERSION,
-          termsAcceptedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          termsAcceptedAt: serverTimestamp()
         },
         { merge: true }
       );
     } catch {
-      // optional; ignore failures
+      // ignore
     }
   }
 
-  async function runGate(user) {
-    if (isAcceptedLocal()) {
+  async function runForUser(user) {
+    // If already accepted locally -> allow
+    if (localAccepted()) {
       close();
       return;
     }
 
-    // If signed in and already accepted in cloud, honor it (and cache locally)
+    // If signed in AND cloud says accepted -> set local and allow
     const uid = user?.uid || null;
     if (uid) {
       const ok = await cloudAccepted(uid);
       if (ok) {
-        setAcceptedLocal();
+        setLocalAccepted();
         close();
         return;
       }
     }
 
-    // Otherwise, show Terms gate
+    // Otherwise: gate
     open();
   }
 
-  // Start gate
-  onAuthStateChanged(auth, (user) => {
-    runGate(user).catch(() => {
-      // If anything fails, fail-safe: still open gate unless accepted locally
-      if (!isAcceptedLocal()) open();
-    });
-  });
-
-  // Lock the modal: no click-outside close
+  // Keep the modal "locked" (no click-out)
   modal.addEventListener("click", (e) => {
-    // prevent accidental close by overlay clicks
     e.stopPropagation();
   });
 
   // Accept button
-  btn.addEventListener("click", async () => {
+  acceptBtn.addEventListener("click", async () => {
     if (msg) msg.textContent = "";
 
     if (!agree.checked) {
-      if (msg) msg.textContent = "Please check the box first.";
+      if (msg) msg.textContent = "Please check the box to continue.";
       return;
     }
 
-    setAcceptedLocal();
+    setLocalAccepted();
 
     const uid = auth.currentUser?.uid || null;
     if (uid) await setCloudAccepted(uid);
 
     close();
+  });
+
+  // Start / react to auth changes
+  onAuthStateChanged(auth, (user) => {
+    runForUser(user);
   });
 }
