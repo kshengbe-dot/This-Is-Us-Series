@@ -27,17 +27,18 @@ function toMillisMaybe(ts){
   if(typeof ts.toMillis === "function") return ts.toMillis();
   return null;
 }
+
 function isActiveAnnouncement(a){
   const now = Date.now();
   const startMs = toMillisMaybe(a.startAt);
   const endMs   = toMillisMaybe(a.endAt);
+
   const okStart = (startMs == null) ? true : (now >= startMs);
   const okEnd   = (endMs == null) ? true : (now <= endMs);
   return okStart && okEnd;
 }
 
 async function getUserOnce(){
-  // ensures we know if user is signed in before counting
   return await new Promise((resolve)=>{
     const unsub = onAuthStateChanged(auth, (u)=>{
       unsub();
@@ -64,13 +65,20 @@ export async function renderAnnouncementSection({ mountId = "announceBanner", ma
       const a = d.data() || {};
       if (isActiveAnnouncement(a) && (a.title || a.body)) active.push(a);
     });
+
     if (!active.length) return;
 
     const cards = active.map(a => {
       const title = escapeHtml(a.title || "Announcement");
       const body = escapeHtml(a.body || "");
       return `
-        <div style="border:1px solid rgba(255,255,255,.12);background: rgba(124,92,255,.12);border-radius:18px;padding:12px;margin-top:10px;">
+        <div style="
+          border:1px solid rgba(255,255,255,.12);
+          background: rgba(124,92,255,.12);
+          border-radius:18px;
+          padding:12px;
+          margin-top:10px;
+        ">
           <div style="font-weight:950; letter-spacing:.06em">${title}</div>
           <div style="opacity:.92; margin-top:6px; line-height:1.55">${body}</div>
         </div>
@@ -86,7 +94,9 @@ export async function renderAnnouncementSection({ mountId = "announceBanner", ma
       </div>
     `;
     mount.style.display = "block";
-  } catch {}
+  } catch {
+    // fail quietly
+  }
 }
 
 export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 8 } = {}) {
@@ -126,8 +136,13 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
 
 // ------------------------ SUBSCRIBE (STORE ONLY) ------------------------
 export function setupSubscribeForm({
-  formId="subscribeForm", emailId="subEmail", phoneId="subPhone",
-  emailOptId="optEmail", smsOptId="optSMS", msgId="subMsg", bookId="book1"
+  formId = "subscribeForm",
+  emailId = "subEmail",
+  phoneId = "subPhone",
+  emailOptId = "optEmail",
+  smsOptId = "optSMS",
+  msgId = "subMsg",
+  bookId = "book1"
 } = {}) {
   const form = document.getElementById(formId);
   if (!form) return;
@@ -153,9 +168,23 @@ export function setupSubscribeForm({
     const wantsEmail = !!emailOpt?.checked;
     const wantsSMS = !!smsOpt?.checked;
 
-    if (!wantsEmail && !wantsSMS) { if (msgEl) msgEl.textContent = "Choose Email and/or SMS first."; return; }
-    if (wantsEmail && !email) { if (msgEl) msgEl.textContent = "Enter your email."; return; }
-    if (wantsSMS && !phone) { if (msgEl) msgEl.textContent = "Enter your phone number."; return; }
+    if (!wantsEmail && !wantsSMS) {
+      if (msgEl) msgEl.textContent = "Choose Email and/or SMS first.";
+      return;
+    }
+    if (wantsEmail && !email) {
+      if (msgEl) msgEl.textContent = "Enter your email to enable email notifications.";
+      return;
+    }
+    if (wantsSMS && !phone) {
+      if (msgEl) msgEl.textContent = "Enter your phone number to enable SMS notifications.";
+      return;
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (msgEl) msgEl.textContent = "That email doesn’t look right.";
+      return;
+    }
 
     try {
       await addDoc(collection(db, "subscribers"), {
@@ -166,6 +195,7 @@ export function setupSubscribeForm({
         notificationSMS: wantsSMS,
         bookId,
         createdAt: serverTimestamp(),
+        consentText: "User opted in to notifications. Carrier rates may apply for SMS.",
         source: location.pathname
       });
 
@@ -178,19 +208,20 @@ export function setupSubscribeForm({
   });
 }
 
-// ------------------------ STATS (TOTAL + SPLIT) ------------------------
-export async function bumpReaderCountOnce({ bookId="book1" } = {}) {
+// ------------------------ STATS: COUNT ONCE PER DEVICE ------------------------
+// Counts when a reader STARTS reading (open read.html).
+export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
   const key = `readerCounted:${bookId}`;
   if (localStorage.getItem(key) === "1") return;
 
   const user = await getUserOnce();
-  const isSigned = !!user;
+  const signed = !!user;
 
   try {
     await setDoc(doc(db, "stats", bookId), {
       totalReaders: increment(1),
-      guestReaders: increment(isSigned ? 0 : 1),
-      signedInReaders: increment(isSigned ? 1 : 0),
+      guestReaders: increment(signed ? 0 : 1),
+      signedInReaders: increment(signed ? 1 : 0),
       updatedAt: serverTimestamp()
     }, { merge: true });
 
@@ -200,19 +231,21 @@ export async function bumpReaderCountOnce({ bookId="book1" } = {}) {
   }
 }
 
-export async function renderReaderCount({ bookId="book1", mountId="readerCount" } = {}) {
+export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
   const el = document.getElementById(mountId);
   if (!el) return;
 
   try {
     const snap = await getDoc(doc(db, "stats", bookId));
     const d = snap.exists() ? snap.data() : {};
-    el.textContent = Number(d.totalReaders || 0).toLocaleString();
+    const n = Number(d.totalReaders || 0);
+    el.textContent = n.toLocaleString();
   } catch {
     el.textContent = "—";
   }
 }
 
+// Admin split renderer
 export async function renderReaderSplitAdmin({
   bookId="book1",
   totalId="readerTotalAdmin",
@@ -222,6 +255,7 @@ export async function renderReaderSplitAdmin({
   const tEl = document.getElementById(totalId);
   const gEl = document.getElementById(guestId);
   const sEl = document.getElementById(signedId);
+
   try{
     const snap = await getDoc(doc(db,"stats",bookId));
     const d = snap.exists() ? snap.data() : {};
@@ -233,4 +267,28 @@ export async function renderReaderSplitAdmin({
     if(gEl) gEl.textContent = "—";
     if(sEl) sEl.textContent = "—";
   }
+}
+
+// Admin baseline/backfill (manual): lets you set starting totals to include past readers
+export async function adminSetReaderBaseline({
+  bookId="book1",
+  total=0,
+  guest=0,
+  signed=0
+} = {}) {
+  // This only works if Firestore rules allow (admin can do it by being signed-in and you do it in admin UI)
+  total = Number(total||0);
+  guest = Number(guest||0);
+  signed = Number(signed||0);
+  if(total < 0 || guest < 0 || signed < 0) throw new Error("Baseline cannot be negative.");
+  if(guest + signed > total) throw new Error("Guest + Signed cannot exceed Total.");
+
+  await setDoc(doc(db,"stats",bookId), {
+    totalReaders: total,
+    guestReaders: guest,
+    signedInReaders: signed,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  return true;
 }
