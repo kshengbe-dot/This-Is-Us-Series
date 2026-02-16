@@ -109,6 +109,9 @@
         <small>Creator Dashboard (Private)</small>
       </div>
       <div class="right">
+        <div class="pill" id="goLibrary">📚 <strong>Library</strong></div>
+        <div class="pill" id="goReader">📖 <strong>Reader</strong></div>
+        <div class="pill" id="goSettings">⚙️ <strong>Settings</strong></div>
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
         <div class="pill"><strong id="statusText">Not signed in</strong></div>
@@ -344,7 +347,7 @@ Use **bold** for bold."></textarea>
 
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
       getAuth, onAuthStateChanged,
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
@@ -353,11 +356,36 @@ Use **bold** for bold."></textarea>
       getFirestore,
       collection, addDoc, serverTimestamp,
       getDocs, query, orderBy, limit,
-      deleteDoc, doc, getDoc, setDoc, updateDoc,
+      deleteDoc, doc, getDoc, setDoc,
       Timestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+    // MUST MATCH reader-community.js
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
+
+    // Toast
+    function toast(text){
+      const t = document.createElement("div");
+      t.textContent = text;
+      t.style.cssText = `
+        position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+        padding:10px 12px; border-radius:999px;
+        border:1px solid rgba(255,255,255,.14);
+        background: rgba(0,0,0,.55);
+        color: white; font: 800 12px ui-sans-serif,system-ui;
+        z-index:9999; backdrop-filter: blur(10px);
+        max-width:min(92vw,520px); text-align:center;
+      `;
+      document.body.appendChild(t);
+      setTimeout(()=>{ t.style.opacity="0"; t.style.transition="opacity .35s ease"; }, 1600);
+      setTimeout(()=> t.remove(), 2100);
+    }
+
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -368,20 +396,27 @@ Use **bold** for bold."></textarea>
       localStorage.setItem("theme", next);
     };
 
+    // Quick links
+    document.getElementById("goLibrary").onclick = ()=> location.href = "index.html";
+    document.getElementById("goReader").onclick  = ()=> location.href = "read.html?book=book1";
+    document.getElementById("goSettings").onclick= ()=> location.href = "settings.html";
+
     // Modal
     const modal = document.getElementById("modal");
     const authBtn  = document.getElementById("authBtn");
     const close = document.getElementById("close");
     const openAuth2 = document.getElementById("openAuth2");
+
     function openModal(){ modal.classList.add("show"); }
     function closeModal(){ modal.classList.remove("show"); }
+
     authBtn.onclick = openModal;
-    openAuth2.onclick = openModal;
+    if(openAuth2) openAuth2.onclick = openModal;
     close.onclick = closeModal;
     modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
 
-    // Firebase
-    const app = initializeApp(firebaseConfig);
+    // Firebase (safe init)
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
@@ -400,19 +435,13 @@ Use **bold** for bold."></textarea>
     const lockScreen = document.getElementById("lockScreen");
     const adminApp = document.getElementById("adminApp");
 
-    // Stats refs
+    // Stats refs (book1 baseline)
     const rTotal = document.getElementById("rTotal");
     const rSigned = document.getElementById("rSigned");
     const rGuest = document.getElementById("rGuest");
     const subCountEl = document.getElementById("subCount");
 
     let UID = null;
-
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-    }
 
     function applyGate(){
       const ok = (UID && UID === ADMIN_UID);
@@ -440,7 +469,7 @@ Use **bold** for bold."></textarea>
 
     document.getElementById("saveBaseline").onclick = async ()=>{
       baseMsg.textContent = "";
-      if(UID !== ADMIN_UID){ alert("Access denied"); return; }
+      if(UID !== ADMIN_UID){ toast("Access denied"); return; }
       const t = Math.max(0, Number(baseTotal.value||0));
       const s = Math.max(0, Number(baseSigned.value||0));
       const g = Math.max(0, Number(baseGuest.value||0));
@@ -473,9 +502,8 @@ Use **bold** for bold."></textarea>
         return;
       }
       try{
-        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(200));
+        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(250));
         const snap = await getDocs(qy);
-
         subCountEl.textContent = String(snap.size || 0);
 
         if(snap.empty){
@@ -523,8 +551,10 @@ Use **bold** for bold."></textarea>
         const raw = para.join(" ").replace(/\s+/g," ").trim();
         para = [];
         if(!raw) return;
+
         const withBold = inlineBold(escapeHtml(raw))
           .replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
+
         const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
         blocks.push(`<p${cls}>${withBold}</p>`);
       }
@@ -542,23 +572,28 @@ Use **bold** for bold."></textarea>
     }
 
     document.getElementById("formatBtn").onclick = ()=>{
-      const html = formatChapterToHTML({ title: chapterTitleEl.value, subtitle: chapterSubtitleEl.value, text: chapterTextEl.value });
+      const html = formatChapterToHTML({
+        title: chapterTitleEl.value,
+        subtitle: chapterSubtitleEl.value,
+        text: chapterTextEl.value
+      });
       htmlPreview.textContent = html;
+      toast("Formatted ✅");
     };
 
     document.getElementById("publishBtn").onclick = async ()=>{
       publishMsg.textContent = "";
-      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
 
-      const bookId = bookIdEl.value.trim() || "book1";
+      const bookId = (bookIdEl.value || "book1").trim();
       const chapterNumber = Number(chapterNumberEl.value || 0);
       if(!Number.isFinite(chapterNumber) || chapterNumber <= 0){
-        alert("Enter valid Chapter # (1+)."); return;
+        toast("Enter valid Chapter # (1+)."); return;
       }
       const title = (chapterTitleEl.value || "").trim();
       const subtitle = (chapterSubtitleEl.value || "").trim();
       const text = (chapterTextEl.value || "").trim();
-      if(!title || !subtitle || !text){ alert("Fill Title, Subtitle, Text."); return; }
+      if(!title || !subtitle || !text){ toast("Fill Title, Subtitle, Text."); return; }
 
       const html = formatChapterToHTML({ title, subtitle, text });
       htmlPreview.textContent = html;
@@ -569,20 +604,22 @@ Use **bold** for bold."></textarea>
           createdAt: serverTimestamp(), createdBy: UID
         });
         publishMsg.textContent = "Published ✅";
+        toast("Published ✅");
         await renderChapters();
       }catch(e){
-        alert("Denied: " + (e?.message || String(e)));
+        toast("Denied: " + (e?.message || String(e)));
       }
     };
 
     const chaptersList = document.getElementById("chaptersList");
     async function renderChapters(){
-      const bookId = bookIdEl.value.trim() || "book1";
+      const bookId = (bookIdEl.value || "book1").trim();
       chaptersList.textContent = "Loading…";
       try{
         const qy = query(collection(db,"books",bookId,"chapters"), orderBy("chapterNumber","asc"));
         const snap = await getDocs(qy);
         if(snap.empty){ chaptersList.textContent = "No chapters published yet."; return; }
+
         const rows = [];
         snap.forEach(s=>{
           const d = s.data() || {};
@@ -598,19 +635,23 @@ Use **bold** for bold."></textarea>
           `);
         });
         chaptersList.innerHTML = rows.join("");
+
         chaptersList.querySelectorAll("[data-del]").forEach(btn=>{
           btn.addEventListener("click", async ()=>{
             if(UID !== ADMIN_UID) return;
             const id = btn.getAttribute("data-del");
             if(!confirm("Delete this chapter permanently?")) return;
             try{
-              await deleteDoc(doc(db,"books",bookId,"chapters",id));
+              const bookIdNow = (bookIdEl.value || "book1").trim();
+              await deleteDoc(doc(db,"books",bookIdNow,"chapters",id));
+              toast("Deleted ✅");
               await renderChapters();
             }catch(e){
-              alert("Denied: " + (e?.message || String(e)));
+              toast("Denied: " + (e?.message || String(e)));
             }
           });
         });
+
       }catch(e){
         chaptersList.textContent = "Error: " + (e?.message || String(e));
       }
@@ -635,15 +676,15 @@ Use **bold** for bold."></textarea>
 
     document.getElementById("publishAnnounce").onclick = async ()=>{
       announceMsg.textContent = "";
-      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
       const t = (announceTitle.value || "").trim();
       const b = (announceBody.value || "").trim();
-      if(!t || !b){ alert("Fill Title and Body."); return; }
+      if(!t || !b){ toast("Fill Title and Body."); return; }
 
       const startDate = parseDTLocal(announceStart.value);
       const endDate = parseDTLocal(announceEnd.value);
       if(startDate && endDate && endDate.getTime() < startDate.getTime()){
-        alert("End must be after Start."); return;
+        toast("End must be after Start."); return;
       }
       try{
         await addDoc(collection(db,"announcements"), {
@@ -654,16 +695,17 @@ Use **bold** for bold."></textarea>
           createdBy: UID
         });
         announceMsg.textContent = "Published ✅";
+        toast("Announcement published ✅");
         await renderAnnouncementsAdmin();
       }catch(e){
-        alert("Denied: " + (e?.message || String(e)));
+        toast("Denied: " + (e?.message || String(e)));
       }
     };
 
     async function renderAnnouncementsAdmin(){
       announceList.textContent = "Loading…";
       try{
-        const qy = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(15));
+        const qy = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(25));
         const snap = await getDocs(qy);
         if(snap.empty){ announceList.textContent = "No announcements yet."; return; }
 
@@ -688,6 +730,7 @@ Use **bold** for bold."></textarea>
           `);
         });
         announceList.innerHTML = rows.join("");
+
         announceList.querySelectorAll("[data-del-ann]").forEach(btn=>{
           btn.addEventListener("click", async ()=>{
             if(UID !== ADMIN_UID) return;
@@ -695,9 +738,10 @@ Use **bold** for bold."></textarea>
             if(!confirm("Delete this announcement?")) return;
             try{
               await deleteDoc(doc(db,"announcements",id));
+              toast("Deleted ✅");
               await renderAnnouncementsAdmin();
             }catch(e){
-              alert("Denied: " + (e?.message || String(e)));
+              toast("Denied: " + (e?.message || String(e)));
             }
           });
         });
@@ -719,7 +763,7 @@ Use **bold** for bold."></textarea>
 
       const bookId = cBook.value || "book1";
       try{
-        const qy = query(collection(db,"books",bookId,"comments"), orderBy("createdAt","desc"), limit(40));
+        const qy = query(collection(db,"books",bookId,"comments"), orderBy("createdAt","desc"), limit(60));
         const snap = await getDocs(qy);
         if(snap.empty){ commentsAdmin.textContent = "No comments yet."; return; }
 
@@ -759,9 +803,10 @@ Use **bold** for bold."></textarea>
             if(!confirm("Delete this comment?")) return;
             try{
               await deleteDoc(doc(db,"books",bookId,"comments",id));
+              toast("Deleted ✅");
               await renderCommentsAdmin();
             }catch(e){
-              alert("Denied: " + (e?.message || String(e)));
+              toast("Denied: " + (e?.message || String(e)));
             }
           });
         });
@@ -790,6 +835,7 @@ Use **bold** for bold."></textarea>
             if(msg) msg.textContent = "";
             const text = (txt?.value || "").trim();
             if(!text){ if(msg) msg.textContent = "Write a reply first."; return; }
+
             try{
               await addDoc(collection(db,"books",bookId,"comments",id,"replies"), {
                 uid: UID,
@@ -801,6 +847,7 @@ Use **bold** for bold."></textarea>
               });
               if(txt) txt.value = "";
               if(msg) msg.textContent = "Sent ✅";
+              toast("Reply sent ✅");
             }catch(e){
               if(msg) msg.textContent = "Denied: " + (e?.message || String(e));
             }
@@ -818,7 +865,7 @@ Use **bold** for bold."></textarea>
 
       uidLine.textContent = UID || "—";
       statusLine.textContent = user ? "Signed in" : "Not signed in";
-      statusText.textContent = user ? "Signed in" : "Not signed in";
+      statusText.textContent = user ? (user.email ? user.email : "Signed in") : "Not signed in";
       authText.textContent = user ? "Account" : "Sign in";
       logoutBtn.style.display = user ? "inline-flex" : "none";
 
@@ -838,17 +885,29 @@ Use **bold** for bold."></textarea>
 
     loginBtn.onclick = async ()=>{
       try{
-        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+        await signInWithEmailAndPassword(auth, (email.value||"").trim(), password.value);
         closeModal();
-      }catch(e){ alert(e.message); }
+        toast("Signed in ✅");
+      }catch(e){
+        toast(e?.message || "Sign-in failed.");
+      }
     };
+
     signupBtn.onclick = async ()=>{
       try{
-        await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+        await createUserWithEmailAndPassword(auth, (email.value||"").trim(), password.value);
         closeModal();
-      }catch(e){ alert(e.message); }
+        toast("Account created ✅");
+      }catch(e){
+        toast(e?.message || "Sign-up failed.");
+      }
     };
-    logoutBtn.onclick = async ()=>{ await signOut(auth); closeModal(); };
+
+    logoutBtn.onclick = async ()=>{
+      await signOut(auth);
+      closeModal();
+      toast("Signed out");
+    };
   </script>
 </body>
 </html>
