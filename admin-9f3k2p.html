@@ -4,130 +4,60 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>THIS IS US — Admin</title>
-
   <style>
     :root{
-      --bg:#0B1020;
-      --card:#0F1731;
-      --ink:#EAF0FF;
-      --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12);
-      --shadow: 0 28px 90px rgba(0,0,0,.55);
-      --glow: rgba(124,92,255,.45);
-      --accent:#7c5cff;
-      --accent2: rgba(0,255,198,.18);
-      --glass: rgba(0,0,0,.30);
-      --safeTop: env(safe-area-inset-top);
-      --safeBot: env(safe-area-inset-bottom);
+      --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12); --shadow: 0 28px 90px rgba(0,0,0,.55);
+      --glow: rgba(124,92,255,.45); --accent:#7c5cff; --glass: rgba(0,0,0,.30);
+      --safeTop: env(safe-area-inset-top); --safeBot: env(safe-area-inset-bottom);
     }
     [data-theme="light"]{
-      --bg:#F7F8FB;
-      --card:#FFFFFF;
-      --ink:#0F172A;
-      --muted:#475569;
-      --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.10);
-      --glow: rgba(124,92,255,.18);
-      --accent:#7c5cff;
-      --accent2: rgba(2,6,23,.04);
-      --glass: rgba(255,255,255,.78);
+      --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
+      --stroke:rgba(2,6,23,.10); --shadow: 0 18px 60px rgba(2,6,23,.10);
+      --glow: rgba(124,92,255,.18); --accent:#7c5cff; --glass: rgba(255,255,255,.78);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      color:var(--ink);
+      margin:0; color:var(--ink);
       background:
         radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
-        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
         var(--bg);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
-    a{color:inherit;text-decoration:none}
-
     .top{
       position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(14px);
-      background: var(--glass);
+      backdrop-filter: blur(14px); background: var(--glass);
       border-bottom:1px solid var(--stroke);
     }
     .nav{
       max-width:1100px; margin:0 auto;
       padding: calc(10px + var(--safeTop)) 16px 10px;
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
     }
-    .brand{
-      display:flex; flex-direction:column; gap:2px;
-      letter-spacing:.14em; text-transform:uppercase;
-      font-weight:950;
-      min-width:0;
-    }
-    .brand small{
-      color:var(--muted);
-      font-weight:800;
-      letter-spacing:.08em;
-      text-transform:none;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:46vw;
-    }
-    .right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      max-width:66vw;
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom:2px;
-    }
+    .brand{display:flex;flex-direction:column;gap:2px;letter-spacing:.14em;text-transform:uppercase;font-weight:950;min-width:0;}
+    .brand small{color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
+    .right{display:flex;align-items:center;gap:10px;max-width:66vw;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
     .right::-webkit-scrollbar{height:0}
-
     .pill{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--muted);
-      padding:9px 12px;
-      border-radius:999px;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
+      border:1px solid var(--stroke); background: rgba(255,255,255,.06);
+      color:var(--muted); padding:9px 12px; border-radius:999px;
+      font-size:12px; cursor:pointer; user-select:none;
       display:inline-flex; align-items:center; gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      white-space:nowrap;
-      flex:0 0 auto;
+      transition: transform .15s ease, background .15s ease; white-space:nowrap; flex:0 0 auto;
     }
     .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .pill strong{color:var(--ink)}
-    .dot{font-size:12px; opacity:.9}
-
-    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 90px;}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px 16px 90px;}
     .card{
       border:1px solid var(--stroke);
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      position:relative;
-      overflow:hidden;
-      padding:16px;
-      margin-top:16px;
+      border-radius:22px; box-shadow: var(--shadow);
+      padding:16px; margin-top:16px;
     }
-    h1{
-      margin:0 0 8px;
-      font-size:22px;
-      letter-spacing:.10em;
-      text-transform:uppercase;
-      font-weight:950;
-    }
-    h2{
-      margin:18px 0 10px;
-      font-size:14px;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
-    .small{color:var(--muted); font-size:12px; line-height:1.45}
+    h1{margin:0 0 8px;font-size:22px;letter-spacing:.10em;text-transform:uppercase;font-weight:950;}
+    h2{margin:18px 0 10px;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+    .small{color:var(--muted);font-size:12px;line-height:1.45}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
     .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
     .grid{display:grid; gap:10px}
@@ -135,116 +65,42 @@
     .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
     label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
     input, select, textarea{
-      width:100%;
-      border:1px solid var(--stroke);
+      width:100%; border:1px solid var(--stroke);
       background: rgba(255,255,255,.08);
-      padding:10px 12px;
-      border-radius:14px;
-      color:var(--ink);
-      outline:none;
-      font-size:14px;
+      padding:10px 12px; border-radius:14px;
+      color:var(--ink); outline:none; font-size:14px;
     }
     textarea{min-height:160px; resize:vertical}
     .btn{
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
       color:var(--ink);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      user-select:none;
+      padding:10px 12px; border-radius:14px;
+      font-weight:900; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease; user-select:none;
     }
     .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    hr{
-      border:0;
-      border-top:1px solid var(--stroke);
-      margin:14px 0;
-    }
-    .preview{
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.12);
-      border-radius:16px;
-      padding:12px;
-      overflow:auto;
-      max-height:420px;
-    }
-    [data-theme="light"] .preview{ background: rgba(2,6,23,.04); }
-    .hintLine{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-    .badge{
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.18);
-      padding:7px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:950;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-    }
-    [data-theme="light"] .badge{ background: rgba(2,6,23,.06); }
-    .danger{
-      border-color: rgba(255,100,100,.35);
-      background: rgba(255,100,100,.08);
-    }
-
-    .modal{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.60);
-      z-index:100;
-      padding:16px;
-    }
+    .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
+    .btn.danger{ border-color: rgba(255,100,100,.35); background: rgba(255,100,100,.08); }
+    hr{border:0;border-top:1px solid var(--stroke);margin:14px 0;}
+    .preview{border:1px solid var(--stroke);background: rgba(0,0,0,.12);border-radius:16px;padding:12px;overflow:auto;max-height:420px;}
+    [data-theme="light"] .preview{background: rgba(2,6,23,.04)}
+    .badge{border:1px solid var(--stroke);background: rgba(0,0,0,.18);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950;letter-spacing:.06em;text-transform:uppercase;}
+    [data-theme="light"] .badge{background: rgba(2,6,23,.06)}
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,.60); z-index:100; padding:16px;}
     .modal.show{display:flex}
-    .modalCard{
-      width:min(560px, 96vw);
-      border:1px solid var(--stroke);
-      background: rgba(15,20,40,.96);
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:14px;
-    }
+    .modalCard{width:min(560px, 96vw); border:1px solid var(--stroke); background: rgba(15,20,40,.96); border-radius:22px; box-shadow: var(--shadow); padding:14px;}
     [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
-    .modalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:6px 6px 10px;
-    }
-    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
-    .x{
-      cursor:pointer; padding:8px 10px; border-radius:12px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-    }
-
-    .locked{ display:none; }
-    .locked.show{ display:block; }
-    .lockScreen{
-      display:none;
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:16px;
-      margin-top:16px;
-    }
-    .lockScreen.show{ display:block; }
-
-    @media (max-width:980px){
-      .row3{grid-template-columns:1fr}
-      .row2{grid-template-columns:1fr}
-      .right{max-width:74vw;}
-    }
+    .modalHead{display:flex; align-items:center; justify-content:space-between; padding:6px 6px 10px;}
+    .x{cursor:pointer; padding:8px 10px; border-radius:12px; border:1px solid var(--stroke); background: rgba(255,255,255,.06);}
+    .locked{display:none}
+    .locked.show{display:block}
+    .lockScreen{display:none;border:1px solid var(--stroke);background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));border-radius:22px;box-shadow: var(--shadow);padding:16px;margin-top:16px;}
+    .lockScreen.show{display:block}
+    @media (max-width:980px){ .row3{grid-template-columns:1fr} .row2{grid-template-columns:1fr} .right{max-width:74vw;} }
   </style>
 </head>
-
 <body>
   <div class="top">
     <div class="nav">
@@ -255,10 +111,7 @@
       <div class="right">
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
-        <div class="pill" id="statusPill">
-          <span class="dot">●</span>
-          <strong id="statusText">Not signed in</strong>
-        </div>
+        <div class="pill"><strong id="statusText">Not signed in</strong></div>
       </div>
     </div>
   </div>
@@ -274,43 +127,15 @@
         <div class="badge">UID: <span class="mono" id="uidLine">—</span></div>
         <div class="badge">Status: <span id="statusLine">Not signed in</span></div>
 
-        <div class="badge">Readers Total: <span id="readerTotalAdmin">—</span></div>
-        <div class="badge">Signed-in: <span id="readerSignedAdmin">—</span></div>
-        <div class="badge">Guests: <span id="readerGuestAdmin">—</span></div>
+        <div class="badge">Readers Total: <span id="rTotal">—</span></div>
+        <div class="badge">Signed-in: <span id="rSigned">—</span></div>
+        <div class="badge">Guests: <span id="rGuest">—</span></div>
 
         <div class="badge">Subscribers: <span id="subCount">—</span></div>
       </div>
 
       <div class="small" style="margin-top:10px;">
         Step: sign in → your UID must match ADMIN UID in rules.
-      </div>
-
-      <hr>
-
-      <h2>Backfill (Count Past Readers)</h2>
-      <div class="small">
-        You cannot automatically count old visitors who will never return. Use this to set a baseline number.
-        Example: if you already had ~200 readers before stats existed, set Total = 200.
-      </div>
-
-      <div class="row3" style="margin-top:10px;">
-        <div>
-          <label>Total baseline</label>
-          <input id="baseTotal" type="number" min="0" placeholder="200">
-        </div>
-        <div>
-          <label>Signed-in baseline</label>
-          <input id="baseSigned" type="number" min="0" placeholder="40">
-        </div>
-        <div>
-          <label>Guest baseline</label>
-          <input id="baseGuest" type="number" min="0" placeholder="160">
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:10px;">
-        <button class="btn primary" id="applyBaseline">✅ Apply baseline</button>
-        <div class="small" id="baseMsg"></div>
       </div>
     </div>
 
@@ -323,6 +148,34 @@
     </div>
 
     <div class="locked" id="adminApp">
+
+      <div class="card">
+        <h1>Backfill (Count Past Readers)</h1>
+        <div class="small">
+          You cannot automatically count old visitors who will never return. Use this to set a baseline number.
+          Example: if you already had ~200 readers before stats existed, set Total = 200.
+        </div>
+
+        <div class="row3" style="margin-top:10px;">
+          <div>
+            <label>Total baseline</label>
+            <input id="baseTotal" type="number" value="0" min="0">
+          </div>
+          <div>
+            <label>Signed-in baseline</label>
+            <input id="baseSigned" type="number" value="0" min="0">
+          </div>
+          <div>
+            <label>Guest baseline</label>
+            <input id="baseGuest" type="number" value="0" min="0">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" id="saveBaseline">Save Baseline</button>
+          <div class="small" id="baseMsg"></div>
+        </div>
+      </div>
 
       <div class="card">
         <h1>Publish Chapter (paste text → auto-format)</h1>
@@ -362,11 +215,6 @@ Blank line = new paragraph.
 Write ✦ on its own line for a scene break.
 
 Use **bold** for bold."></textarea>
-        </div>
-
-        <div class="hintLine" style="margin-top:10px;">
-          <div class="small">Scene break line: <span class="mono">✦</span></div>
-          <div class="small">Bold: <span class="mono">**text**</span></div>
         </div>
 
         <div class="row" style="margin-top:12px;">
@@ -437,6 +285,28 @@ Use **bold** for bold."></textarea>
         <div class="preview" id="subsList" style="margin-top:10px;">—</div>
       </div>
 
+      <div class="card">
+        <h1>Moderate Comments</h1>
+        <div class="small">
+          Admin can delete any comment/reply and respond as Admin. Readers can edit their own comments for 1 hour.
+        </div>
+
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Book</label>
+            <select id="cBook">
+              <option value="book1">book1</option>
+              <option value="coming">coming</option>
+            </select>
+          </div>
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn" id="refreshComments">🔄 Refresh Comments</button>
+          </div>
+        </div>
+
+        <div class="preview" id="commentsAdmin" style="margin-top:10px;">—</div>
+      </div>
+
     </div>
   </div>
 
@@ -467,9 +337,7 @@ Use **bold** for bold."></textarea>
 
         <button class="btn danger" id="logoutBtn" style="display:none;">Sign Out</button>
 
-        <p class="small">
-          This page is private. Publishing is restricted by Firestore rules and your admin UID.
-        </p>
+        <p class="small">This page is private. Publishing + admin reads are restricted by Firestore rules.</p>
       </div>
     </div>
   </div>
@@ -484,25 +352,16 @@ Use **bold** for bold."></textarea>
     import {
       getFirestore,
       collection, addDoc, serverTimestamp,
-      getDocs, query, orderBy,
-      deleteDoc, doc,
-      getDoc,
-      Timestamp,
-      limit
+      getDocs, query, orderBy, limit,
+      deleteDoc, doc, getDoc, setDoc, updateDoc,
+      Timestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    import {
-      renderReaderSplitAdmin,
-      adminSetReaderBaseline
-    } from "./public-feed.js";
-
-    // ✅ YOUR ADMIN UID
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-
     document.getElementById("themeBtn").onclick = ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
@@ -542,43 +401,120 @@ Use **bold** for bold."></textarea>
     const adminApp = document.getElementById("adminApp");
 
     // Stats refs
+    const rTotal = document.getElementById("rTotal");
+    const rSigned = document.getElementById("rSigned");
+    const rGuest = document.getElementById("rGuest");
     const subCountEl = document.getElementById("subCount");
+
+    let UID = null;
+
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function applyGate(){
+      const ok = (UID && UID === ADMIN_UID);
+      lockScreen.classList.toggle("show", !ok);
+      adminApp.classList.toggle("show", ok);
+    }
+
+    async function loadStats(){
+      try{
+        const snap = await getDoc(doc(db,"stats","book1"));
+        const d = snap.exists() ? snap.data() : {};
+        rTotal.textContent = String(Number(d.totalReaders || 0)).toLocaleString();
+        rSigned.textContent = String(Number(d.signedInReaders || 0)).toLocaleString();
+        rGuest.textContent = String(Number(d.guestReaders || 0)).toLocaleString();
+      }catch{
+        rTotal.textContent = "—"; rSigned.textContent = "—"; rGuest.textContent = "—";
+      }
+    }
+
+    // Baseline
     const baseTotal = document.getElementById("baseTotal");
     const baseSigned = document.getElementById("baseSigned");
     const baseGuest = document.getElementById("baseGuest");
     const baseMsg = document.getElementById("baseMsg");
 
-    let UID = null;
+    document.getElementById("saveBaseline").onclick = async ()=>{
+      baseMsg.textContent = "";
+      if(UID !== ADMIN_UID){ alert("Access denied"); return; }
+      const t = Math.max(0, Number(baseTotal.value||0));
+      const s = Math.max(0, Number(baseSigned.value||0));
+      const g = Math.max(0, Number(baseGuest.value||0));
+      try{
+        await setDoc(doc(db,"stats","book1"), {
+          totalReaders: t,
+          signedInReaders: s,
+          guestReaders: g,
+          updatedAt: serverTimestamp(),
+          baselineSetAt: serverTimestamp(),
+          baselineSetBy: UID
+        }, { merge:true });
+        baseMsg.textContent = "Saved ✅";
+        await loadStats();
+      }catch(e){
+        baseMsg.textContent = "Denied: " + (e?.message || String(e));
+      }
+    };
 
-    function applyGate(){
-      const ok = (UID && UID === ADMIN_UID);
-      if(ok){
-        lockScreen.classList.remove("show");
-        adminApp.classList.add("show");
-      }else{
-        adminApp.classList.remove("show");
-        lockScreen.classList.add("show");
+    // Subscribers
+    const subsList = document.getElementById("subsList");
+    const subsMsg = document.getElementById("subsMsg");
+    document.getElementById("refreshSubs").onclick = renderSubscribers;
+
+    async function renderSubscribers(){
+      subsMsg.textContent = "";
+      subsList.textContent = "Loading…";
+      if(UID !== ADMIN_UID){
+        subsList.textContent = "Access denied.";
+        return;
+      }
+      try{
+        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(200));
+        const snap = await getDocs(qy);
+
+        subCountEl.textContent = String(snap.size || 0);
+
+        if(snap.empty){
+          subsList.textContent = "No subscribers yet.";
+          return;
+        }
+        const rows = [];
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          rows.push(`
+            <div style="padding:10px 0;border-bottom:1px solid var(--stroke);">
+              <div style="font-weight:950">${escapeHtml(d.email || d.phone || "Subscriber")}</div>
+              <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "")}</span></div>
+              <div class="small">book: ${escapeHtml(d.bookId || "")}</div>
+              <div class="small">emailOpt: ${d.notificationEmail ? "yes":"no"} | smsOpt: ${d.notificationSMS ? "yes":"no"}</div>
+              <div class="small mono">docId: ${s.id}</div>
+            </div>
+          `);
+        });
+        subsList.innerHTML = rows.join("");
+      }catch(e){
+        subsList.textContent = "Error: " + (e?.message || String(e));
       }
     }
 
-    // ===== Helpers =====
-    function escapeHtml(str){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
+    // ====== Formatter + Publish Chapters ======
+    const bookIdEl = document.getElementById("bookId");
+    const chapterNumberEl = document.getElementById("chapterNumber");
+    const chapterTitleEl = document.getElementById("chapterTitle");
+    const chapterSubtitleEl = document.getElementById("chapterSubtitle");
+    const chapterTextEl = document.getElementById("chapterText");
+    const htmlPreview = document.getElementById("htmlPreview");
+    const publishMsg = document.getElementById("publishMsg");
 
-    function inlineBold(text){
-      return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    }
+    function inlineBold(text){ return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); }
 
     function formatChapterToHTML({title, subtitle, text}){
       const safeTitle = escapeHtml(title || "").trim();
       const safeSub = escapeHtml(subtitle || "").trim();
-
       const lines = String(text || "").replaceAll("\r\n","\n").split("\n");
       const blocks = [];
       let para = [];
@@ -588,159 +524,101 @@ Use **bold** for bold."></textarea>
         para = [];
         if(!raw) return;
         const withBold = inlineBold(escapeHtml(raw))
-          .replaceAll("&lt;strong&gt;","<strong>")
-          .replaceAll("&lt;/strong&gt;","</strong>");
+          .replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
         const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
         blocks.push(`<p${cls}>${withBold}</p>`);
       }
 
-      blocks.push(
-        `<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`
-      );
+      blocks.push(`<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`);
 
       for(const line of lines){
         const t = line.trim();
-        if(t === "✦"){
-          flushPara();
-          blocks.push(`<div class="scene-break">✦</div>`);
-          continue;
-        }
-        if(t === ""){
-          flushPara();
-          continue;
-        }
+        if(t === "✦"){ flushPara(); blocks.push(`<div class="scene-break">✦</div>`); continue; }
+        if(t === ""){ flushPara(); continue; }
         para.push(t);
       }
       flushPara();
-
       return blocks.join("\n\n");
     }
 
-    // ====== Formatter ======
-    const bookIdEl = document.getElementById("bookId");
-    const chapterNumberEl = document.getElementById("chapterNumber");
-    const chapterTitleEl = document.getElementById("chapterTitle");
-    const chapterSubtitleEl = document.getElementById("chapterSubtitle");
-    const chapterTextEl = document.getElementById("chapterText");
-    const htmlPreview = document.getElementById("htmlPreview");
-    const publishMsg = document.getElementById("publishMsg");
-
     document.getElementById("formatBtn").onclick = ()=>{
-      const html = formatChapterToHTML({
-        title: chapterTitleEl.value,
-        subtitle: chapterSubtitleEl.value,
-        text: chapterTextEl.value
-      });
+      const html = formatChapterToHTML({ title: chapterTitleEl.value, subtitle: chapterSubtitleEl.value, text: chapterTextEl.value });
       htmlPreview.textContent = html;
     };
 
-    // ====== Publish Chapter ======
     document.getElementById("publishBtn").onclick = async ()=>{
       publishMsg.textContent = "";
-      if(!UID){ alert("Sign in first."); return; }
       if(UID !== ADMIN_UID){ alert("Access denied."); return; }
 
       const bookId = bookIdEl.value.trim() || "book1";
       const chapterNumber = Number(chapterNumberEl.value || 0);
       if(!Number.isFinite(chapterNumber) || chapterNumber <= 0){
-        alert("Please enter a valid Chapter # (1+).");
-        return;
+        alert("Enter valid Chapter # (1+)."); return;
       }
-
       const title = (chapterTitleEl.value || "").trim();
       const subtitle = (chapterSubtitleEl.value || "").trim();
       const text = (chapterTextEl.value || "").trim();
-
-      if(!title || !subtitle || !text){
-        alert("Please fill Title, Subtitle, and Text.");
-        return;
-      }
+      if(!title || !subtitle || !text){ alert("Fill Title, Subtitle, Text."); return; }
 
       const html = formatChapterToHTML({ title, subtitle, text });
       htmlPreview.textContent = html;
 
       try{
         await addDoc(collection(db, "books", bookId, "chapters"), {
-          chapterNumber,
-          title,
-          subtitle,
-          html,
-          createdAt: serverTimestamp(),
-          createdBy: UID
+          chapterNumber, title, subtitle, html,
+          createdAt: serverTimestamp(), createdBy: UID
         });
-
-        publishMsg.textContent = "Published!";
+        publishMsg.textContent = "Published ✅";
         await renderChapters();
       }catch(e){
-        alert("Denied or error: " + e.message);
+        alert("Denied: " + (e?.message || String(e)));
       }
     };
 
-    // ====== Manage chapters (list + delete) ======
     const chaptersList = document.getElementById("chaptersList");
-    const refreshChapters = document.getElementById("refreshChapters");
-
     async function renderChapters(){
       const bookId = bookIdEl.value.trim() || "book1";
       chaptersList.textContent = "Loading…";
-
       try{
-        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","asc"));
+        const qy = query(collection(db,"books",bookId,"chapters"), orderBy("chapterNumber","asc"));
         const snap = await getDocs(qy);
-
-        if(snap.empty){
-          chaptersList.textContent = "No chapters published yet.";
-          return;
-        }
-
+        if(snap.empty){ chaptersList.textContent = "No chapters published yet."; return; }
         const rows = [];
         snap.forEach(s=>{
           const d = s.data() || {};
-          const num = (d.chapterNumber ?? "?");
-          const title = (d.title || "(no title)");
-          const sub = (d.subtitle || "");
           rows.push(`
             <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--stroke);">
               <div style="min-width:0">
-                <div style="font-weight:950">#${num} — ${escapeHtml(title)}</div>
-                <div class="small">${escapeHtml(sub)}</div>
+                <div style="font-weight:950">#${d.chapterNumber ?? "?"} — ${escapeHtml(d.title || "(no title)")}</div>
+                <div class="small">${escapeHtml(d.subtitle || "")}</div>
                 <div class="small mono">docId: ${s.id}</div>
               </div>
               <button class="btn danger" data-del="${s.id}">🗑 Delete</button>
             </div>
           `);
         });
-
         chaptersList.innerHTML = rows.join("");
-
         chaptersList.querySelectorAll("[data-del]").forEach(btn=>{
           btn.addEventListener("click", async ()=>{
-            if(!UID){ alert("Sign in first."); return; }
-            if(UID !== ADMIN_UID){ alert("Access denied."); return; }
-
+            if(UID !== ADMIN_UID) return;
             const id = btn.getAttribute("data-del");
-            const ok = confirm("Delete this chapter permanently?");
-            if(!ok) return;
-
+            if(!confirm("Delete this chapter permanently?")) return;
             try{
-              await deleteDoc(doc(db, "books", bookId, "chapters", id));
+              await deleteDoc(doc(db,"books",bookId,"chapters",id));
               await renderChapters();
-              alert("Deleted.");
             }catch(e){
-              alert("Denied or error: " + e.message);
+              alert("Denied: " + (e?.message || String(e)));
             }
           });
         });
-
       }catch(e){
-        chaptersList.textContent = "Error: " + e.message;
+        chaptersList.textContent = "Error: " + (e?.message || String(e));
       }
     }
-
-    refreshChapters.addEventListener("click", renderChapters);
+    document.getElementById("refreshChapters").onclick = renderChapters;
     bookIdEl.addEventListener("change", renderChapters);
 
-    // ====== Announcements (with start/end) ======
+    // ====== Announcements ======
     const announceTitle = document.getElementById("announceTitle");
     const announceBody = document.getElementById("announceBody");
     const announceStart = document.getElementById("announceStart");
@@ -757,37 +635,28 @@ Use **bold** for bold."></textarea>
 
     document.getElementById("publishAnnounce").onclick = async ()=>{
       announceMsg.textContent = "";
-      if(!UID){ alert("Sign in first."); return; }
       if(UID !== ADMIN_UID){ alert("Access denied."); return; }
-
       const t = (announceTitle.value || "").trim();
       const b = (announceBody.value || "").trim();
-      if(!t || !b){
-        alert("Please fill Title and Body.");
-        return;
-      }
+      if(!t || !b){ alert("Fill Title and Body."); return; }
 
       const startDate = parseDTLocal(announceStart.value);
       const endDate = parseDTLocal(announceEnd.value);
-
       if(startDate && endDate && endDate.getTime() < startDate.getTime()){
-        alert("End/Expire must be after Start.");
-        return;
+        alert("End must be after Start."); return;
       }
-
       try{
-        await addDoc(collection(db, "announcements"), {
-          title: t,
-          body: b,
+        await addDoc(collection(db,"announcements"), {
+          title: t, body: b,
           startAt: startDate ? Timestamp.fromDate(startDate) : null,
           endAt: endDate ? Timestamp.fromDate(endDate) : null,
           createdAt: serverTimestamp(),
           createdBy: UID
         });
-        announceMsg.textContent = "Published!";
+        announceMsg.textContent = "Published ✅";
         await renderAnnouncementsAdmin();
       }catch(e){
-        alert("Denied or error: " + e.message);
+        alert("Denied: " + (e?.message || String(e)));
       }
     };
 
@@ -796,21 +665,17 @@ Use **bold** for bold."></textarea>
       try{
         const qy = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(15));
         const snap = await getDocs(qy);
-        if(snap.empty){
-          announceList.textContent = "No announcements yet.";
-          return;
-        }
+        if(snap.empty){ announceList.textContent = "No announcements yet."; return; }
 
         const now = Date.now();
         const rows = [];
         snap.forEach(s=>{
           const d = s.data() || {};
           const startMs = d.startAt?.toMillis ? d.startAt.toMillis() : null;
-          const endMs   = d.endAt?.toMillis ? d.endAt.toMillis() : null;
+          const endMs = d.endAt?.toMillis ? d.endAt.toMillis() : null;
           const okStart = (startMs == null) ? true : (now >= startMs);
-          const okEnd   = (endMs == null) ? true : (now <= endMs);
+          const okEnd = (endMs == null) ? true : (now <= endMs);
           const badge = (okStart && okEnd) ? "LIVE" : "ARCHIVED";
-
           rows.push(`
             <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--stroke);">
               <div style="min-width:0">
@@ -822,7 +687,6 @@ Use **bold** for bold."></textarea>
             </div>
           `);
         });
-
         announceList.innerHTML = rows.join("");
         announceList.querySelectorAll("[data-del-ann]").forEach(btn=>{
           btn.addEventListener("click", async ()=>{
@@ -833,81 +697,122 @@ Use **bold** for bold."></textarea>
               await deleteDoc(doc(db,"announcements",id));
               await renderAnnouncementsAdmin();
             }catch(e){
-              alert("Denied or error: " + e.message);
+              alert("Denied: " + (e?.message || String(e)));
+            }
+          });
+        });
+      }catch(e){
+        announceList.textContent = "Error: " + (e?.message || String(e));
+      }
+    }
+    document.getElementById("refreshAnnounce").onclick = renderAnnouncementsAdmin;
+
+    // ====== Comments moderation ======
+    const cBook = document.getElementById("cBook");
+    const commentsAdmin = document.getElementById("commentsAdmin");
+    document.getElementById("refreshComments").onclick = renderCommentsAdmin;
+    cBook.addEventListener("change", renderCommentsAdmin);
+
+    async function renderCommentsAdmin(){
+      commentsAdmin.textContent = "Loading…";
+      if(UID !== ADMIN_UID){ commentsAdmin.textContent = "Access denied."; return; }
+
+      const bookId = cBook.value || "book1";
+      try{
+        const qy = query(collection(db,"books",bookId,"comments"), orderBy("createdAt","desc"), limit(40));
+        const snap = await getDocs(qy);
+        if(snap.empty){ commentsAdmin.textContent = "No comments yet."; return; }
+
+        const rows = [];
+        for(const s of snap.docs){
+          const d = s.data() || {};
+          rows.push(`
+            <div style="padding:10px 0;border-bottom:1px solid var(--stroke);">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+                <div style="font-weight:950">${escapeHtml(d.name || "Reader")}</div>
+                <div class="small mono">${s.id}</div>
+              </div>
+              <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "(guest)")}</span></div>
+              <div style="margin-top:6px;opacity:.92;line-height:1.55">${escapeHtml(d.text || "")}</div>
+
+              <div class="row" style="margin-top:10px;">
+                <button class="btn danger" data-delc="${s.id}">🗑 Delete</button>
+                <button class="btn" data-replyc="${s.id}">Reply as Admin</button>
+              </div>
+
+              <div data-replybox="${s.id}" style="display:none;margin-top:10px;">
+                <textarea data-replytext="${s.id}" placeholder="Write admin reply…"></textarea>
+                <div class="row" style="margin-top:8px;">
+                  <button class="btn primary" data-sendc="${s.id}">Send</button>
+                  <button class="btn" data-cancelc="${s.id}">Cancel</button>
+                  <div class="small" data-msgc="${s.id}"></div>
+                </div>
+              </div>
+            </div>
+          `);
+        }
+        commentsAdmin.innerHTML = rows.join("");
+
+        commentsAdmin.querySelectorAll("[data-delc]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const id = btn.getAttribute("data-delc");
+            if(!confirm("Delete this comment?")) return;
+            try{
+              await deleteDoc(doc(db,"books",bookId,"comments",id));
+              await renderCommentsAdmin();
+            }catch(e){
+              alert("Denied: " + (e?.message || String(e)));
+            }
+          });
+        });
+
+        commentsAdmin.querySelectorAll("[data-replyc]").forEach(btn=>{
+          btn.addEventListener("click", ()=>{
+            const id = btn.getAttribute("data-replyc");
+            const box = commentsAdmin.querySelector(`[data-replybox="${id}"]`);
+            if(box) box.style.display = (box.style.display === "none" ? "block" : "none");
+          });
+        });
+
+        commentsAdmin.querySelectorAll("[data-cancelc]").forEach(btn=>{
+          btn.addEventListener("click", ()=>{
+            const id = btn.getAttribute("data-cancelc");
+            const box = commentsAdmin.querySelector(`[data-replybox="${id}"]`);
+            if(box) box.style.display = "none";
+          });
+        });
+
+        commentsAdmin.querySelectorAll("[data-sendc]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const id = btn.getAttribute("data-sendc");
+            const txt = commentsAdmin.querySelector(`[data-replytext="${id}"]`);
+            const msg = commentsAdmin.querySelector(`[data-msgc="${id}"]`);
+            if(msg) msg.textContent = "";
+            const text = (txt?.value || "").trim();
+            if(!text){ if(msg) msg.textContent = "Write a reply first."; return; }
+            try{
+              await addDoc(collection(db,"books",bookId,"comments",id,"replies"), {
+                uid: UID,
+                isAdmin: true,
+                name: "Admin",
+                text,
+                createdAt: serverTimestamp(),
+                editableUntil: Timestamp.fromMillis(Date.now() + 60*60*1000)
+              });
+              if(txt) txt.value = "";
+              if(msg) msg.textContent = "Sent ✅";
+            }catch(e){
+              if(msg) msg.textContent = "Denied: " + (e?.message || String(e));
             }
           });
         });
 
       }catch(e){
-        announceList.textContent = "Error: " + e.message;
+        commentsAdmin.textContent = "Error: " + (e?.message || String(e));
       }
     }
 
-    document.getElementById("refreshAnnounce").onclick = renderAnnouncementsAdmin;
-
-    // ====== Subscribers (Private) ======
-    const subsList = document.getElementById("subsList");
-    const subsMsg = document.getElementById("subsMsg");
-    document.getElementById("refreshSubs").onclick = renderSubscribers;
-
-    async function renderSubscribers(){
-      subsMsg.textContent = "";
-      subsList.textContent = "Loading…";
-      if(UID !== ADMIN_UID){
-        subsList.textContent = "Access denied.";
-        return;
-      }
-
-      try{
-        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(200));
-        const snap = await getDocs(qy);
-
-        const count = snap.size || 0;
-        subCountEl.textContent = String(count);
-
-        if(snap.empty){
-          subsList.textContent = "No subscribers yet.";
-          return;
-        }
-
-        const rows = [];
-        snap.forEach(s=>{
-          const d = s.data() || {};
-          rows.push(`
-            <div style="padding:10px 0;border-bottom:1px solid var(--stroke);">
-              <div style="font-weight:950">${escapeHtml(d.email || d.phone || "Subscriber")}</div>
-              <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "")}</span></div>
-              <div class="small">book: ${escapeHtml(d.bookId || "")}</div>
-              <div class="small">emailOpt: ${d.notificationEmail ? "yes":"no"} | smsOpt: ${d.notificationSMS ? "yes":"no"}</div>
-            </div>
-          `);
-        });
-
-        subsList.innerHTML = rows.join("");
-      }catch(e){
-        subsList.textContent = "Error: " + e.message;
-      }
-    }
-
-    // ====== Baseline/backfill ======
-    document.getElementById("applyBaseline").onclick = async ()=>{
-      baseMsg.textContent = "";
-      if(UID !== ADMIN_UID){ baseMsg.textContent = "Access denied."; return; }
-
-      const total = Number(baseTotal.value || 0);
-      const signed = Number(baseSigned.value || 0);
-      const guest = Number(baseGuest.value || 0);
-
-      try{
-        await adminSetReaderBaseline({ bookId:"book1", total, signed, guest });
-        baseMsg.textContent = "Baseline saved ✅";
-        await renderReaderSplitAdmin({ bookId:"book1" });
-      }catch(e){
-        baseMsg.textContent = e?.message || String(e);
-      }
-    };
-
-    // ====== Auth ======
+    // ===== Auth =====
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
 
@@ -920,14 +825,13 @@ Use **bold** for bold."></textarea>
       applyGate();
 
       if(user && UID === ADMIN_UID){
-        renderChapters();
-        renderAnnouncementsAdmin();
-        renderSubscribers();
-        renderReaderSplitAdmin({ bookId:"book1" });
+        await loadStats();
+        await renderSubscribers();
+        await renderChapters();
+        await renderAnnouncementsAdmin();
+        await renderCommentsAdmin();
       }else{
-        chaptersList.textContent = "—";
-        announceList.textContent = "—";
-        subsList.textContent = "—";
+        rTotal.textContent = "—"; rSigned.textContent = "—"; rGuest.textContent = "—";
         subCountEl.textContent = "—";
       }
     });
@@ -938,18 +842,13 @@ Use **bold** for bold."></textarea>
         closeModal();
       }catch(e){ alert(e.message); }
     };
-
     signupBtn.onclick = async ()=>{
       try{
         await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
         closeModal();
       }catch(e){ alert(e.message); }
     };
-
-    logoutBtn.onclick = async ()=>{
-      await signOut(auth);
-      closeModal();
-    };
+    logoutBtn.onclick = async ()=>{ await signOut(auth); closeModal(); };
   </script>
 </body>
 </html>
