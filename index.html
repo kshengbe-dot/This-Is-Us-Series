@@ -5,6 +5,929 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>THIS IS US — Library</title>
 
+  <style>
+    :root{
+      --bg:#0B1020;
+      --card:#0F1731;
+      --ink:#EAF0FF;
+      --muted:#9FB0D6;
+      --stroke:rgba(255,255,255,.12);
+      --shadow: 0 28px 90px rgba(0,0,0,.55);
+      --glow: rgba(124,92,255,.45);
+      --accent:#7c5cff;
+      --accent2: rgba(0,255,198,.18);
+      --glass: rgba(0,0,0,.30);
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
+    }
+    [data-theme="light"]{
+      --bg:#F7F8FB;
+      --card:#FFFFFF;
+      --ink:#0F172A;
+      --muted:#475569;
+      --stroke:rgba(2,6,23,.10);
+      --shadow: 0 18px 60px rgba(2,6,23,.10);
+      --glow: rgba(124,92,255,.18);
+      --accent:#7c5cff;
+      --accent2: rgba(2,6,23,.04);
+      --glass: rgba(255,255,255,.78);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--ink);
+      background:
+        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
+        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
+        var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    a{color:inherit;text-decoration:none}
+
+    .top{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(14px);
+      background: var(--glass);
+      border-bottom:1px solid var(--stroke);
+    }
+    .nav{
+      max-width:1100px; margin:0 auto;
+      padding: calc(10px + var(--safeTop)) 16px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:2px;
+      letter-spacing:.14em; text-transform:uppercase;
+      font-weight:950;
+      min-width:0;
+    }
+    .brand small{
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:46vw;
+    }
+    .right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width:66vw;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom:2px;
+    }
+    .right::-webkit-scrollbar{height:0}
+
+    .pill{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      padding:9px 12px;
+      border-radius:999px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease;
+      white-space:nowrap;
+      flex:0 0 auto;
+    }
+    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .pill strong{color:var(--ink)}
+    .dot{font-size:12px; opacity:.9}
+
+    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
+    .hero{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .heroMain{ padding:18px 18px 16px; min-height: 260px; }
+    .heroMain:before{
+      content:"";
+      position:absolute; inset:-1px;
+      background:
+        radial-gradient(700px 320px at 25% 0%, rgba(124,92,255,.22), transparent 65%),
+        radial-gradient(520px 320px at 90% 20%, rgba(0,255,198,.10), transparent 65%);
+      pointer-events:none;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size:44px;
+      line-height:1.02;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-weight:950;
+      position:relative;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.55;
+      max-width:65ch;
+      position:relative;
+    }
+    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; position:relative}
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
+    .heroSide{ padding:16px; min-height:260px; display:grid; gap:10px; }
+    .stat{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
+    }
+    [data-theme="light"] .stat{background: rgba(2,6,23,.04)}
+    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+    .stat .v{font-weight:950; font-size:16px; margin-top:4px}
+
+    .sectionTitle{
+      margin:26px 0 12px;
+      display:flex; align-items:end; justify-content:space-between; gap:12px;
+    }
+    .sectionTitle h2{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .shelf{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:14px;
+    }
+    .bookCard{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      transform-style:preserve-3d;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      cursor:pointer;
+      min-height: 340px;
+      animation: pop .45s ease both;
+    }
+    @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+    .bookCard:hover{
+      transform: translateY(-4px) rotateX(3deg) rotateY(-4deg);
+      border-color: rgba(124,92,255,.35);
+      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
+    }
+    .cover{
+      height: 230px;
+      background: rgba(0,0,0,.18);
+      border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; justify-content:center;
+      overflow:hidden;
+    }
+    .cover img{
+      width:100%; height:100%;
+      object-fit:cover;
+      transform: scale(1.02);
+      transition: transform .22s ease;
+      display:block;
+    }
+    .bookCard:hover .cover img{ transform: scale(1.06); }
+    .meta{ padding:12px 12px 14px; }
+    .meta .name{ font-weight:950; margin:0; font-size:16px; }
+    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+
+    .badge{
+      position:absolute; top:12px; left:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+    }
+    .badge.live{ border-color: rgba(0,255,198,.35); }
+    .badge.soon{ border-color: rgba(255,198,0,.35); }
+
+    .lockedOverlay{
+      position:absolute; inset:0;
+      background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.42));
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition: opacity .18s ease;
+    }
+    .bookCard.locked:hover .lockedOverlay{ opacity:1; }
+    .lockedOverlay .inner{
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.80);
+      padding:12px 14px;
+      border-radius:16px;
+      text-align:center;
+      max-width: 220px;
+    }
+    .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
+
+    /* Modals */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.60);
+      z-index:1000;
+      padding:16px;
+    }
+    .modal.show{display:flex}
+    .modalCard{
+      width:min(860px, 96vw);
+      border:1px solid var(--stroke);
+      background: rgba(15,20,40,.96);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      padding:14px;
+
+      max-height: 86vh;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 6px 10px;
+      position:sticky; top:0;
+      background: inherit;
+      z-index:2;
+    }
+    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      flex:0 0 auto;
+    }
+    .grid{ display:grid; gap:10px; padding:6px; }
+    label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    input{
+      width:100%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:14px;
+      color:var(--ink);
+      outline:none;
+      font-size:14px;
+    }
+    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .note{color:var(--muted); font-size:12px; line-height:1.45}
+    .mini{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
+      margin-top:14px; position:relative;
+    }
+    .avatar{
+      width:44px; height:44px; border-radius:50%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      overflow:hidden;
+      flex:none;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .profileLine{display:flex; align-items:center; gap:10px;}
+    .who{font-weight:950}
+    .small{color:var(--muted); font-size:12px}
+
+    .termsBox{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:12px;
+      background: rgba(255,255,255,.06);
+      max-height: 56vh;
+      overflow:auto;
+    }
+    .checkRow{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 6px 0;
+    }
+    .checkRow input{ width:auto; margin-top:3px; }
+
+    /* ✅ Comment Preview (Carousel) */
+    .previewWrap{ margin-top:16px; }
+    .previewTitle{
+      margin:26px 0 12px;
+      display:flex; align-items:end; justify-content:space-between; gap:12px;
+    }
+    .previewTitle h2{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .previewShell{
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      overflow:hidden;
+      position:relative;
+    }
+    .previewInner{
+      padding:14px;
+      min-height: 110px;
+      position:relative;
+    }
+    .previewSlide{
+      position:absolute;
+      inset:14px;
+      opacity:0;
+      transform: translateY(6px);
+      transition: opacity .65s ease, transform .65s ease;
+      pointer-events:none;
+    }
+    .previewSlide.show{
+      opacity:1;
+      transform:none;
+      pointer-events:auto;
+    }
+    .pTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      font: 900 12px ui-sans-serif,system-ui;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .pBook{
+      display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;
+    }
+    .pPill{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      padding:6px 9px;
+      border-radius:999px;
+      font: 900 11px ui-sans-serif,system-ui;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    .pName{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      min-width:0;
+    }
+    .pWho{
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 70vw;
+    }
+    .pText{
+      margin-top:8px;
+      color: var(--muted);
+      line-height:1.55;
+      font-size:13px;
+    }
+    .pMeta{
+      margin-top:10px;
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      font-size:12px; color:var(--muted);
+    }
+    .pHint{
+      padding:10px 14px 12px;
+      border-top:1px solid var(--stroke);
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr}
+      .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
+      h1{font-size:38px}
+    }
+    @media (max-width:520px){
+      .shelf{grid-template-columns:1fr}
+      h1{font-size:34px}
+      .right{max-width:72vw;}
+      .row2{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top">
+    <div class="nav">
+      <div class="brand">
+        THIS IS US
+        <small>Series Library</small>
+      </div>
+      <div class="right">
+        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+        <div class="pill" id="openSubBtn">🔔 <strong>Subscribe</strong></div>
+        <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
+        <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+        <div class="pill" id="statusPill">
+          <span class="dot">●</span>
+          <strong id="statusText">Guest</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="card heroMain">
+        <h1>THIS IS US</h1>
+        <p class="subtitle">
+          A premium novel-reader: filled pages, smooth flip animation, saved progress, light/dark mode,
+          and optional Firebase sync so your pages follow you across devices.
+        </p>
+        <div class="ctaRow">
+          <a class="btn primary" href="read.html?book=book1">▶ Start Book I</a>
+          <a class="btn" href="read.html?book=coming">👀 Coming Soon Preview</a>
+          <button class="btn" id="openAuth">✨ Sign in to Sync</button>
+        </div>
+
+        <div class="mini">
+          <div class="profileLine">
+            <div class="avatar" id="avatarBox"></div>
+            <div>
+              <div class="who" id="whoLine">Guest Reader</div>
+              <div class="small" id="emailLine">Progress saved locally</div>
+            </div>
+          </div>
+          <div class="small" id="syncHint">Sign in to save to cloud</div>
+        </div>
+      </div>
+
+      <div class="card heroSide">
+        <div class="stat"><div class="k">Readers</div><div class="v"><span id="readerCount">—</span> Total</div></div>
+        <div class="stat"><div class="k">Subscribers</div><div class="v"><span id="subCount">—</span> Total</div></div>
+        <div class="stat"><div class="k">Theme</div><div class="v">Light / Dark</div></div>
+      </div>
+    </div>
+
+    <div id="announceBanner"></div>
+
+    <div class="previewWrap">
+      <div class="previewTitle">
+        <h2>What readers are saying</h2>
+        <div class="pill" style="cursor:default;">Auto preview</div>
+      </div>
+
+      <div class="previewShell">
+        <div class="previewInner" id="commentPreview">Loading…</div>
+        <div class="pHint">
+          <span>Tap a preview to jump to that comment.</span>
+          <span style="opacity:.9">Opens Community inside Reader</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sectionTitle">
+      <h2>Library</h2>
+      <div class="pill">Tap a book → Read</div>
+    </div>
+
+    <div class="shelf">
+      <a class="bookCard" href="read.html?book=book1" aria-label="Book 1">
+        <div class="badge live">Live</div>
+        <div class="cover">
+          <img src="assets/cover-book1.png" alt="Book 1 Cover" onerror="this.style.display='none'">
+        </div>
+        <div class="meta">
+          <p class="name">Book I — Where We Began</p>
+          <p class="desc">Mukeh arrives. Francess is the standard. Awareness begins.</p>
+        </div>
+      </a>
+
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 2">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book II — Coming Soon</p>
+          <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 3">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book III — Coming Soon</p>
+          <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+
+      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 4">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover">
+          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
+            Next Book
+          </div>
+        </div>
+        <div class="meta">
+          <p class="name">Book IV — Coming Soon</p>
+          <p class="desc">The past returns. The narrative changes. The costs rise.</p>
+        </div>
+        <div class="lockedOverlay">
+          <div class="inner">
+            <strong>Preview</strong>
+            <p>Tap to open the Coming Soon page.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal" id="modal">
+    <div class="modalCard" style="width:min(560px, 96vw);">
+      <div class="modalHead">
+        <h3>Account</h3>
+        <div class="x" id="close">✕</div>
+      </div>
+
+      <div class="grid">
+        <div class="row2">
+          <div>
+            <label>Email</label>
+            <input id="email" type="email" placeholder="Email">
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="password" type="password" placeholder="Password">
+          </div>
+        </div>
+
+        <div class="row2">
+          <button class="btn primary" id="loginBtn">Sign In</button>
+          <button class="btn" id="signupBtn">Create Account</button>
+        </div>
+
+        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
+
+        <p class="note">
+          Reading works without login. Sign in only if you want cloud sync across devices.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIBE MODAL -->
+  <div class="modal" id="newsModal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Subscribe</h3>
+        <div class="x" id="newsClose">✕</div>
+      </div>
+
+      <div class="grid">
+        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Subscribe</div>
+
+        <form id="subscribeForm" class="grid">
+          <div class="row2">
+            <input id="subEmail" type="email" placeholder="Email (required if Email is checked)">
+            <input id="subPhone" type="tel" placeholder="Phone (required if SMS is checked)">
+          </div>
+
+          <div class="row2">
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+              <input type="checkbox" id="optEmail"> Email notifications
+            </label>
+            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
+              <input type="checkbox" id="optSMS"> SMS notifications
+            </label>
+          </div>
+
+          <button class="btn primary" type="submit">Subscribe</button>
+          <div class="note" style="margin-top:-2px">
+            SMS may be subject to carrier rates. You can opt out anytime by contacting the site owner.
+          </div>
+          <div class="note" id="subMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMS MODAL (MANDATORY) -->
+  <div class="modal" id="termsModal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Terms & Conditions</h3>
+        <div></div>
+      </div>
+
+      <div class="termsBox" id="termsText">
+        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
+        <p class="note" style="margin-top:10px">
+          Last updated: February 15, 2026
+        </p>
+
+        <p><strong>1) Acceptance</strong><br>
+          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
+        </p>
+
+        <p><strong>2) Eligibility</strong><br>
+          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
+        </p>
+
+        <p><strong>3) Content & Reader Experience</strong><br>
+          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
+        </p>
+
+        <p><strong>4) Accounts</strong><br>
+          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
+        </p>
+
+        <p><strong>5) User Submissions</strong><br>
+          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
+        </p>
+
+        <p><strong>6) Notifications (Optional)</strong><br>
+          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
+        </p>
+
+        <p><strong>7) Privacy</strong><br>
+          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
+        </p>
+
+        <p><strong>8) Availability & Changes</strong><br>
+          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
+        </p>
+
+        <p><strong>9) Disclaimer</strong><br>
+          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
+        </p>
+
+        <p><strong>10) Limitation of Liability</strong><br>
+          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
+        </p>
+
+        <p><strong>11) Contact</strong><br>
+          For questions, removal requests, or opt-out requests, contact the site owner.
+        </p>
+      </div>
+
+      <div class="checkRow">
+        <input type="checkbox" id="agreeTerms">
+        <div class="note">
+          I have read and agree to the Terms & Conditions.
+        </div>
+      </div>
+
+      <div class="grid" style="padding-top:10px">
+        <button class="btn primary" id="acceptTermsBtn">Accept & Continue</button>
+        <div class="note" id="termsMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { firebaseConfig } from "./firebase-config.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import {
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    import {
+      renderAnnouncementSection,
+      setupSubscribeForm,
+      renderReaderCount,
+      renderSubscriberCount
+    } from "./public-feed.js";
+
+    import { renderCommentPreviewCarousel } from "./reader-community.js";
+    import { wireTermsGate } from "./terms-gate.js";
+
+    // Theme (local first)
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    document.getElementById("themeBtn").onclick = async ()=>{
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+      if(window.__UID){
+        try{
+          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+        }catch{}
+      }
+    };
+
+    document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
+
+    // ===== AUTH MODAL =====
+    const modal = document.getElementById("modal");
+    const openAuth = document.getElementById("openAuth");
+    const authBtn  = document.getElementById("authBtn");
+    const close = document.getElementById("close");
+    function openModal(){ modal.classList.add("show"); document.body.style.overflow="hidden"; }
+    function closeModal(){ modal.classList.remove("show"); document.body.style.overflow=""; }
+    openAuth.onclick = openModal;
+    authBtn.onclick  = openModal;
+    close.onclick = closeModal;
+    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
+
+    // ===== SUBSCRIBE MODAL =====
+    const newsModal = document.getElementById("newsModal");
+    const newsClose = document.getElementById("newsClose");
+    document.getElementById("openSubBtn").onclick = ()=>{
+      newsModal.classList.add("show");
+      document.body.style.overflow="hidden";
+    };
+    newsClose.onclick = ()=>{ newsModal.classList.remove("show"); document.body.style.overflow=""; };
+    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal){ newsModal.classList.remove("show"); document.body.style.overflow=""; } });
+
+    // Subscribe form
+    setupSubscribeForm({ bookId:"book1" });
+
+    // ===== PROFILE UI =====
+    const statusText = document.getElementById("statusText");
+    const authText = document.getElementById("authText");
+    const whoLine = document.getElementById("whoLine");
+    const emailLine = document.getElementById("emailLine");
+    const syncHint = document.getElementById("syncHint");
+    const avatarBox = document.getElementById("avatarBox");
+
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    function setAvatar(url){
+      avatarBox.innerHTML = url
+        ? `<img src="${url}" alt="Profile">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;">👤</div>`;
+    }
+
+    async function loadProfile(uid){
+      try{
+        const ref = doc(db, "users", uid);
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        if(data.theme && (data.theme==="dark" || data.theme==="light")){
+          document.documentElement.dataset.theme = data.theme;
+          localStorage.setItem("theme", data.theme);
+        }
+        setAvatar(data.photoURL || "");
+      }catch{
+        setAvatar("");
+      }
+    }
+
+    // ✅ TERMS GATE
+    wireTermsGate();
+
+    // ===== AUTH STATE =====
+    onAuthStateChanged(auth, async (user)=>{
+      window.__UID = user ? user.uid : null;
+
+      if(user){
+        statusText.textContent = "Synced";
+        authText.textContent = "Account";
+        logoutBtn.style.display = "inline-flex";
+        whoLine.textContent = "Signed in";
+        emailLine.textContent = user.email || "User";
+        syncHint.textContent = "Cloud sync is ON";
+
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email || "",
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+
+        await loadProfile(user.uid);
+      }else{
+        statusText.textContent = "Guest";
+        authText.textContent = "Sign in";
+        logoutBtn.style.display = "none";
+        whoLine.textContent = "Guest Reader";
+        emailLine.textContent = "Progress saved locally";
+        syncHint.textContent = "Sign in to save to cloud";
+        setAvatar("");
+      }
+    });
+
+    loginBtn.onclick = async ()=>{
+      try{
+        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    signupBtn.onclick = async ()=>{
+      try{
+        const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          email: email.value.trim(),
+          createdAt: serverTimestamp(),
+          theme: localStorage.getItem("theme") || "dark"
+        }, { merge:true });
+        closeModal();
+      }catch(e){ alert(e.message); }
+    };
+
+    logoutBtn.onclick = async ()=>{
+      await signOut(auth);
+      closeModal();
+    };
+
+    // ✅ PUBLIC FEEDS (auto)
+    renderAnnouncementSection({ mountId:"announceBanner", max: 10 });
+
+    // ✅ COUNTS
+    renderReaderCount({ bookId:"book1", mountId:"readerCount" });
+    renderSubscriberCount({ bookId:"book1", mountId:"subCount" });
+
+    // ✅ COMMENT PREVIEW CAROUSEL (animated + deep link)
+    renderCommentPreviewCarousel({
+      bookId:"book1",
+      mountId:"commentPreview",
+      max: 8,
+      intervalMs: 4200
+    });
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>THIS IS US — Library</title>
+
   <style><!doctype html>
 <html lang="en" data-theme="dark">
 <head>
