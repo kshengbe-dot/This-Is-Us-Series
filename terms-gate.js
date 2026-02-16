@@ -1,4 +1,8 @@
 // terms-gate.js
+// Signed-in: accept ONCE in Firestore users/{uid}/meta/terms
+// Guest: accept ONCE in localStorage (so Back -> Library does NOT pop again)
+// Waits for auth state to resolve before deciding (prevents flash-pop)
+
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
@@ -8,83 +12,98 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// bump ONLY when you change terms text materially
 export const TERMS_VERSION = 1;
+
 const LS_KEY = `termsAccepted:v${TERMS_VERSION}`;
 
-function lockScroll(lock) { document.body.style.overflow = lock ? "hidden" : ""; }
-function openModal(modal){ modal.classList.add("show"); lockScroll(true); }
-function closeModal(modal){ modal.classList.remove("show"); lockScroll(false); }
+function lockScroll(lock) {
+  document.body.style.overflow = lock ? "hidden" : "";
+}
 
-function termsDoc(uid){
+function open(modal) {
+  modal.classList.add("show");
+  lockScroll(true);
+}
+
+function close(modal) {
+  modal.classList.remove("show");
+  lockScroll(false);
+}
+
+function termsRef(uid) {
   return doc(db, "users", uid, "meta", "terms");
 }
 
-async function hasAccepted(uid){
+async function hasAccepted(uid) {
+  // ✅ guest/signed-in both benefit from local cache for navigation/back
   if (localStorage.getItem(LS_KEY) === "1") return true;
+
   if (!uid) return false;
 
-  try{
-    const snap = await getDoc(termsDoc(uid));
-    if(!snap.exists()) return false;
+  try {
+    const snap = await getDoc(termsRef(uid));
+    if (!snap.exists()) return false;
     const d = snap.data() || {};
     return Number(d.version || 0) >= TERMS_VERSION;
-  }catch{
+  } catch {
     return false;
   }
 }
 
-async function saveAccepted(uid){
+async function saveAccepted(uid) {
   localStorage.setItem(LS_KEY, "1");
-  if(!uid) return;
-
-  await setDoc(termsDoc(uid), {
-    version: TERMS_VERSION,
-    acceptedAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  }, { merge:true });
+  if (!uid) return;
+  await setDoc(
+    termsRef(uid),
+    { version: TERMS_VERSION, acceptedAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    { merge: true }
+  );
 }
 
 export function wireTermsGate({
-  termsModalId="termsModal",
-  agreeCheckboxId="agreeTerms",
-  acceptBtnId="acceptTermsBtn",
-  msgId="termsMsg"
-} = {}){
+  termsModalId = "termsModal",
+  agreeCheckboxId = "agreeTerms",
+  acceptBtnId = "acceptTermsBtn",
+  msgId = "termsMsg",
+} = {}) {
   const modal = document.getElementById(termsModalId);
   const agree = document.getElementById(agreeCheckboxId);
   const btn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
-  if(!modal || !agree || !btn) return;
 
-  let authResolved = false;
+  if (!modal || !agree || !btn) return;
 
-  async function decide(user){
-    authResolved = true;
+  let decided = false;
+
+  async function decide(user) {
     const uid = user ? user.uid : null;
     const ok = await hasAccepted(uid);
-    if(ok) closeModal(modal);
-    else openModal(modal);
+    decided = true;
+    if (ok) close(modal);
+    else open(modal);
   }
 
-  btn.addEventListener("click", async ()=>{
-    if(msg) msg.textContent = "";
-    if(!agree.checked){
-      if(msg) msg.textContent = "Please check the agreement box to continue.";
+  btn.addEventListener("click", async () => {
+    if (msg) msg.textContent = "";
+    if (!agree.checked) {
+      if (msg) msg.textContent = "Please check the agreement box to continue.";
       return;
     }
-    try{
+    try {
       const u = auth.currentUser;
       await saveAccepted(u ? u.uid : null);
-      closeModal(modal);
-    }catch{
-      if(msg) msg.textContent = "Could not save acceptance. Check Firestore rules.";
+      close(modal);
+    } catch (e) {
+      if (msg) msg.textContent = "Could not save acceptance (check Firestore rules).";
     }
   });
 
-  onAuthStateChanged(auth, (user)=> decide(user));
+  // ✅ wait for auth state
+  onAuthStateChanged(auth, (user) => decide(user));
 
-  // fallback: if auth is slow, treat as guest after 1.2s (but still waits first)
-  setTimeout(()=>{
-    if(!authResolved) decide(null);
+  // fallback: if auth never resolves quickly, treat as guest
+  setTimeout(() => {
+    if (!decided) decide(null);
   }, 1200);
 }
