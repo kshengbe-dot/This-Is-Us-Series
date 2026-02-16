@@ -1,364 +1,311 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>THIS IS US — Library</title>
-  <meta name="description" content="THIS IS US — Interactive romance series library. Read, react, comment, and follow announcements." />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>THIS IS US — Series Library</title>
+  <meta name="description" content="THIS IS US — premium novel reader library with sync, community, ratings, and achievements." />
 
   <style>
     :root{
-      --bg:#0B1020;
-      --card:#0F1731;
-      --ink:#EAF0FF;
-      --muted:#9FB0D6;
+      --bg:#0B1020; --card:#0F1731; --ink:#EAF0FF; --muted:#9FB0D6;
       --stroke:rgba(255,255,255,.12);
       --shadow: 0 28px 90px rgba(0,0,0,.55);
-      --bar: rgba(10,14,28,.86);
-      --chip: rgba(255,255,255,.06);
-      --glow: rgba(124,92,255,.30);
+      --glow: rgba(124,92,255,.45);
       --accent:#7c5cff;
-      --good: rgba(0,255,198,.9);
-
+      --accent2: rgba(0,255,198,.18);
+      --glass: rgba(0,0,0,.30);
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
-
-      --radius: 22px;
     }
-
     [data-theme="light"]{
-      --bg:#F7F8FB;
-      --card:#FFFFFF;
-      --ink:#0F172A;
-      --muted:#475569;
+      --bg:#F7F8FB; --card:#FFFFFF; --ink:#0F172A; --muted:#475569;
       --stroke:rgba(2,6,23,.10);
       --shadow: 0 18px 60px rgba(2,6,23,.10);
-      --bar: rgba(255,255,255,.92);
-      --chip: rgba(2,6,23,.04);
-      --glow: rgba(124,92,255,.16);
+      --glow: rgba(124,92,255,.18);
       --accent:#7c5cff;
+      --accent2: rgba(2,6,23,.04);
+      --glass: rgba(255,255,255,.78);
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      color:var(--ink);
+      margin:0; color:var(--ink);
       background:
         radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
-        radial-gradient(900px 700px at 80% 20%, rgba(0,255,198,.12), transparent 55%),
+        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
         var(--bg);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
     a{color:inherit;text-decoration:none}
-
-    /* Top bar */
     .top{
-      position:sticky; top:0; z-index:60;
-      border-bottom:1px solid var(--stroke);
-      background: var(--bar);
+      position:sticky; top:0; z-index:50;
       backdrop-filter: blur(14px);
+      background: var(--glass);
+      border-bottom:1px solid var(--stroke);
     }
     .nav{
-      max-width:1100px;
-      margin:0 auto;
-      padding: calc(10px + var(--safeTop)) 14px 10px;
+      max-width:1100px; margin:0 auto;
+      padding: calc(10px + var(--safeTop)) 16px 10px;
       display:flex; align-items:center; justify-content:space-between; gap:12px;
     }
     .brand{
       display:flex; flex-direction:column; gap:2px;
-      min-width:0;
+      letter-spacing:.14em; text-transform:uppercase;
+      font-weight:950; min-width:0;
     }
-    .brand .t1{
-      font-weight:950;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-      font-size:14px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:60vw;
+    .brand small{
+      color:var(--muted); font-weight:800;
+      letter-spacing:.08em; text-transform:none;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width:46vw;
     }
-    .brand .t2{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:800;
-      letter-spacing:.06em;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:60vw;
+    .right{
+      display:flex; align-items:center; gap:10px;
+      max-width:66vw; overflow:auto; -webkit-overflow-scrolling: touch;
+      padding-bottom:2px;
     }
-    .row{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
-    .chip{
+    .right::-webkit-scrollbar{height:0}
+    .pill{
       border:1px solid var(--stroke);
-      background: var(--chip);
-      padding:9px 11px;
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      padding:9px 12px;
       border-radius:999px;
       font-size:12px;
-      color:var(--muted);
       cursor:pointer;
       user-select:none;
-      display:inline-flex; align-items:center; gap:8px;
-      white-space:nowrap;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
       transition: transform .15s ease, background .15s ease;
+      white-space:nowrap;
+      flex:0 0 auto;
     }
-    .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    [data-theme="light"] .chip:hover{ background: rgba(2,6,23,.06); }
-    .chip strong{ color:var(--ink); font-weight:950 }
-    .dot{
-      width:8px;height:8px;border-radius:50%;
-      background: rgba(255,255,255,.55);
-      box-shadow: 0 0 0 2px rgba(255,255,255,.06);
-    }
+    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .pill strong{color:var(--ink)}
+    .dot{font-size:12px; opacity:.9}
 
-    /* Layout */
-    .wrap{
-      max-width:1100px;
-      margin:0 auto;
-      padding: 16px 14px calc(72px + var(--safeBot));
+    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
+    .hero{
+      display:grid; grid-template-columns: 1.25fr .75fr;
+      gap:16px; margin-top:16px;
     }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:14px;
-      align-items:start;
-    }
-    @media (max-width:980px){
-      .grid{ grid-template-columns: 1fr; }
-    }
-
     .card{
       border:1px solid var(--stroke);
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      border-radius: var(--radius);
+      border-radius:22px;
       box-shadow: var(--shadow);
+      position:relative;
       overflow:hidden;
     }
-    .pad{ padding:14px; }
-
-    .sectionTitle{
-      display:flex; align-items:baseline; justify-content:space-between; gap:10px;
-      padding: 14px 14px 0;
-    }
-    .sectionTitle h2{
-      margin:0;
-      font-size:12px;
-      color:var(--muted);
-      font-weight:950;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-    .sectionTitle .mini{
-      font-size:12px; color:var(--muted);
-      font-weight:700;
-    }
-
-    /* Book list */
-    .bookGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-      padding:14px;
-    }
-    @media (max-width:740px){
-      .bookGrid{ grid-template-columns: 1fr; }
-    }
-
-    .bookCard{
-      border:1px solid var(--stroke);
-      border-radius: 20px;
-      background: rgba(255,255,255,.06);
-      overflow:hidden;
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      min-height:140px;
-    }
-    @media (max-width:520px){
-      .bookCard{ grid-template-columns: 100px 1fr; }
-    }
-    .cover{
+    .heroMain{ padding:18px 18px 16px; min-height: 260px; }
+    .heroMain:before{
+      content:""; position:absolute; inset:-1px;
       background:
-        radial-gradient(180px 140px at 50% 30%, rgba(124,92,255,.35), transparent 60%),
-        rgba(0,0,0,.18);
-      border-right:1px solid var(--stroke);
-      display:flex; align-items:center; justify-content:center;
+        radial-gradient(700px 320px at 25% 0%, rgba(124,92,255,.22), transparent 65%),
+        radial-gradient(520px 320px at 90% 20%, rgba(0,255,198,.10), transparent 65%);
+      pointer-events:none;
+    }
+    h1{
+      margin:0 0 10px;
+      font-size:44px;
+      line-height:1.02;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-weight:950;
       position:relative;
     }
-    [data-theme="light"] .cover{
-      background:
-        radial-gradient(180px 140px at 50% 30%, rgba(124,92,255,.18), transparent 60%),
-        rgba(2,6,23,.04);
-    }
-    .cover .badge{
-      position:absolute; top:10px; left:10px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
-      padding:6px 9px;
-      border-radius:999px;
-      font: 950 11px ui-sans-serif,system-ui;
-      letter-spacing:.10em;
-      text-transform:uppercase;
-      color: var(--muted);
-    }
-    .cover .sig{
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      font-size:28px;
-      font-weight:900;
-      letter-spacing:.10em;
-      opacity:.92;
-    }
-
-    .meta{
-      padding:12px 12px 12px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-width:0;
-    }
-    .meta .title{
-      font-weight:950;
-      font-size:16px;
-      letter-spacing:.02em;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .meta .sub{
+    .subtitle{
+      margin:0;
       color:var(--muted);
-      font-size:12px;
-      line-height:1.35;
-      font-weight:700;
+      font-size:14px;
+      line-height:1.55;
+      max-width:65ch;
+      position:relative;
     }
-    .meta .stats{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      color:var(--muted);
-      font: 800 12px ui-sans-serif,system-ui;
-      opacity:.95;
-    }
-
-    .btnRow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:auto; }
+    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; position:relative}
     .btn{
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
       color:var(--ink);
-      padding:9px 11px;
-      border-radius: 999px;
-      font: 950 12px ui-sans-serif,system-ui;
-      letter-spacing:.04em;
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
       cursor:pointer;
-      user-select:none;
-      transition: transform .15s ease, background .15s ease;
       display:inline-flex;
       align-items:center;
       gap:8px;
-      white-space:nowrap;
+      transition: transform .15s ease, background .15s ease;
     }
     .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    [data-theme="light"] .btn:hover{ background: rgba(2,6,23,.06); }
+    .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
 
-    .btn.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .btn.ghost{
-      background: transparent;
-    }
-
-    .miniNote{ color:var(--muted); font: 650 12px ui-sans-serif,system-ui; line-height:1.45; }
-
-    /* Announcement list */
-    .annList{ padding:14px; display:grid; gap:10px; }
-    .ann{
+    .heroSide{ padding:16px; min-height:260px; display:grid; gap:10px; }
+    .stat{
       border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      border-radius: 18px;
-      padding: 12px;
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
     }
-    .ann .aTop{ display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
-    .ann .aTitle{ font-weight:950; }
-    .ann .aWhen{ color:var(--muted); font-size:12px; font-weight:800; white-space:nowrap; }
-    .ann .aBody{ margin-top:6px; color:var(--ink); opacity:.92; line-height:1.55; font-size:13px; }
-
-    /* Subscriber */
-    .subBox{
-      padding:14px;
-      display:grid;
-      gap:10px;
-    }
-    .fieldLabel{
-      font: 800 12px ui-sans-serif,system-ui;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color: var(--muted);
-      margin: 6px 0 6px;
-    }
-    .inp{
-      width:100%;
+    [data-theme="light"] .stat{background: rgba(2,6,23,.04)}
+    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+    .stat .v{font-weight:950; font-size:16px; margin-top:4px}
+    .mini{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; margin-top:10px; }
+    .avatar{
+      width:44px; height:44px; border-radius:50%;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.08);
-      padding:10px 12px;
-      border-radius:14px;
-      color: var(--ink);
-      outline:none;
-      font: 650 14px ui-sans-serif,system-ui;
+      overflow:hidden;
+      flex:none;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:950; color:var(--muted);
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .who{font-weight:950}
+    .small{color:var(--muted); font-size:12px}
+
+    .sectionTitle{
+      margin:26px 0 12px;
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .sectionTitle h2{
+      margin:0;
+      font-size:18px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
     }
 
-    /* Comment preview carousel styles (works with reader-community.js carousel) */
+    .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
+    .bookCard{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      transform-style:preserve-3d;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      cursor:pointer;
+      min-height: 340px;
+      animation: pop .45s ease both;
+    }
+    @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+    .bookCard:hover{
+      transform: translateY(-4px) rotateX(3deg) rotateY(-4deg);
+      border-color: rgba(124,92,255,.35);
+      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
+    }
+    .cover{
+      height: 230px;
+      background: rgba(0,0,0,.18);
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .cover img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      transform: scale(1.02);
+      transition: transform .22s ease;
+      display:block;
+    }
+    .bookCard:hover .cover img{ transform: scale(1.06); }
+    .meta{ padding:12px 12px 14px; }
+    .meta .name{ font-weight:950; margin:0; font-size:16px; }
+    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+
+    .badge{
+      position:absolute; top:12px; left:12px;
+      padding:7px 10px; border-radius:999px;
+      font-size:12px; font-weight:950;
+      letter-spacing:.06em; text-transform:uppercase;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+    }
+    .badge.live{ border-color: rgba(0,255,198,.35); }
+    .badge.soon{ border-color: rgba(255,198,0,.35); }
+
+    /* Preview carousel shell that matches your index design */
+    .previewShell{
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.14), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(0,255,198,.08), transparent 65%),
+        rgba(255,255,255,.04);
+      overflow:hidden;
+      position:relative;
+    }
+    [data-theme="light"] .previewShell{
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.10), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(2,6,23,.06), transparent 65%),
+        rgba(2,6,23,.02);
+    }
+    .previewInner{ padding:14px; min-height: 128px; position:relative; }
+    .pHint{
+      padding:10px 14px 12px;
+      border-top:1px solid var(--stroke);
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    /* Classes used by reader-community.js carousel */
     .previewSlide{
-      display:none;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      border-radius:18px;
-      padding:12px;
-      margin-top:10px;
+      position:absolute; inset:14px;
+      opacity:0;
+      transform: translateY(6px);
+      transition: opacity .65s ease, transform .65s ease;
+      pointer-events:none;
     }
-    .previewSlide.show{ display:block; }
-    .pTop{
-      display:flex;justify-content:space-between;gap:10px;align-items:center;
-      font: 900 12px ui-sans-serif,system-ui;
-      color: var(--muted);
-      letter-spacing:.04em;
-    }
-    .pPill{
-      display:inline-flex;align-items:center;justify-content:center;
-      padding:6px 9px;border-radius:999px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      margin-right:6px;
-    }
-    .pName{ display:flex; gap:10px; align-items:center; margin-top:10px; min-width:0; }
-    .pWho{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw; }
-    .pText{ margin-top:8px; opacity:.92; line-height:1.55; }
-    .pMeta{ margin-top:10px; display:flex; justify-content:space-between; color:var(--muted); font:800 12px ui-sans-serif,system-ui; }
+    .previewSlide.show{ opacity:1; transform:none; pointer-events:auto; }
 
-    /* ===== MODALS ===== */
+    /* A few helper classes used inside slides */
+    .pTop{ display:flex; justify-content:space-between; gap:10px; align-items:center; color:var(--muted); font: 900 12px ui-sans-serif,system-ui; letter-spacing:.04em; }
+    .pPill{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,.06); }
+    .pBook{ display:flex; gap:8px; align-items:center; }
+    .pName{ display:flex; gap:10px; align-items:center; margin-top:10px; }
+    .pWho{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:54vw; }
+    .pText{ margin-top:10px; opacity:.92; line-height:1.55; }
+    .pMeta{ margin-top:12px; display:flex; justify-content:space-between; color:var(--muted); font: 800 12px ui-sans-serif,system-ui; }
+
+    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
-      align-items:center; justify-content:center;
+      align-items:center;
+      justify-content:center;
       background: rgba(0,0,0,.60);
       z-index:1000;
       padding:16px;
     }
     .modal.show{display:flex}
     .modalCard{
-      width:min(760px, 96vw);
+      width:min(860px, 96vw);
       border:1px solid var(--stroke);
       background: rgba(15,20,40,.96);
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
-
       max-height: 86vh;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
     }
     [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
-
     .modalHead{
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 6px 10px;
@@ -366,196 +313,163 @@
       background: inherit;
       z-index:2;
     }
-    .modalHead h3{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.04em;
+    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
+      border:1px solid var(--stroke); background: rgba(255,255,255,.06);
       font-family: ui-sans-serif, system-ui;
     }
-    .xBtn{
-      cursor:pointer;
-      padding:8px 10px;
-      border-radius:12px;
+    label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    input, select{
+      width:100%;
       border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      font-family: ui-sans-serif, system-ui;
-      user-select:none;
-    }
-    .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
-
-    .btn2{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--ink);
+      background: rgba(255,255,255,.08);
       padding:10px 12px;
       border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      user-select:none;
+      color:var(--ink);
+      outline:none;
+      font-size:14px;
       font-family: ui-sans-serif, system-ui;
     }
-    .btn2:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn2.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:520px){ .grid2{ grid-template-columns: 1fr; } }
+    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .note{color:var(--muted); font-size:12px; line-height:1.45}
+    .hrSoft{ border:0; border-top:1px solid var(--stroke); margin: 12px 0; opacity:.9; }
 
-    /* ===== TERMS modal (same ids as read.html) ===== */
-    .termsBox{
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      padding:12px;
-      background: rgba(255,255,255,.06);
-      max-height: 56vh;
-      overflow:auto;
-      font-family: ui-sans-serif, system-ui;
-      color: var(--ink);
+    @media (max-width:980px){
+      .hero{grid-template-columns:1fr}
+      .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
+      h1{font-size:38px}
     }
-    .checkRow{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 6px 0;
-      font-family: ui-sans-serif, system-ui;
+    @media (max-width:520px){
+      .shelf{grid-template-columns:1fr}
+      h1{font-size:34px}
+      .right{max-width:72vw;}
+      .row2{grid-template-columns:1fr}
     }
-    .checkRow input{ width:auto; margin-top:3px; }
   </style>
 </head>
 
 <body>
-
-  <!-- Top bar -->
   <div class="top">
     <div class="nav">
       <div class="brand">
-        <div class="t1">THIS IS US</div>
-        <div class="t2">Library · Book I — Where We Began</div>
+        THIS IS US
+        <small>Series Library</small>
       </div>
 
-      <div class="row">
-        <div class="chip" id="themeBtn">🌓 <strong>Theme</strong></div>
-        <div class="chip" id="settingsBtn">⚙️ <strong>Settings</strong></div>
-        <div class="chip" id="accountBtn">👤 <strong id="accountLabel">Guest</strong></div>
-        <div class="chip" id="syncChip">
-          <span class="dot" id="syncDot"></span>
-          <strong id="syncText">Guest</strong>
-        </div>
+      <div class="right">
+        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+        <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
+        <div class="pill" id="authBtn"><span class="dot" id="authDot">●</span> <strong id="authText">Guest</strong></div>
       </div>
     </div>
   </div>
 
   <div class="wrap">
-    <div class="grid">
+    <div class="hero">
+      <div class="card heroMain">
+        <h1>THIS IS US</h1>
+        <p class="subtitle">
+          A premium novel-reader: filled pages, smooth flip animation, saved progress, light/dark mode,
+          and optional Firebase sync so your pages follow you across devices.
+        </p>
 
-      <!-- LEFT: Books -->
-      <div class="card">
-        <div class="sectionTitle">
-          <h2>Series</h2>
-          <div class="mini">Interactive · Responsive · Cloud-linked</div>
+        <div class="ctaRow">
+          <div class="btn primary" id="openBook1">📖 Read Book I</div>
+          <div class="btn" id="openCommunityQuick">💬 Community</div>
+          <div class="btn" id="openAuthQuick">👤 Sign in / Sign up</div>
         </div>
 
-        <div class="bookGrid">
-
-          <!-- Book 1 -->
-          <div class="bookCard">
-            <div class="cover">
-              <div class="badge">Book I</div>
-              <div class="sig">TIU</div>
-            </div>
-            <div class="meta">
-              <div>
-                <div class="title">Where We Began</div>
-                <div class="sub">Flip pages · Swipe on mobile · Community comments + ratings + achievements.</div>
-              </div>
-
-              <div class="stats">
-                <span>📖 <span id="book1Pages">—</span> pages</span>
-                <span>👁️ <span id="book1Readers">—</span> readers</span>
-                <span>💬 <span id="book1Comments">—</span> comments</span>
-              </div>
-
-              <div class="btnRow">
-                <div class="btn primary" id="readBook1">Read</div>
-                <div class="btn" id="continueBook1">Continue</div>
-                <div class="btn ghost" id="openCommunityBook1">Community</div>
-              </div>
-
-              <div class="miniNote" id="continueNoteBook1">Loading progress…</div>
-
-              <div style="margin-top:2px">
-                <div class="miniNote" style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;opacity:.9">Latest comments</div>
-                <div id="commentPreview_book1" style="margin-top:6px;">Loading…</div>
-              </div>
+        <div class="mini">
+          <div class="profileLine">
+            <div class="avatar" id="heroAvatar">👤</div>
+            <div style="min-width:0">
+              <div class="who" id="whoLine">Guest Reader</div>
+              <div class="small" id="whoSub">Progress saved locally • Sign in to save to cloud</div>
             </div>
           </div>
 
-          <!-- Coming Soon -->
-          <div class="bookCard">
-            <div class="cover">
-              <div class="badge">Next</div>
-              <div class="sig" style="font-size:22px;letter-spacing:.06em">Coming</div>
-            </div>
-            <div class="meta">
-              <div>
-                <div class="title">More Books</div>
-                <div class="sub">Your next chapters will appear here automatically when uploaded to the cloud.</div>
-              </div>
-
-              <div class="stats">
-                <span>☁️ Cloud-ready</span>
-                <span>🌓 Theme-ready</span>
-              </div>
-
-              <div class="btnRow">
-                <div class="btn primary" id="openComing">Preview</div>
-              </div>
-
-              <div class="miniNote">Tip: You’ll later add Book II & more by linking new pages/chapters in Firestore.</div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- RIGHT: Announcements + Subscribe -->
-      <div style="display:grid; gap:14px;">
-        <div class="card">
-          <div class="sectionTitle">
-            <h2>Announcements</h2>
-            <div class="mini">Auto from cloud</div>
-          </div>
-          <div class="annList" id="annMount">
-            <div style="opacity:.75">Loading announcements…</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="sectionTitle">
-            <h2>Subscribe</h2>
-            <div class="mini">New chapters + updates</div>
-          </div>
-          <div class="subBox">
-            <div class="miniNote">Get notified when new chapters drop. (Email only for now.)</div>
-
-            <div>
-              <div class="fieldLabel">Email</div>
-              <input class="inp" id="subEmail" placeholder="you@example.com" inputmode="email" autocomplete="email"/>
-            </div>
-
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <button class="btn2 primary" id="subBtn" type="button">Subscribe</button>
-              <div class="note" id="subMsg"></div>
-            </div>
-
-            <div class="note">Your list stays private (only admin can view).</div>
+          <div class="small" id="announceLine" style="text-align:right;max-width:48ch">
+            Loading announcements…
           </div>
         </div>
       </div>
 
+      <div class="card heroSide">
+        <div class="stat">
+          <div class="k">Readers</div>
+          <div class="v" id="readersTotal">— Total</div>
+        </div>
+        <div class="stat">
+          <div class="k">Subscribers</div>
+          <div class="v" id="subsTotal">— Total</div>
+        </div>
+
+        <div class="stat">
+          <div class="k">Subscribe for updates</div>
+          <div style="display:grid;gap:8px;margin-top:8px">
+            <input id="subEmail" placeholder="Email address" inputmode="email" autocomplete="email" />
+            <button class="btn primary" id="subBtn" style="justify-content:center">Subscribe</button>
+            <div class="note" id="subMsg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sectionTitle">
+      <h2>What readers are saying</h2>
+      <div class="small">Tap a preview to jump to that comment.</div>
+    </div>
+
+    <div class="previewShell">
+      <div class="previewInner" id="commentPreview">Loading…</div>
+      <div class="pHint">
+        <span>Opens Community inside Reader</span>
+        <span>Book I • Where We Began</span>
+      </div>
+    </div>
+
+    <div class="sectionTitle">
+      <h2>Library</h2>
+      <div class="small">Live + Coming Soon</div>
+    </div>
+
+    <div class="shelf">
+      <div class="bookCard" id="book1Card" role="button" aria-label="Open Book I">
+        <div class="badge live">Live</div>
+        <div class="cover"><img src="./assets/cover-book1.png" alt="Book 1 Cover"></div>
+        <div class="meta">
+          <p class="name">Book I — Where We Began</p>
+          <p class="desc">Mukeh arrives. Francess is the standard. Awareness begins.</p>
+        </div>
+      </div>
+
+      <div class="bookCard" id="book2Card" role="button" aria-label="Coming soon book">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
+        <div class="meta">
+          <p class="name">Book II — Coming Soon</p>
+          <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
+        </div>
+      </div>
+
+      <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
+        <div class="meta">
+          <p class="name">Book III — Coming Soon</p>
+          <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
+        </div>
+      </div>
+
+      <div class="bookCard" id="book4Card" role="button" aria-label="Coming soon book">
+        <div class="badge soon">Coming Soon</div>
+        <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
+        <div class="meta">
+          <p class="name">Book IV — Coming Soon</p>
+          <p class="desc">The past returns. The narrative changes. The costs rise.</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -564,103 +478,37 @@
     <div class="modalCard">
       <div class="modalHead">
         <h3>Account</h3>
-        <div class="xBtn" id="authClose">✕</div>
+        <div class="x" id="authClose">✕</div>
       </div>
 
-      <div class="note" id="authHint" style="margin:0 6px 10px;">Loading…</div>
+      <div class="note" id="authHint" style="padding:0 6px 6px;">Loading…</div>
 
-      <div id="authSignedOut">
-        <div class="grid2">
-          <div>
-            <div class="fieldLabel">Email</div>
-            <input class="inp" id="authEmail" placeholder="you@example.com" inputmode="email" autocomplete="email">
-          </div>
-          <div>
-            <div class="fieldLabel">Password</div>
-            <input class="inp" id="authPass" placeholder="••••••••" type="password" autocomplete="current-password">
-          </div>
+      <div class="row2" style="padding:6px;">
+        <div>
+          <label>Email</label>
+          <input id="authEmail" placeholder="you@example.com" autocomplete="email" />
         </div>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center;">
-          <button class="btn2 primary" id="signInBtn" type="button">Sign In</button>
-          <button class="btn2" id="signUpBtn" type="button">Sign Up</button>
-          <div class="note" id="authMsg"></div>
-        </div>
-
-        <div class="note" style="margin-top:10px">
-          Tip: After signing in, go to <strong>Settings</strong> to set your display name + avatar.
+        <div>
+          <label>Password</label>
+          <input id="authPass" placeholder="••••••••" type="password" autocomplete="current-password" />
         </div>
       </div>
 
-      <div id="authSignedIn" style="display:none">
-        <div class="note" style="margin:0 6px 10px">
-          You’re signed in. Your profile + avatar are managed in <strong>Settings</strong>.
-        </div>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center;">
-          <button class="btn2 primary" id="goSettingsBtn" type="button">Open Settings</button>
-          <button class="btn2" id="signOutBtn" type="button">Sign Out</button>
-          <div class="note" id="authMsg2"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TERMS MODAL (same ids used by terms-gate.js + read.html) -->
-  <div class="modal" id="termsModal">
-    <div class="modalCard">
-      <div class="modalHead">
-        <h3>Terms & Conditions</h3>
-        <div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:6px;">
+        <button class="btn primary" id="btnSignIn" type="button">Sign In</button>
+        <button class="btn" id="btnSignUp" type="button">Sign Up</button>
+        <button class="btn" id="btnSignOut" type="button" style="display:none">Sign Out</button>
+        <div class="note" id="authMsg" style="align-self:center"></div>
       </div>
 
-      <div class="termsBox" id="termsText">
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
-        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+      <hr class="hrSoft">
 
-        <p><strong>1) Acceptance</strong><br>
-          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
-        </p>
-        <p><strong>2) Eligibility</strong><br>
-          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
-        </p>
-        <p><strong>3) Content & Reader Experience</strong><br>
-          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
-        </p>
-        <p><strong>4) Accounts</strong><br>
-          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
-        </p>
-        <p><strong>5) User Submissions</strong><br>
-          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
-        </p>
-        <p><strong>6) Notifications (Optional)</strong><br>
-          If you opt in to email notifications, you consent to receive updates about new chapters or announcements. You can opt out by contacting the owner.
-        </p>
-        <p><strong>7) Privacy</strong><br>
-          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
-        </p>
-        <p><strong>8) Availability & Changes</strong><br>
-          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
-        </p>
-        <p><strong>9) Disclaimer</strong><br>
-          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
-        </p>
-        <p><strong>10) Limitation of Liability</strong><br>
-          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
-        </p>
-        <p><strong>11) Contact</strong><br>
-          For questions, removal requests, or opt-out requests, contact the site owner.
-        </p>
+      <div class="note" style="padding:0 6px 6px;">
+        After signing in, you can set your display name + avatar inside <strong>Settings</strong>.
       </div>
 
-      <div class="checkRow">
-        <input type="checkbox" id="agreeTerms">
-        <div class="note">I have read and agree to the Terms & Conditions.</div>
-      </div>
-
-      <div style="display:grid; gap:10px; padding-top:10px">
-        <button class="btn2 primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
-        <div class="note" id="termsMsg"></div>
+      <div style="padding:6px;">
+        <button class="btn" id="goSettings" type="button">⚙️ Open Settings</button>
       </div>
     </div>
   </div>
@@ -669,242 +517,311 @@
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
-      getAuth,
-      onAuthStateChanged,
-      signOut,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword
+      getFirestore, collection, addDoc, doc, getDoc, setDoc, serverTimestamp,
+      query, where, orderBy, limit, getDocs
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+    import {
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-    import { wireTermsGate } from "./terms-gate.js";
-
-    // Your community preview carousel
     import { renderCommentPreviewCarousel } from "./reader-community.js";
 
-    // Public feed helpers (I’ll provide this FULL file next)
-    import {
-      renderAnnouncements,
-      subscribeEmail,
-      getBookStats
-    } from "./public-feed.js";
-
-    // Firebase init (safe init)
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    // Theme
+    // --- Theme ---
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    function toggleTheme(){
+    const themeBtn = document.getElementById("themeBtn");
+    themeBtn.addEventListener("click", async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
-    }
-    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-
-    // Settings
-    document.getElementById("settingsBtn").addEventListener("click", ()=>{
-      location.href = "settings.html";
+      // save to cloud if signed in
+      if(UID){
+        try{
+          await setDoc(doc(db,"users",UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+        }catch{}
+      }
     });
 
-    // Terms gate (locks site until accepted)
-    wireTermsGate();
+    // --- Firebase init (safe) ---
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    // ----- Auth modal wiring -----
+    // --- Quick nav ---
+    const settingsBtn = document.getElementById("settingsBtn");
+    settingsBtn.addEventListener("click", ()=> location.href = "settings.html");
+
+    document.getElementById("openBook1").addEventListener("click", ()=> location.href = "read.html?book=book1");
+    document.getElementById("book1Card").addEventListener("click", ()=> location.href = "read.html?book=book1");
+
+    // coming soon uses your books/coming-soon.html through reader param "coming"
+    const goComing = ()=> location.href = "read.html?book=coming";
+    document.getElementById("book2Card").addEventListener("click", goComing);
+    document.getElementById("book3Card").addEventListener("click", goComing);
+    document.getElementById("book4Card").addEventListener("click", goComing);
+
+    document.getElementById("openCommunityQuick").addEventListener("click", ()=>{
+      location.href = "read.html?book=book1&open=community";
+    });
+
+    // --- Auth modal wiring ---
     const authModal = document.getElementById("authModal");
-    const accountBtn = document.getElementById("accountBtn");
+    const authBtn = document.getElementById("authBtn");
     const authClose = document.getElementById("authClose");
-
-    const authHint = document.getElementById("authHint");
-    const authMsg = document.getElementById("authMsg");
-    const authMsg2 = document.getElementById("authMsg2");
-
-    const signedOutBox = document.getElementById("authSignedOut");
-    const signedInBox  = document.getElementById("authSignedIn");
-
-    const authEmail = document.getElementById("authEmail");
-    const authPass  = document.getElementById("authPass");
-
-    const signInBtn = document.getElementById("signInBtn");
-    const signUpBtn = document.getElementById("signUpBtn");
-    const signOutBtn = document.getElementById("signOutBtn");
-    const goSettingsBtn = document.getElementById("goSettingsBtn");
+    const openAuthQuick = document.getElementById("openAuthQuick");
+    const goSettings = document.getElementById("goSettings");
 
     function openAuth(){
       authModal.classList.add("show");
       authModal.setAttribute("aria-hidden","false");
-      if(authMsg) authMsg.textContent = "";
-      if(authMsg2) authMsg2.textContent = "";
+      document.body.style.overflow = "hidden";
+      document.getElementById("authMsg").textContent = "";
     }
     function closeAuth(){
       authModal.classList.remove("show");
       authModal.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
     }
-    accountBtn.addEventListener("click", openAuth);
+
+    authBtn.addEventListener("click", openAuth);
+    openAuthQuick.addEventListener("click", openAuth);
     authClose.addEventListener("click", closeAuth);
     authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuth(); });
 
-    goSettingsBtn.addEventListener("click", ()=> location.href = "settings.html");
+    goSettings.addEventListener("click", ()=> location.href = "settings.html");
 
-    signInBtn.addEventListener("click", async ()=>{
-      if(authMsg) authMsg.textContent = "";
-      const email = (authEmail.value || "").trim();
-      const pass = (authPass.value || "").trim();
-      if(!email || !pass){
-        if(authMsg) authMsg.textContent = "Enter email + password.";
+    const authHint = document.getElementById("authHint");
+    const authEmail = document.getElementById("authEmail");
+    const authPass  = document.getElementById("authPass");
+    const btnSignIn = document.getElementById("btnSignIn");
+    const btnSignUp = document.getElementById("btnSignUp");
+    const btnSignOut= document.getElementById("btnSignOut");
+    const authMsg   = document.getElementById("authMsg");
+
+    // --- Profile line UI ---
+    const heroAvatar = document.getElementById("heroAvatar");
+    const whoLine = document.getElementById("whoLine");
+    const whoSub  = document.getElementById("whoSub");
+    const authDot = document.getElementById("authDot");
+    const authText= document.getElementById("authText");
+
+    function setAvatar(url){
+      const u = (typeof url === "string" && url.trim()) ? url.trim() : "";
+      heroAvatar.innerHTML = u ? `<img src="${u}" alt="Profile">` : "👤";
+    }
+
+    let UID = null;
+
+    onAuthStateChanged(auth, async (user)=>{
+      UID = user ? user.uid : null;
+
+      if(!user){
+        authDot.style.color = "rgba(255,255,255,.65)";
+        authText.textContent = "Guest";
+        authHint.textContent = "Guest mode — progress saved locally. Sign in to sync and interact.";
+        btnSignOut.style.display = "none";
+        btnSignIn.style.display = "";
+        btnSignUp.style.display = "";
+
+        whoLine.textContent = "Guest Reader";
+        whoSub.textContent = "Progress saved locally • Sign in to save to cloud";
+        setAvatar("");
         return;
       }
+
+      authDot.style.color = "rgba(0,255,198,.9)";
+      authText.textContent = "Signed in";
+      authHint.textContent = "Signed in — your theme and profile can sync across devices.";
+      btnSignOut.style.display = "";
+      btnSignIn.style.display = "none";
+      btnSignUp.style.display = "none";
+
+      // Load user doc for avatar/name/theme
+      try{
+        const snap = await getDoc(doc(db,"users",user.uid));
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        const name = (d.displayName && String(d.displayName).trim()) ? String(d.displayName).trim() : (user.email || "Reader");
+        whoLine.textContent = name;
+        whoSub.textContent = user.email || "Signed in";
+        setAvatar(d.photoURL || "");
+
+        if(d.theme === "light" || d.theme === "dark"){
+          document.documentElement.dataset.theme = d.theme;
+          localStorage.setItem("theme", d.theme);
+        }
+      }catch{
+        whoLine.textContent = user.email || "Signed in";
+        whoSub.textContent = "Signed in";
+        setAvatar("");
+      }
+
+      // Ensure user doc exists
+      try{
+        await setDoc(doc(db,"users",user.uid), {
+          email: user.email || null,
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+      }catch{}
+
+      // Refresh counts now that UID exists (optional)
+      loadSubscribersCount().catch(()=>{});
+    });
+
+    btnSignIn.addEventListener("click", async ()=>{
+      authMsg.textContent = "";
+      const email = (authEmail.value || "").trim();
+      const pass  = (authPass.value || "").trim();
+      if(!email || !pass){ authMsg.textContent = "Enter email + password."; return; }
       try{
         await signInWithEmailAndPassword(auth, email, pass);
-        if(authMsg) authMsg.textContent = "Signed in ✅";
+        authMsg.textContent = "Signed in ✅";
       }catch(e){
-        if(authMsg) authMsg.textContent = (e?.message || "Could not sign in.");
+        authMsg.textContent = (e?.message || "Could not sign in.");
       }
     });
 
-    signUpBtn.addEventListener("click", async ()=>{
-      if(authMsg) authMsg.textContent = "";
+    btnSignUp.addEventListener("click", async ()=>{
+      authMsg.textContent = "";
       const email = (authEmail.value || "").trim();
-      const pass = (authPass.value || "").trim();
-      if(!email || !pass){
-        if(authMsg) authMsg.textContent = "Enter email + password.";
-        return;
-      }
-      if(pass.length < 6){
-        if(authMsg) authMsg.textContent = "Password must be at least 6 characters.";
-        return;
-      }
+      const pass  = (authPass.value || "").trim();
+      if(!email || !pass){ authMsg.textContent = "Enter email + password."; return; }
+      if(pass.length < 6){ authMsg.textContent = "Password must be at least 6 characters."; return; }
       try{
         await createUserWithEmailAndPassword(auth, email, pass);
-        if(authMsg) authMsg.textContent = "Account created ✅";
+        authMsg.textContent = "Account created ✅";
       }catch(e){
-        if(authMsg) authMsg.textContent = (e?.message || "Could not sign up.");
+        authMsg.textContent = (e?.message || "Could not sign up.");
       }
     });
 
-    signOutBtn.addEventListener("click", async ()=>{
-      if(authMsg2) authMsg2.textContent = "";
+    btnSignOut.addEventListener("click", async ()=>{
+      authMsg.textContent = "";
       try{
         await signOut(auth);
-        if(authMsg2) authMsg2.textContent = "Signed out ✅";
+        authMsg.textContent = "Signed out ✅";
       }catch(e){
-        if(authMsg2) authMsg2.textContent = (e?.message || "Could not sign out.");
+        authMsg.textContent = (e?.message || "Could not sign out.");
       }
     });
 
-    // Auth state display
-    const accountLabel = document.getElementById("accountLabel");
-    const syncDot = document.getElementById("syncDot");
-    const syncText = document.getElementById("syncText");
-
-    onAuthStateChanged(auth, (user)=>{
-      const signedIn = !!user;
-      accountLabel.textContent = signedIn ? "Signed in" : "Guest";
-
-      if(authHint){
-        authHint.textContent = signedIn
-          ? (user.email ? `Signed in as ${user.email}` : "Signed in")
-          : "Guest mode — sign in to sync settings + achievements.";
-      }
-
-      signedOutBox.style.display = signedIn ? "none" : "block";
-      signedInBox.style.display  = signedIn ? "block" : "none";
-
-      if(signedIn){
-        syncDot.style.background = "rgba(0,255,198,.9)";
-        syncText.textContent = "Synced";
-      }else{
-        syncDot.style.background = "rgba(255,255,255,.55)";
-        syncText.textContent = "Guest";
-      }
-    });
-
-    // ----- Book actions -----
-    const readBook1 = document.getElementById("readBook1");
-    const continueBook1 = document.getElementById("continueBook1");
-    const openCommunityBook1 = document.getElementById("openCommunityBook1");
-    const continueNoteBook1 = document.getElementById("continueNoteBook1");
-
-    function goRead(bookId){
-      location.href = `read.html?book=${encodeURIComponent(bookId)}`;
-    }
-    readBook1.addEventListener("click", ()=>goRead("book1"));
-
-    // Continue reading uses local progress index
-    function getLocalProgress(bookId){
-      const k = `progress:${bookId}`;
-      const v = parseInt(localStorage.getItem(k) || "0", 10);
-      return (Number.isFinite(v) && v >= 0) ? v : 0;
-    }
-
-    function updateContinueUI(){
-      const idx = getLocalProgress("book1");
-      // human pages are 1-based
-      continueNoteBook1.textContent = idx > 0 ? `Continue from page ${idx + 1}` : "Start from the beginning.";
-      continueBook1.textContent = idx > 0 ? "Continue" : "Start";
-      continueBook1.onclick = ()=>goRead("book1");
-    }
-    updateContinueUI();
-
-    openCommunityBook1.addEventListener("click", ()=>{
-      // open reader community view
-      location.href = "read.html?book=book1&open=community";
-    });
-
-    document.getElementById("openComing").addEventListener("click", ()=>{
-      location.href = "read.html?book=coming";
-    });
-
-    // ----- Announcements (cloud) -----
-    renderAnnouncements({ mountId: "annMount", max: 6 }).catch(()=>{
-      document.getElementById("annMount").innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
-    });
-
-    // ----- Subscribe -----
+    // --- Subscribers ---
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
+    const subsTotal = document.getElementById("subsTotal");
 
-    subBtn.addEventListener("click", async ()=>{
-      if(subMsg) subMsg.textContent = "";
-      const email = (subEmail.value || "").trim();
-      if(!email || !email.includes("@")){
-        if(subMsg) subMsg.textContent = "Enter a valid email.";
-        return;
-      }
-      try{
-        await subscribeEmail({ email });
-        if(subMsg) subMsg.textContent = "Subscribed ✅";
-        subEmail.value = "";
-      }catch(e){
-        if(subMsg) subMsg.textContent = (e?.message || "Could not subscribe.");
-      }
-    });
+    function looksLikeEmail(v){
+      const s = String(v || "").trim();
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    }
 
-    // ----- Book stats (readers / comments / pages) -----
-    async function loadStats(){
+    async function loadSubscribersCount(){
+      // simple count: load up to 1000 and count. (works fine early-stage)
+      // If you grow large later, we can switch to aggregate counts.
       try{
-        const s = await getBookStats({ bookId: "book1" });
-        document.getElementById("book1Readers").textContent = String(s.readers ?? "—");
-        document.getElementById("book1Comments").textContent = String(s.comments ?? "—");
-        document.getElementById("book1Pages").textContent = String(s.pages ?? "—");
+        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
+        subsTotal.textContent = `${snap.size} Total`;
       }catch{
-        // keep defaults
+        subsTotal.textContent = "— Total";
       }
     }
-    loadStats();
 
-    // ----- Comment preview carousel (per book) -----
-    renderCommentPreviewCarousel({
-      bookId: "book1",
-      mountId: "commentPreview_book1",
-      max: 8,
-      intervalMs: 4200
-    }).catch(()=>{
-      const mount = document.getElementById("commentPreview_book1");
-      if(mount) mount.innerHTML = `<div style="opacity:.75">No comments yet.</div>`;
+    subBtn.addEventListener("click", async ()=>{
+      subMsg.textContent = "";
+      const email = (subEmail.value || "").trim();
+      if(!looksLikeEmail(email)){
+        subMsg.textContent = "Enter a valid email.";
+        return;
+      }
+      subBtn.disabled = true;
+      subBtn.textContent = "Saving…";
+      try{
+        const emailLower = email.toLowerCase();
+        // prevent duplicates by checking existing
+        const existing = await getDocs(query(collection(db,"subscribers"), where("emailLower","==", emailLower), limit(1)));
+        if(!existing.empty){
+          subMsg.textContent = "You’re already subscribed ✅";
+        }else{
+          await addDoc(collection(db,"subscribers"), {
+            email,
+            emailLower,
+            source: "library",
+            createdAt: serverTimestamp()
+          });
+          subMsg.textContent = "Subscribed ✅";
+          subEmail.value = "";
+          await loadSubscribersCount();
+        }
+      }catch(e){
+        subMsg.textContent = "Could not subscribe: " + (e?.message || String(e));
+      }finally{
+        subBtn.disabled = false;
+        subBtn.textContent = "Subscribe";
+      }
     });
+
+    // --- Readers total (simple placeholder-ready) ---
+    // If you later decide exact structure, we can swap this to exact collection count.
+    const readersTotal = document.getElementById("readersTotal");
+    async function loadReadersTotal(){
+      // Try: books/book1/meta/stats.readersTotal (optional)
+      try{
+        const snap = await getDoc(doc(db,"books","book1","meta","stats"));
+        if(snap.exists()){
+          const d = snap.data() || {};
+          const n = Number(d.readersTotal || d.readers || 0);
+          if(Number.isFinite(n) && n > 0){
+            readersTotal.textContent = `${n} Total`;
+            return;
+          }
+        }
+      }catch{}
+      readersTotal.textContent = "— Total";
+    }
+
+    // --- Announcements ---
+    const announceLine = document.getElementById("announceLine");
+    async function loadAnnouncements(){
+      try{
+        const qy = query(
+          collection(db,"announcements"),
+          where("active","==", true),
+          orderBy("createdAt","desc"),
+          limit(1)
+        );
+        const snap = await getDocs(qy);
+        if(snap.empty){
+          announceLine.textContent = "No announcements right now.";
+          return;
+        }
+        const d = snap.docs[0].data() || {};
+        const t = (d.title && String(d.title).trim()) ? String(d.title).trim() : "Announcement";
+        const b = (d.body && String(d.body).trim()) ? String(d.body).trim() : "";
+        announceLine.textContent = b ? `${t}: ${b}` : t;
+      }catch{
+        announceLine.textContent = "Announcements unavailable.";
+      }
+    }
+
+    // --- Comment preview carousel (Book I) ---
+    async function loadPreview(){
+      await renderCommentPreviewCarousel({
+        bookId: "book1",
+        mountId: "commentPreview",
+        max: 8,
+        intervalMs: 4200
+      });
+    }
+
+    // init
+    (async ()=>{
+      await loadPreview().catch(()=>{});
+      await loadSubscribersCount().catch(()=>{});
+      await loadReadersTotal().catch(()=>{});
+      await loadAnnouncements().catch(()=>{});
+    })();
   </script>
 </body>
 </html>
