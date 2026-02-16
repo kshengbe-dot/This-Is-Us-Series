@@ -1,8 +1,4 @@
 // terms-gate.js
-// Signed-in users: accept ONCE (saved in Firestore)
-// Guests: ALWAYS show Terms every refresh (NO localStorage saving)
-// Message tells guests: "Sign in to stop this popup"
-
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
@@ -42,16 +38,14 @@ async function saveTermsAcceptedSignedIn(user) {
 }
 
 /**
- * Wire Terms gate:
- * - Signed-in users: check Firestore; if accepted -> do not show again.
- * - Guests: ALWAYS show (every refresh). NO localStorage stored for acceptance.
+ * Signed-in users: accept ONCE (Firestore)
+ * Guests: ALWAYS show every refresh (NO localStorage guest saving)
  */
 export function wireTermsGate({
   termsModalId = "termsModal",
   agreeCheckboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
-  // optional: for signed-in only flow (ex open opt-in once)
   onAcceptedSignedIn = null,
 } = {}) {
   const termsModal = document.getElementById(termsModalId);
@@ -61,7 +55,6 @@ export function wireTermsGate({
 
   if (!termsModal || !agree || !acceptBtn) return;
 
-  // inject guest hint message without requiring HTML edits
   function setGuestHint(show) {
     let hint = termsModal.querySelector("[data-guest-hint]");
     if (!hint) {
@@ -73,7 +66,6 @@ export function wireTermsGate({
         "font:800 12px ui-sans-serif,system-ui;line-height:1.45;opacity:.92;";
       hint.textContent =
         "Guest mode: Terms will pop up on every refresh. Sign in to accept once and stop the popup.";
-      // put it near bottom of modal card
       const card = termsModal.querySelector(".modalCard") || termsModal;
       card.appendChild(hint);
     }
@@ -91,13 +83,10 @@ export function wireTermsGate({
 
   async function showIfNeeded(user) {
     if (!user) {
-      // Guest: ALWAYS show
       setGuestHint(true);
       openTermsHard();
       return;
     }
-
-    // Signed-in: show only if not accepted yet
     setGuestHint(false);
     const ok = await hasAcceptedTermsSignedIn(user);
     if (!ok) openTermsHard();
@@ -114,14 +103,12 @@ export function wireTermsGate({
       return;
     }
 
-    // Guest: allow them to continue BUT it will pop again next refresh
+    // Guest: allow continue but will show again next refresh
     if (!user) {
       closeTerms();
-      if (msg) msg.textContent = "";
       return;
     }
 
-    // Signed-in: save acceptance once in Firestore
     try {
       await saveTermsAcceptedSignedIn(user);
       closeTerms();
@@ -131,7 +118,6 @@ export function wireTermsGate({
     }
   });
 
-  // Run gate on auth state
   onAuthStateChanged(auth, async (user) => {
     await showIfNeeded(user);
   });
