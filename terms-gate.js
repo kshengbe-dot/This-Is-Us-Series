@@ -1,20 +1,13 @@
-// terms-gate.js (FULL FILE)
-// Purpose: Force Terms acceptance before using the site.
-// - Stores acceptance locally (fast, reliable)
-// - Also stores acceptance to Firestore when signed-in (optional sync)
-//
-// Works with your modal IDs in read.html:
-//   modalId: "termsModal"
-//   checkboxId: "agreeTerms"
-//   acceptBtnId: "acceptTermsBtn"
-//   msgId: "termsMsg"
+// terms-gate.js (FULL FILE — UPDATED to match your rules)
+// Signed-in: one time (Firestore + local cache)
+// Guest: show every refresh (NO localStorage saving)
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-// === MUST match the "Last updated" date shown in your Terms modal ===
+// MUST match the “Last updated” date shown in the modal text
 const TERMS_VERSION = "2026-02-15";
 const LOCAL_KEY = `termsAccepted:${TERMS_VERSION}`;
 
@@ -44,14 +37,11 @@ async function cloudSetAccepted(uid) {
   try {
     await setDoc(
       doc(db, "users", uid),
-      {
-        termsAcceptedVersion: TERMS_VERSION,
-        termsAcceptedAt: serverTimestamp()
-      },
+      { termsAcceptedVersion: TERMS_VERSION, termsAcceptedAt: serverTimestamp() },
       { merge: true }
     );
   } catch {
-    // ignore (rules may block; local acceptance still works)
+    // ignore
   }
 }
 
@@ -60,7 +50,6 @@ export function wireTermsGate({
   checkboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
   msgId = "termsMsg",
-  // optional callbacks for iPhone-safe scroll locking
   lockScroll = null,
   unlockScroll = null
 } = {}) {
@@ -69,8 +58,11 @@ export function wireTermsGate({
   const btn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
 
-  // If the modal isn't on this page, do nothing.
+  // If modal isn't on this page, do nothing.
   if (!modal || !box || !btn) return;
+
+  // Guest session-only acceptance (resets on refresh)
+  let guestAcceptedThisLoad = false;
 
   const isAcceptedLocal = () => localStorage.getItem(LOCAL_KEY) === "1";
   const setAcceptedLocal = () => localStorage.setItem(LOCAL_KEY, "1");
@@ -81,7 +73,6 @@ export function wireTermsGate({
     box.checked = false;
     safeText(msg, "");
 
-    // lock background scroll (iOS-safe)
     if (typeof lockScroll === "function") lockScroll();
     else document.body.style.overflow = "hidden";
   }
@@ -94,35 +85,37 @@ export function wireTermsGate({
     else document.body.style.overflow = "";
   }
 
-  // Prevent click-out close: user MUST accept
-  modal.addEventListener("click", (e) => {
-    // swallow clicks so they don't close the modal
-    e.stopPropagation();
-  });
+  // User MUST accept (no click-out close)
+  modal.addEventListener("click", (e) => e.stopPropagation());
 
-  // Main logic: show only if not accepted
   async function run(uid) {
-    // If accepted locally, unlock.
+    // ✅ Guests: show every refresh (no localStorage saving)
+    if (!uid) {
+      if (guestAcceptedThisLoad) {
+        close();
+        return;
+      }
+      open();
+      safeText(msg, "Guest mode: this will appear every refresh. Sign in to accept once.");
+      return;
+    }
+
+    // ✅ Signed-in: one time (local + cloud)
     if (isAcceptedLocal()) {
       close();
       return;
     }
 
-    // If signed in, check cloud acceptance and set local if already accepted.
-    if (uid) {
-      const ok = await cloudHasAccepted(uid);
-      if (ok) {
-        setAcceptedLocal();
-        close();
-        return;
-      }
+    const ok = await cloudHasAccepted(uid);
+    if (ok) {
+      setAcceptedLocal();
+      close();
+      return;
     }
 
-    // Otherwise force modal open.
     open();
   }
 
-  // Accept button
   btn.addEventListener("click", async () => {
     safeText(msg, "");
 
@@ -131,19 +124,20 @@ export function wireTermsGate({
       return;
     }
 
-    setAcceptedLocal();
-
     const user = auth.currentUser;
-    if (user?.uid) await cloudSetAccepted(user.uid);
+
+    if (user?.uid) {
+      // signed-in: save local + cloud
+      setAcceptedLocal();
+      await cloudSetAccepted(user.uid);
+    } else {
+      // guest: do NOT write localStorage
+      guestAcceptedThisLoad = true;
+    }
 
     close();
   });
 
-  // Run after auth state is known
-  onAuthStateChanged(auth, (user) => {
-    run(user?.uid || null);
-  });
-
-  // Also run immediately (in case auth takes a moment)
+  onAuthStateChanged(auth, (user) => run(user?.uid || null));
   run(auth.currentUser?.uid || null);
 }
