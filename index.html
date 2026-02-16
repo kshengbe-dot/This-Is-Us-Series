@@ -260,7 +260,7 @@
     }
     .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
-    /* Modals */
+    /* Auth/Terms/News modal */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -401,6 +401,7 @@
       </div>
     </div>
 
+    <!-- ✅ ALWAYS VISIBLE ANNOUNCEMENTS SECTION (NO CLICK REQUIRED) -->
     <div id="announceBanner"></div>
 
     <div class="sectionTitle">
@@ -513,7 +514,7 @@
     </div>
   </div>
 
-  <!-- NEWS/SUBSCRIBE MODAL -->
+  <!-- NEWS/SUBSCRIBE MODAL (kept) -->
   <div class="modal" id="newsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -627,40 +628,6 @@
     </div>
   </div>
 
-  <!-- NOTIFICATION OPT-IN (AFTER TERMS) -->
-  <div class="modal" id="optInModal">
-    <div class="modalCard" style="width:min(560px, 96vw);">
-      <div class="modalHead">
-        <h3>Notifications (Optional)</h3>
-        <div class="x" id="optClose">✕</div>
-      </div>
-
-      <div class="grid">
-        <div class="note">
-          Would you like to receive new chapter announcements?
-          <br>SMS may be subject to carrier rates.
-        </div>
-
-        <div class="row2">
-          <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
-            <input type="checkbox" id="optInEmail"> Email
-          </label>
-          <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
-            <input type="checkbox" id="optInSMS"> SMS
-          </label>
-        </div>
-
-        <div class="row2">
-          <input id="optEmailVal" type="email" placeholder="Email (if Email checked)">
-          <input id="optPhoneVal" type="tel" placeholder="Phone (if SMS checked)">
-        </div>
-
-        <button class="btn primary" id="saveOptBtn">Save Preferences</button>
-        <div class="note" id="optMsg"></div>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -673,20 +640,14 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     import {
-      renderAnnouncementBanner,
+      renderAnnouncementSection,
       renderAnnouncementsList,
       setupSubscribeForm,
       renderReaderCount
     } from "./public-feed.js";
 
-    import {
-      wireTermsGate,
-      prefillSubscribeModal,
-      wasOptPrompted,
-      markOptPromptedOnce,
-      saveNotifyPrefs,
-      getNotifyPrefs
-    } from "./terms-gate.js";
+    // ✅ NEW: shared terms gate (signed-in once, guest every refresh)
+    import { wireTermsGate } from "./terms-gate.js";
 
     // Theme (local first)
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -697,14 +658,13 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // theme toggle (save to user if signed in)
     document.getElementById("themeBtn").onclick = async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
-      if(auth.currentUser){
+      if(window.__UID){
         try{
-          await setDoc(doc(db,"users",auth.currentUser.uid), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
         }catch{}
       }
     };
@@ -726,16 +686,14 @@
     // ===== NEWS MODAL =====
     const newsModal = document.getElementById("newsModal");
     const newsClose = document.getElementById("newsClose");
-
-    async function openNews(){
+    document.getElementById("openNewsBtn").onclick = ()=>{
       newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 6 });
-      await prefillSubscribeModal(); // ✅ fills checkboxes + values if saved
-    }
-
-    document.getElementById("openNewsBtn").onclick = openNews;
-    document.getElementById("openSubBtn").onclick = openNews;
-
+      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 });
+    };
+    document.getElementById("openSubBtn").onclick = ()=>{
+      newsModal.classList.add("show");
+      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 });
+    };
     newsClose.onclick = ()=> newsModal.classList.remove("show");
     newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) newsModal.classList.remove("show"); });
 
@@ -777,78 +735,13 @@
       }
     }
 
-    // ===== OPT-IN MODAL (AFTER TERMS) =====
-    const optInModal = document.getElementById("optInModal");
-    const optClose = document.getElementById("optClose");
-    const optInEmail = document.getElementById("optInEmail");
-    const optInSMS = document.getElementById("optInSMS");
-    const optEmailVal = document.getElementById("optEmailVal");
-    const optPhoneVal = document.getElementById("optPhoneVal");
-    const saveOptBtn = document.getElementById("saveOptBtn");
-    const optMsg = document.getElementById("optMsg");
-
-    function openOptIn(){
-      optInModal.classList.add("show");
-      document.body.style.overflow = "hidden";
-    }
-    function closeOptIn(){
-      optInModal.classList.remove("show");
-      document.body.style.overflow = "";
-    }
-    optClose.onclick = closeOptIn;
-    optInModal.addEventListener("click",(e)=>{ if(e.target === optInModal) closeOptIn(); });
-
-    // ✅ Terms gate wired ONCE, shared everywhere
-    wireTermsGate({
-      onAccepted: async ()=>{
-        // show optional opt-in only once
-        if(!wasOptPrompted()){
-          markOptPromptedOnce();
-
-          // preload any existing prefs
-          const prefs = await getNotifyPrefs(auth.currentUser);
-          optInEmail.checked = !!prefs.email;
-          optInSMS.checked = !!prefs.sms;
-          optEmailVal.value = prefs.emailVal || "";
-          optPhoneVal.value = prefs.phoneVal || "";
-
-          openOptIn();
-        }
-      }
-    });
-
-    saveOptBtn.onclick = async ()=>{
-      optMsg.textContent = "";
-      const wantsEmail = !!optInEmail.checked;
-      const wantsSMS = !!optInSMS.checked;
-      const emailVal = (optEmailVal.value || "").trim();
-      const phoneVal = (optPhoneVal.value || "").trim();
-
-      if(wantsEmail && !emailVal){
-        optMsg.textContent = "Enter your email (or turn off Email).";
-        return;
-      }
-      if(wantsSMS && !phoneVal){
-        optMsg.textContent = "Enter your phone (or turn off SMS).";
-        return;
-      }
-
-      try{
-        await saveNotifyPrefs({
-          email: wantsEmail,
-          sms: wantsSMS,
-          emailVal,
-          phoneVal
-        }, auth.currentUser);
-
-        closeOptIn();
-      }catch{
-        optMsg.textContent = "Could not save preferences.";
-      }
-    };
+    // ✅ TERMS GATE
+    wireTermsGate();
 
     // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user)=>{
+      window.__UID = user ? user.uid : null;
+
       if(user){
         statusText.textContent = "Synced";
         authText.textContent = "Account";
@@ -898,8 +791,8 @@
       closeModal();
     };
 
-    // ===== PUBLIC FEEDS =====
-    renderAnnouncementBanner({ mountId:"announceBanner", max: 6 });
+    // ✅ PUBLIC FEEDS
+    renderAnnouncementSection({ mountId:"announceBanner", max: 10 });
     renderReaderCount({ bookId:"book1", mountId:"readerCount" });
   </script>
 </body>
