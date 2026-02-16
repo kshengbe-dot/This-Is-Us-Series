@@ -325,7 +325,6 @@
       box-shadow: var(--shadow);
       padding:14px;
 
-      /* Mobile scroll fix */
       max-height: 86vh;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
@@ -710,9 +709,10 @@
     }
 
     import { wireTermsGate } from "./terms-gate.js";
+    // IMPORTANT: our terms gate uses these callbacks so the modal doesn't glitch on iPhone
     wireTermsGate({ lockScroll, unlockScroll });
 
-    import { bumpReaderCountOnce } from "./public-feed.js";
+    import { bumpBookOpen, bumpBookRead } from "./public-feed.js";
 
     import {
       renderComments,
@@ -783,16 +783,10 @@
     const db = getFirestore(app);
     let UID = null;
 
-    // Reader count
-    const COUNT_KEY = `tiu_counted:${bookId}`;
-    async function bumpReaderAfterAuth(){
-      if(localStorage.getItem(COUNT_KEY) === "yes") return;
-      try{
-        await bumpReaderCountOnce({ bookId, uid: UID || null });
-        localStorage.setItem(COUNT_KEY, "yes");
-      }catch{}
-    }
+    // Count open (once per device handled in public-feed.js)
+    bumpBookOpen({ bookId }).catch(()=>{});
 
+    // progress
     const progressKeyLocal = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
@@ -855,8 +849,6 @@
         syncDot.style.color = "rgba(255,255,255,.65)";
         syncText.textContent = "Guest";
       }
-
-      await bumpReaderAfterAuth();
 
       if(UID){
         await loadCloudProgressIfAny();
@@ -1111,7 +1103,7 @@
         rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
       }
 
-      saveProgressAll();
+      saveProgressAll().catch(()=>{});
 
       if(__lastAchIndex !== i){
         __lastAchIndex = i;
@@ -1155,17 +1147,27 @@
 
     function next(){
       if(isMobile()){
-        if(i+1 <= PAGES.length-1) animateFlip(i+1);
+        if(i+1 <= PAGES.length-1){
+          animateFlip(i+1);
+          bumpBookRead({ bookId, by: 1 }).catch(()=>{});
+        }
       }else{
-        if(i+2 <= PAGES.length-1) animateFlip(i+2);
+        if(i+2 <= PAGES.length-1){
+          animateFlip(i+2);
+          bumpBookRead({ bookId, by: 1 }).catch(()=>{});
+        }
       }
     }
 
     function prev(){
       if(isMobile()){
-        if(i-1 >= 0) animateFlip(i-1);
+        if(i-1 >= 0){
+          animateFlip(i-1);
+        }
       }else{
-        if(i-2 >= 0) animateFlip(i-2);
+        if(i-2 >= 0){
+          animateFlip(i-2);
+        }
       }
     }
 
@@ -1243,10 +1245,9 @@
       }).catch(()=>{});
 
       if(scrollToCommentId){
-        // Ensure Comments tab visible
         setTab("commentsTab");
-        // scroll inside modal card
-        const el = document.getElementById(`c_${scrollToCommentId}`);
+        // FIX: reader-community renders id="comment-<id>"
+        const el = document.getElementById(`comment-${scrollToCommentId}`);
         if(el){
           el.scrollIntoView({ behavior:"smooth", block:"start" });
         }
@@ -1329,7 +1330,6 @@
       // Deep link support from library carousel:
       // read.html?book=book1&open=community&comment=<commentId>
       if(deepOpen === "community"){
-        // wait a tick to ensure modal dom is ready
         setTimeout(()=>{
           openCommunity({ scrollToCommentId: deepCommentId || "" }).catch(()=>{});
         }, 200);
