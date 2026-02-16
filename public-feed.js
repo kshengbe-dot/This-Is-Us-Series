@@ -7,14 +7,14 @@ import {
   getDocs, query, orderBy, limit,
   doc, getDoc, setDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
 function escapeHtml(str) {
-  return String(str)
+  return String(str ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -124,7 +124,7 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
   }
 }
 
-// ------------------------ SUBSCRIBE (WRITE OK, READ ADMIN ONLY via rules) ------------------------
+// ------------------------ SUBSCRIBE ------------------------
 export function setupSubscribeForm({
   formId = "subscribeForm",
   emailId = "subEmail",
@@ -206,55 +206,34 @@ export function setupSubscribeForm({
   });
 }
 
-// ------------------------ STATS: TOTAL + SIGNED-IN + GUEST ------------------------
-// Counts once per device per book.
-// IMPORTANT: waits for auth state so split counts are accurate.
+// ------------------------ STATS (FIXED) ------------------------
+// Your reader page calls bumpReaderCountOnce({ bookId, uid })
+// - uid = string means signed-in
+// - uid = null means guest
+export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}) {
+  const key = `tiu_counted:${bookId}`;
+  if (localStorage.getItem(key) === "yes") return;
+
+  const fields = {
+    totalReaders: increment(1),
+    updatedAt: serverTimestamp()
+  };
+
+  if (uid) fields.signedInReaders = increment(1);
+  else fields.guestReaders = increment(1);
+
+  try {
+    await setDoc(doc(db, "stats", bookId), fields, { merge:true });
+    localStorage.setItem(key, "yes");
+  } catch {
+    // ignore
+  }
+}
+
+// Backward compat (if any old page calls bumpReaderCountsOnce)
 export function bumpReaderCountsOnce({ bookId = "book1" } = {}) {
-  const keyTotal = `readerCounted:total:${bookId}`;
-  const keyGuest = `readerCounted:guest:${bookId}`;
-  const keySigned = `readerCounted:signed:${bookId}`;
-
-  async function inc(fields) {
-    await setDoc(doc(db, "stats", bookId), fields, { merge: true });
-  }
-
-  // Always count TOTAL once per device/book
-  (async () => {
-    if (localStorage.getItem(keyTotal) === "1") return;
-    try {
-      await inc({ totalReaders: increment(1), updatedAt: serverTimestamp() });
-      localStorage.setItem(keyTotal, "1");
-    } catch {
-      // ignore
-    }
-  })();
-
-  // Count split AFTER auth resolves (or guest fallback)
-  let resolved = false;
-
-  function runSplit(isSignedIn) {
-    if (isSignedIn) {
-      if (localStorage.getItem(keySigned) === "1") return;
-      inc({ signedInReaders: increment(1), updatedAt: serverTimestamp() })
-        .then(() => localStorage.setItem(keySigned, "1"))
-        .catch(() => {});
-    } else {
-      if (localStorage.getItem(keyGuest) === "1") return;
-      inc({ guestReaders: increment(1), updatedAt: serverTimestamp() })
-        .then(() => localStorage.setItem(keyGuest, "1"))
-        .catch(() => {});
-    }
-  }
-
-  onAuthStateChanged(auth, (user) => {
-    resolved = true;
-    runSplit(!!user);
-  });
-
-  // guest fallback if auth is slow
-  setTimeout(() => {
-    if (!resolved) runSplit(false);
-  }, 1200);
+  const uid = auth.currentUser?.uid || null;
+  return bumpReaderCountOnce({ bookId, uid });
 }
 
 export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
