@@ -1,3 +1,4 @@
+<!-- read.html (FULL CODE — with mobile Community button added) -->
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -451,11 +452,17 @@
   <!-- Mobile top -->
   <div class="mTop">
     <div class="mBtn" id="mBack">← Library</div>
+
     <div class="mTitle">
       <div class="t1" id="mBookTitle">book</div>
       <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
     </div>
-    <div class="mBtn" id="mTheme">Theme</div>
+
+    <!-- ✅ Mobile community button added (no other changes) -->
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="mBtn" id="mCommunity">💬</div>
+      <div class="mBtn" id="mTheme">Theme</div>
+    </div>
   </div>
 
   <!-- Desktop top -->
@@ -1231,6 +1238,11 @@
     }
 
     communityBtn.addEventListener("click", openCommunity);
+
+    // ✅ mobile community button wiring
+    const mCommunity = document.getElementById("mCommunity");
+    if(mCommunity) mCommunity.addEventListener("click", openCommunity);
+
     communityClose.addEventListener("click", closeCommunity);
     communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
 
