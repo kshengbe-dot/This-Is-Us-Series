@@ -1,22 +1,25 @@
-// public-feed.js (FULL FILE — COUNTERS + ANNOUNCEMENTS + SUBSCRIBERS)
-// Works with your file structure:
+// public-feed.js (FULL FILE — MATCHES admin-9f3k2p.html PATHS)
+//
+// ✅ Works with your file structure:
 // - firebase-config.js
 // - index.html (library) can import: renderAnnouncements, submitSubscriber, renderBookStats
 // - read.html imports: bumpReaderCountOnce
 //
-// Firestore layout used (simple + scalable):
+// ✅ Firestore layout (MATCHES ADMIN DASHBOARD):
 // 1) Reader uniqueness + counts (per book)
-//    books/{bookId}/readers/{readerId}   (readerId = uid OR guestToken)
-//    books/{bookId}/meta/public          { readerCount, lastReaderAt }
+//    stats/{bookId}                        { totalReaders, signedInReaders, guestReaders, updatedAt, lastReaderAt }
+//    stats/{bookId}/readers/{readerId}     { uid|null, kind:"user"|"guest", createdAt }
 //
-// 2) Announcements (global, optional per-book)
-//    public/announcements/items/{autoId} { title, body, bookId(optional), pinned, createdAt }
+// 2) Announcements (global)
+//    announcements/{autoId}               { title, body, startAt(optional), endAt(optional), createdAt, createdBy }
 //
 // 3) Subscribers (global)
-//    public/subscribers/items/{autoId}   { email, name, phone, createdAt, source, bookId(optional) }
+//    subscribers/{autoId}                 { email/phone, uid(optional), bookId(optional), notificationEmail/SMS, createdAt, source }
 //
-// NOTE: You must set Firestore rules to allow reads for announcements/stats,
-// and writes for subscribers + readers (or restrict as you prefer).
+// NOTE: Your Firestore rules must allow:
+// - public read of announcements + stats (or at least stats fields you show)
+// - public write of subscribers + stats/{bookId}/readers/{readerId} + stats/{bookId} update via transaction (or restrict)
+//
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -32,7 +35,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  runTransaction
+  runTransaction,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 // ---------- init ----------
@@ -56,7 +60,6 @@ function clampStr(s, n = 3000) {
 
 function normalizeEmail(email) {
   const e = String(email ?? "").trim().toLowerCase();
-  // simple guard (not perfect)
   if (!e || !e.includes("@") || e.length > 254) return "";
   return e;
 }
@@ -72,62 +75,69 @@ function getGuestReaderToken() {
   return v;
 }
 
-function readersDoc(bookId, readerId) {
-  return doc(db, "books", bookId, "readers", readerId);
+function statsDoc(bookId) {
+  return doc(db, "stats", bookId);
 }
 
-function publicMetaDoc(bookId) {
-  return doc(db, "books", bookId, "meta", "public");
+function readerMarkerDoc(bookId, readerId) {
+  return doc(db, "stats", bookId, "readers", readerId);
 }
 
-function annCol() {
-  return collection(db, "public", "announcements", "items");
+function announcementsCol() {
+  return collection(db, "announcements");
 }
 
-function subCol() {
-  return collection(db, "public", "subscribers", "items");
+function subscribersCol() {
+  return collection(db, "subscribers");
 }
 
 // ---------- 1) Reader count (unique per user/token) ----------
 /**
  * bumpReaderCountOnce
  * Unique count per UID (signed in) or guest token (guest).
- * Safe to call multiple times; it only increments on first unique.
+ * Safe to call multiple times; it only increments on first unique reader marker.
  *
- * @param {Object} p
- * @param {string} p.bookId
- * @param {string|null} p.uid
+ * Updates stats/{bookId} fields used by admin dashboard:
+ * - totalReaders
+ * - signedInReaders
+ * - guestReaders
  */
 export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}) {
   const readerId = uid || `guest_${getGuestReaderToken()}`;
-  const rRef = readersDoc(bookId, readerId);
-  const mRef = publicMetaDoc(bookId);
+  const markerRef = readerMarkerDoc(bookId, readerId);
+  const sRef = statsDoc(bookId);
 
   await runTransaction(db, async (tx) => {
-    const [rSnap, mSnap] = await Promise.all([tx.get(rRef), tx.get(mRef)]);
+    const [markerSnap, statsSnap] = await Promise.all([tx.get(markerRef), tx.get(sRef)]);
 
-    // already counted (this reader exists)
-    if (rSnap.exists()) return;
+    // Already counted
+    if (markerSnap.exists()) return;
 
-    const meta = mSnap.exists() ? (mSnap.data() || {}) : {};
-    const current = Number(meta.readerCount || 0);
-    const next = current + 1;
+    const d = statsSnap.exists() ? (statsSnap.data() || {}) : {};
+    const total = Number(d.totalReaders || 0);
+    const signed = Number(d.signedInReaders || 0);
+    const guest = Number(d.guestReaders || 0);
+
+    const isUser = !!uid;
 
     tx.set(
-      rRef,
+      markerRef,
       {
         readerId,
         uid: uid || null,
-        kind: uid ? "user" : "guest",
+        kind: isUser ? "user" : "guest",
         createdAt: serverTimestamp()
       },
       { merge: true }
     );
 
     tx.set(
-      mRef,
+      sRef,
       {
-        readerCount: next,
+        totalReaders: total + 1,
+        signedInReaders: signed + (isUser ? 1 : 0),
+        guestReaders: guest + (isUser ? 0 : 1),
+        updatedAt: serverTimestamp(),
         lastReaderAt: serverTimestamp()
       },
       { merge: true }
@@ -137,7 +147,7 @@ export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {})
 
 /**
  * renderBookStats
- * Displays readerCount for a book into a mount element.
+ * Displays totalReaders for a book into a mount element.
  *
  * @param {Object} p
  * @param {string} p.bookId
@@ -155,30 +165,30 @@ export async function renderBookStats({
   mount.textContent = "Loading…";
 
   try {
-    const snap = await getDoc(publicMetaDoc(bookId));
+    const snap = await getDoc(statsDoc(bookId));
     const d = snap.exists() ? (snap.data() || {}) : {};
-    const n = Number(d.readerCount || 0);
-    mount.textContent = template.replace("{n}", String(n));
+    const n = Number(d.totalReaders || 0);
+    mount.textContent = template.replace("{n}", String(n.toLocaleString()));
   } catch {
     mount.textContent = "—";
   }
 }
 
-// ---------- 2) Announcements ----------
+// ---------- 2) Announcements (matches admin: startAt/endAt logic) ----------
 /**
  * renderAnnouncements
- * Renders a clean list of announcements. Supports pinned first.
- * If bookId is provided, shows:
- * - pinned + global (no bookId)
- * - pinned + matching bookId
+ * Renders announcements from top-level collection: announcements
  *
- * Docs should look like:
- * { title, body, pinned:boolean, bookId(optional), createdAt }
+ * Admin writes:
+ * { title, body, startAt:Timestamp|null, endAt:Timestamp|null, createdAt }
+ *
+ * This function shows only "LIVE" items:
+ * - startAt missing/null OR startAt <= now
+ * - endAt missing/null OR endAt >= now
  */
 export async function renderAnnouncements({
   mountId = "announcements",
-  max = 6,
-  bookId = "" // optional
+  max = 6
 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -186,9 +196,11 @@ export async function renderAnnouncements({
   mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
 
   try {
-    // Firestore can't do "OR" easily without indexes; keep it simple:
-    // fetch latest N and filter client-side.
-    const qy = query(annCol(), orderBy("createdAt", "desc"), limit(Math.max(12, Number(max || 6) * 3)));
+    const qy = query(
+      announcementsCol(),
+      orderBy("createdAt", "desc"),
+      limit(Math.max(15, Number(max || 6) * 4))
+    );
     const snap = await getDocs(qy);
 
     if (snap.empty) {
@@ -196,38 +208,35 @@ export async function renderAnnouncements({
       return;
     }
 
-    const all = [];
+    const now = Date.now();
+    const live = [];
+
     snap.forEach((s) => {
       const d = s.data() || {};
-      const aBookId = typeof d.bookId === "string" ? d.bookId : "";
-      const ok =
-        !bookId ||
-        aBookId === "" || // global
-        aBookId === bookId; // this book
+      const title = clampStr(d.title || "Announcement", 120);
+      const body = clampStr(d.body || "", 2000);
 
-      if (!ok) return;
+      const startMs = d.startAt?.toMillis ? d.startAt.toMillis() : null;
+      const endMs = d.endAt?.toMillis ? d.endAt.toMillis() : null;
 
-      all.push({
+      const okStart = (startMs == null) ? true : (now >= startMs);
+      const okEnd = (endMs == null) ? true : (now <= endMs);
+
+      if (!(okStart && okEnd)) return;
+
+      live.push({
         id: s.id,
-        pinned: !!d.pinned,
-        title: clampStr(d.title || "Announcement", 120),
-        body: clampStr(d.body || "", 2000),
-        createdAt: d.createdAt || null
+        title,
+        body
       });
     });
 
-    if (!all.length) {
-      mount.innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
+    if (!live.length) {
+      mount.innerHTML = `<div style="opacity:.75">No announcements right now.</div>`;
       return;
     }
 
-    // pinned first, then newest
-    all.sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return 0;
-    });
-
-    const list = all.slice(0, Math.max(1, Number(max || 6)));
+    const list = live.slice(0, Math.max(1, Number(max || 6)));
 
     mount.innerHTML = list
       .map((a) => {
@@ -239,11 +248,8 @@ export async function renderAnnouncements({
             padding:12px;
             margin:10px 0;
           ">
-            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-              <div style="font:950 13px ui-sans-serif,system-ui;letter-spacing:.04em">
-                ${a.pinned ? "📌 " : ""}${escapeHtml(a.title)}
-              </div>
-              <div style="opacity:.65;font:800 12px ui-sans-serif,system-ui">${a.pinned ? "Pinned" : ""}</div>
+            <div style="font:950 13px ui-sans-serif,system-ui;letter-spacing:.04em">
+              📣 ${escapeHtml(a.title)}
             </div>
             <div style="margin-top:8px;opacity:.92;line-height:1.55;font:600 13px ui-sans-serif,system-ui">
               ${escapeHtml(a.body).replaceAll("\n", "<br>")}
@@ -257,31 +263,48 @@ export async function renderAnnouncements({
   }
 }
 
-// ---------- 3) Subscribers ----------
+// ---------- 3) Subscribers (matches admin: collection(db,"subscribers")) ----------
 /**
  * submitSubscriber
- * Saves a subscriber to Firestore.
- * You can call this from a form in index.html (library).
+ * Saves a subscriber to Firestore (top-level "subscribers" collection).
+ *
+ * Supports:
+ * - email (recommended)
+ * - phone (optional)
+ * - uid (optional)
+ * - bookId (optional)
+ *
+ * Admin dashboard expects docs like:
+ * { email/phone, uid, bookId, notificationEmail, notificationSMS, createdAt }
  */
 export async function submitSubscriber({
   email = "",
   name = "",
   phone = "",
+  uid = null,
+  notificationEmail = true,
+  notificationSMS = false,
   source = "library",
   bookId = "" // optional
 } = {}) {
   const e = normalizeEmail(email);
-  if (!e) throw new Error("Enter a valid email.");
+  const p = clampStr(phone, 40);
+
+  // Require at least email OR phone
+  if (!e && !p) throw new Error("Enter a valid email (or phone).");
 
   const payload = {
-    email: e,
+    email: e || null,
+    phone: p || null,
     name: clampStr(name, 80) || null,
-    phone: clampStr(phone, 40) || null,
-    source: clampStr(source, 30) || "library",
+    uid: uid || null,
     bookId: clampStr(bookId, 30) || null,
+    source: clampStr(source, 30) || "library",
+    notificationEmail: !!notificationEmail,
+    notificationSMS: !!notificationSMS,
     createdAt: serverTimestamp()
   };
 
-  await addDoc(subCol(), payload);
+  await addDoc(subscribersCol(), payload);
   return true;
 }
