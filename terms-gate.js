@@ -1,166 +1,149 @@
-// terms-gate.js (FULL FILE — CLEAN + INTEGRATED)
-// ✅ Purpose: Block the app until Terms are accepted (local first, cloud optional)
-// ✅ Works with your file structure + Firebase v12.9.0
-// ✅ Fixes your mistake: you had TWO different versions pasted into one file.
+// terms-gate.js (FULL FILE)
+// Purpose: Force Terms acceptance before using the site.
+// - Stores acceptance locally (fast, reliable)
+// - Also stores acceptance to Firestore when signed-in (optional sync)
 //
-// How it works:
-// - Uses a single TERMS_VERSION string (set it to the "Last updated" date in your modal)
-// - If accepted locally -> no modal
-// - If signed in AND accepted in cloud -> auto-accept locally, no modal
-// - Otherwise -> modal opens and cannot be dismissed until checkbox is checked + Accept clicked
-//
-// Required HTML IDs (defaults):
-//   #termsModal, #agreeTerms, #acceptTermsBtn, #termsMsg
-//
-// Usage in read.html / index.html:
-//   import { wireTermsGate } from "./terms-gate.js";
-//   wireTermsGate();
+// Works with your modal IDs in read.html:
+//   modalId: "termsModal"
+//   checkboxId: "agreeTerms"
+//   acceptBtnId: "acceptTermsBtn"
+//   msgId: "termsMsg"
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+// === MUST match the "Last updated" date shown in your Terms modal ===
+const TERMS_VERSION = "2026-02-15";
+const LOCAL_KEY = `termsAccepted:${TERMS_VERSION}`;
+
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔁 MUST match the "Last updated" label in your Terms modal text
-// Change this string when you update Terms.
-const TERMS_VERSION = "2026-02-15";
+function safeText(el, t) {
+  if (!el) return;
+  el.textContent = String(t ?? "");
+}
 
-// local storage key
-const LOCAL_KEY = `tiu_termsAccepted:${TERMS_VERSION}`;
+async function cloudHasAccepted(uid) {
+  if (!uid) return false;
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return false;
+    const d = snap.data() || {};
+    return d.termsAcceptedVersion === TERMS_VERSION;
+  } catch {
+    return false;
+  }
+}
 
-// Firestore fields on users/{uid}
-const CLOUD_VERSION_FIELD = "termsAcceptedVersion";
-const CLOUD_AT_FIELD = "termsAcceptedAt";
+async function cloudSetAccepted(uid) {
+  if (!uid) return;
+  try {
+    await setDoc(
+      doc(db, "users", uid),
+      {
+        termsAcceptedVersion: TERMS_VERSION,
+        termsAcceptedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+  } catch {
+    // ignore (rules may block; local acceptance still works)
+  }
+}
 
-/**
- * wireTermsGate(options)
- * Locks UI until Terms accepted.
- */
 export function wireTermsGate({
   modalId = "termsModal",
   checkboxId = "agreeTerms",
   acceptBtnId = "acceptTermsBtn",
-  msgId = "termsMsg"
+  msgId = "termsMsg",
+  // optional callbacks for iPhone-safe scroll locking
+  lockScroll = null,
+  unlockScroll = null
 } = {}) {
   const modal = document.getElementById(modalId);
-  const agree = document.getElementById(checkboxId);
-  const acceptBtn = document.getElementById(acceptBtnId);
+  const box = document.getElementById(checkboxId);
+  const btn = document.getElementById(acceptBtnId);
   const msg = document.getElementById(msgId);
 
-  if (!modal || !agree || !acceptBtn) return;
+  // If the modal isn't on this page, do nothing.
+  if (!modal || !box || !btn) return;
 
-  // --- helpers ---
-  const localAccepted = () => localStorage.getItem(LOCAL_KEY) === "1";
-  const setLocalAccepted = () => localStorage.setItem(LOCAL_KEY, "1");
+  const isAcceptedLocal = () => localStorage.getItem(LOCAL_KEY) === "1";
+  const setAcceptedLocal = () => localStorage.setItem(LOCAL_KEY, "1");
 
   function open() {
     modal.classList.add("show");
-    document.body.style.overflow = "hidden";
-    if (msg) msg.textContent = "";
-    agree.checked = false;
+    modal.setAttribute("aria-hidden", "false");
+    box.checked = false;
+    safeText(msg, "");
 
-    // hard-lock: prevent ESC closing if your modal library tries
-    window.addEventListener("keydown", blockEscape, true);
+    // lock background scroll (iOS-safe)
+    if (typeof lockScroll === "function") lockScroll();
+    else document.body.style.overflow = "hidden";
   }
 
   function close() {
     modal.classList.remove("show");
-    document.body.style.overflow = "";
-    window.removeEventListener("keydown", blockEscape, true);
+    modal.setAttribute("aria-hidden", "true");
+
+    if (typeof unlockScroll === "function") unlockScroll();
+    else document.body.style.overflow = "";
   }
 
-  function blockEscape(e) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-
-  async function cloudAccepted(uid) {
-    if (!uid) return false;
-    try {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (!snap.exists()) return false;
-      const d = snap.data() || {};
-      return d[CLOUD_VERSION_FIELD] === TERMS_VERSION;
-    } catch {
-      return false;
-    }
-  }
-
-  async function setCloudAccepted(uid) {
-    if (!uid) return;
-    try {
-      await setDoc(
-        doc(db, "users", uid),
-        {
-          [CLOUD_VERSION_FIELD]: TERMS_VERSION,
-          [CLOUD_AT_FIELD]: serverTimestamp()
-        },
-        { merge: true }
-      );
-    } catch {
-      // ignore (terms still accepted locally)
-    }
-  }
-
-  // prevent click-out closing (if your CSS uses overlay click)
+  // Prevent click-out close: user MUST accept
   modal.addEventListener("click", (e) => {
+    // swallow clicks so they don't close the modal
     e.stopPropagation();
-    // do not close on background clicks
   });
 
-  // ---- start ----
-  async function runGate(user) {
-    // If already accepted locally -> done
-    if (localAccepted()) {
+  // Main logic: show only if not accepted
+  async function run(uid) {
+    // If accepted locally, unlock.
+    if (isAcceptedLocal()) {
       close();
       return;
     }
 
-    // If signed in, check cloud acceptance to auto-unlock
-    const uid = user?.uid || null;
+    // If signed in, check cloud acceptance and set local if already accepted.
     if (uid) {
-      const ok = await cloudAccepted(uid);
+      const ok = await cloudHasAccepted(uid);
       if (ok) {
-        setLocalAccepted();
+        setAcceptedLocal();
         close();
         return;
       }
     }
 
-    // Otherwise lock
+    // Otherwise force modal open.
     open();
   }
 
-  // Run once immediately using current user (may be null early)
-  runGate(auth.currentUser).catch(() => open());
-
-  // Re-run on auth changes (e.g., user logs in)
-  onAuthStateChanged(auth, (user) => {
-    runGate(user).catch(() => open());
-  });
-
   // Accept button
-  acceptBtn.addEventListener("click", async () => {
-    if (msg) msg.textContent = "";
+  btn.addEventListener("click", async () => {
+    safeText(msg, "");
 
-    if (!agree.checked) {
-      if (msg) msg.textContent = "Please check the box to continue.";
+    if (!box.checked) {
+      safeText(msg, "Please check the box to continue.");
       return;
     }
 
-    // Always accept locally
-    setLocalAccepted();
+    setAcceptedLocal();
 
-    // Save to cloud (optional)
-    const uid = auth.currentUser?.uid || null;
-    if (uid) await setCloudAccepted(uid);
+    const user = auth.currentUser;
+    if (user?.uid) await cloudSetAccepted(user.uid);
 
     close();
   });
+
+  // Run after auth state is known
+  onAuthStateChanged(auth, (user) => {
+    run(user?.uid || null);
+  });
+
+  // Also run immediately (in case auth takes a moment)
+  run(auth.currentUser?.uid || null);
 }
