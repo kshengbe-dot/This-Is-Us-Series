@@ -234,7 +234,6 @@
     .badge.live{ border-color: rgba(0,255,198,.35); }
     .badge.soon{ border-color: rgba(255,198,0,.35); }
 
-    /* Preview carousel shell that matches your index design */
     .previewShell{
       border:1px solid var(--stroke);
       border-radius:22px;
@@ -252,7 +251,7 @@
         radial-gradient(520px 220px at 90% 20%, rgba(2,6,23,.06), transparent 65%),
         rgba(2,6,23,.02);
     }
-    .previewInner{ padding:14px; min-height: 128px; position:relative; }
+    .previewInner{ padding:14px; min-height: 148px; position:relative; }
     .pHint{
       padding:10px 14px 12px;
       border-top:1px solid var(--stroke);
@@ -263,27 +262,27 @@
       gap:10px;
       align-items:center;
       flex-wrap:wrap;
+      position:relative;
+      z-index:2;
     }
-    /* Classes used by reader-community.js carousel */
+
     .previewSlide{
       position:absolute; inset:14px;
       opacity:0;
       transform: translateY(6px);
       transition: opacity .65s ease, transform .65s ease;
       pointer-events:none;
+      z-index:1;
     }
     .previewSlide.show{ opacity:1; transform:none; pointer-events:auto; }
 
-    /* A few helper classes used inside slides */
     .pTop{ display:flex; justify-content:space-between; gap:10px; align-items:center; color:var(--muted); font: 900 12px ui-sans-serif,system-ui; letter-spacing:.04em; }
     .pPill{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,.06); }
-    .pBook{ display:flex; gap:8px; align-items:center; }
     .pName{ display:flex; gap:10px; align-items:center; margin-top:10px; }
     .pWho{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:54vw; }
     .pText{ margin-top:10px; opacity:.92; line-height:1.55; }
     .pMeta{ margin-top:12px; display:flex; justify-content:space-between; color:var(--muted); font: 800 12px ui-sans-serif,system-ui; }
 
-    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -402,7 +401,7 @@
         </div>
         <div class="stat">
           <div class="k">Subscribers</div>
-          <div class="v" id="subsTotal">— Total</div>
+          <div class="v" id="subsTotal">Private</div>
         </div>
 
         <div class="stat">
@@ -517,26 +516,33 @@
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, doc, getDoc, setDoc, serverTimestamp,
-      query, where, orderBy, limit, getDocs
+      getFirestore, collection, getDocs, query, where, limit, doc, getDoc, setDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged,
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-    import { renderCommentPreviewCarousel } from "./reader-community.js";
+    import { renderCommentPreviewCarousel, ADMIN_UID } from "./reader-community.js";
+    import { submitSubscriber, getBookStats, renderAnnouncementBanner } from "./public-feed.js";
 
     // --- Theme ---
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
+    // --- Firebase init (safe) ---
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let UID = null;
+
+    // Theme button
     const themeBtn = document.getElementById("themeBtn");
     themeBtn.addEventListener("click", async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
-      // save to cloud if signed in
       if(UID){
         try{
           await setDoc(doc(db,"users",UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
@@ -544,19 +550,11 @@
       }
     });
 
-    // --- Firebase init (safe) ---
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
     // --- Quick nav ---
-    const settingsBtn = document.getElementById("settingsBtn");
-    settingsBtn.addEventListener("click", ()=> location.href = "settings.html");
-
+    document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
     document.getElementById("openBook1").addEventListener("click", ()=> location.href = "read.html?book=book1");
     document.getElementById("book1Card").addEventListener("click", ()=> location.href = "read.html?book=book1");
 
-    // coming soon uses your books/coming-soon.html through reader param "coming"
     const goComing = ()=> location.href = "read.html?book=coming";
     document.getElementById("book2Card").addEventListener("click", goComing);
     document.getElementById("book3Card").addEventListener("click", goComing);
@@ -612,7 +610,33 @@
       heroAvatar.innerHTML = u ? `<img src="${u}" alt="Profile">` : "👤";
     }
 
-    let UID = null;
+    // --- Counts UI ---
+    const readersTotal = document.getElementById("readersTotal");
+    const subsTotal = document.getElementById("subsTotal");
+
+    async function loadReadersTotal(){
+      const s = await getBookStats({ bookId:"book1" });
+      readersTotal.textContent = `${(s.totalReaders || 0).toLocaleString()} Total`;
+    }
+
+    async function loadSubscribersCountAdminOnly(){
+      // You wanted subscriber count private. Only admin sees it.
+      if(!UID || UID !== ADMIN_UID){
+        subsTotal.textContent = "Private";
+        return;
+      }
+      try{
+        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
+        subsTotal.textContent = `${snap.size} Total`;
+      }catch{
+        subsTotal.textContent = "—";
+      }
+    }
+
+    // --- Announcements banner ---
+    async function loadAnnouncementLine(){
+      await renderAnnouncementBanner({ mountId: "announceLine" });
+    }
 
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
@@ -628,6 +652,7 @@
         whoLine.textContent = "Guest Reader";
         whoSub.textContent = "Progress saved locally • Sign in to save to cloud";
         setAvatar("");
+        await loadSubscribersCountAdminOnly();
         return;
       }
 
@@ -638,7 +663,6 @@
       btnSignIn.style.display = "none";
       btnSignUp.style.display = "none";
 
-      // Load user doc for avatar/name/theme
       try{
         const snap = await getDoc(doc(db,"users",user.uid));
         const d = snap.exists() ? (snap.data() || {}) : {};
@@ -657,7 +681,6 @@
         setAvatar("");
       }
 
-      // Ensure user doc exists
       try{
         await setDoc(doc(db,"users",user.uid), {
           email: user.email || null,
@@ -665,8 +688,7 @@
         }, { merge:true });
       }catch{}
 
-      // Refresh counts now that UID exists (optional)
-      loadSubscribersCount().catch(()=>{});
+      await loadSubscribersCountAdminOnly();
     });
 
     btnSignIn.addEventListener("click", async ()=>{
@@ -706,26 +728,14 @@
       }
     });
 
-    // --- Subscribers ---
+    // --- Subscribers submit (matches public-feed.js schema) ---
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
-    const subsTotal = document.getElementById("subsTotal");
 
     function looksLikeEmail(v){
       const s = String(v || "").trim();
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-    }
-
-    async function loadSubscribersCount(){
-      // simple count: load up to 1000 and count. (works fine early-stage)
-      // If you grow large later, we can switch to aggregate counts.
-      try{
-        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
-        subsTotal.textContent = `${snap.size} Total`;
-      }catch{
-        subsTotal.textContent = "— Total";
-      }
     }
 
     subBtn.addEventListener("click", async ()=>{
@@ -738,22 +748,17 @@
       subBtn.disabled = true;
       subBtn.textContent = "Saving…";
       try{
-        const emailLower = email.toLowerCase();
-        // prevent duplicates by checking existing
-        const existing = await getDocs(query(collection(db,"subscribers"), where("emailLower","==", emailLower), limit(1)));
-        if(!existing.empty){
-          subMsg.textContent = "You’re already subscribed ✅";
-        }else{
-          await addDoc(collection(db,"subscribers"), {
-            email,
-            emailLower,
-            source: "library",
-            createdAt: serverTimestamp()
-          });
-          subMsg.textContent = "Subscribed ✅";
-          subEmail.value = "";
-          await loadSubscribersCount();
-        }
+        await submitSubscriber({
+          email,
+          uid: UID || null,
+          source: "library",
+          bookId: "book1",
+          notificationEmail: true,
+          notificationSMS: false
+        });
+        subMsg.textContent = "Subscribed ✅";
+        subEmail.value = "";
+        await loadSubscribersCountAdminOnly();
       }catch(e){
         subMsg.textContent = "Could not subscribe: " + (e?.message || String(e));
       }finally{
@@ -762,50 +767,7 @@
       }
     });
 
-    // --- Readers total (simple placeholder-ready) ---
-    // If you later decide exact structure, we can swap this to exact collection count.
-    const readersTotal = document.getElementById("readersTotal");
-    async function loadReadersTotal(){
-      // Try: books/book1/meta/stats.readersTotal (optional)
-      try{
-        const snap = await getDoc(doc(db,"books","book1","meta","stats"));
-        if(snap.exists()){
-          const d = snap.data() || {};
-          const n = Number(d.readersTotal || d.readers || 0);
-          if(Number.isFinite(n) && n > 0){
-            readersTotal.textContent = `${n} Total`;
-            return;
-          }
-        }
-      }catch{}
-      readersTotal.textContent = "— Total";
-    }
-
-    // --- Announcements ---
-    const announceLine = document.getElementById("announceLine");
-    async function loadAnnouncements(){
-      try{
-        const qy = query(
-          collection(db,"announcements"),
-          where("active","==", true),
-          orderBy("createdAt","desc"),
-          limit(1)
-        );
-        const snap = await getDocs(qy);
-        if(snap.empty){
-          announceLine.textContent = "No announcements right now.";
-          return;
-        }
-        const d = snap.docs[0].data() || {};
-        const t = (d.title && String(d.title).trim()) ? String(d.title).trim() : "Announcement";
-        const b = (d.body && String(d.body).trim()) ? String(d.body).trim() : "";
-        announceLine.textContent = b ? `${t}: ${b}` : t;
-      }catch{
-        announceLine.textContent = "Announcements unavailable.";
-      }
-    }
-
-    // --- Comment preview carousel (Book I) ---
+    // --- Comment preview carousel ---
     async function loadPreview(){
       await renderCommentPreviewCarousel({
         bookId: "book1",
@@ -818,9 +780,9 @@
     // init
     (async ()=>{
       await loadPreview().catch(()=>{});
-      await loadSubscribersCount().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
-      await loadAnnouncements().catch(()=>{});
+      await loadAnnouncementLine().catch(()=>{});
+      await loadSubscribersCountAdminOnly().catch(()=>{});
     })();
   </script>
 </body>
