@@ -1251,7 +1251,7 @@
 
       if(scrollToCommentId){
         setTab("commentsTab");
-        const el = document.getElementById(`comment-${scrollToCommentId}`);
+        const el = document.getElementById(`c_${scrollToCommentId}}`);
         if(el){
           el.scrollIntoView({ behavior:"smooth", block:"start" });
         }
