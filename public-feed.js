@@ -22,22 +22,26 @@ function escapeHtml(str) {
     .replaceAll("'","&#039;");
 }
 
-function toMs(ts){
-  return ts?.toMillis ? ts.toMillis() : null;
+function toMillisMaybe(ts){
+  if(!ts) return null;
+  if(typeof ts.toMillis === "function") return ts.toMillis();
+  return null;
 }
 
-function isActiveWindow(a, now){
-  const startMs = toMs(a.startAt);
-  const endMs = toMs(a.endAt);
+function isActiveAnnouncement(a){
+  const now = Date.now();
+  const startMs = toMillisMaybe(a.startAt);
+  const endMs   = toMillisMaybe(a.endAt);
+
   const okStart = (startMs == null) ? true : (now >= startMs);
-  const okEnd = (endMs == null) ? true : (now <= endMs);
+  const okEnd   = (endMs == null) ? true : (now <= endMs);
   return okStart && okEnd;
 }
 
-// ------------------------ ANNOUNCEMENTS (AUTO TOP SECTION) ------------------------
-export async function renderAnnouncementBanner({
+// ------------------------ ANNOUNCEMENTS (ALWAYS VISIBLE SECTION) ------------------------
+export async function renderAnnouncementSection({
   mountId = "announceBanner",
-  max = 6
+  max = 10
 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -50,13 +54,10 @@ export async function renderAnnouncementBanner({
     const snap = await getDocs(qy);
     if (snap.empty) return;
 
-    const now = Date.now();
-
-    // show ALL active announcements (newest first), up to max
     const active = [];
     snap.forEach(d => {
       const a = d.data() || {};
-      if (isActiveWindow(a, now) && (a.title || a.body)) active.push(a);
+      if (isActiveAnnouncement(a) && (a.title || a.body)) active.push(a);
     });
 
     if (!active.length) return;
@@ -73,17 +74,17 @@ export async function renderAnnouncementBanner({
           margin-top:10px;
         ">
           <div style="font-weight:950; letter-spacing:.06em">${title}</div>
-          <div style="opacity:.9; margin-top:6px; line-height:1.55">${body}</div>
+          <div style="opacity:.92; margin-top:6px; line-height:1.55">${body}</div>
         </div>
       `;
-    });
+    }).join("");
 
     mount.innerHTML = `
       <div style="margin-top:14px">
-        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; opacity:.85; margin-bottom:6px">
+        <div style="font-weight:950;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);font-size:12px">
           Announcements
         </div>
-        ${cards.join("")}
+        ${cards}
       </div>
     `;
     mount.style.display = "block";
@@ -92,8 +93,8 @@ export async function renderAnnouncementBanner({
   }
 }
 
-// optional: modal list
-export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 10 } = {}) {
+// Optional: modal list (keep for your UI)
+export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 8 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
 
@@ -107,13 +108,10 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
       return;
     }
 
-    const now = Date.now();
     const cards = [];
-
     snap.forEach(docu => {
       const d = docu.data() || {};
-      const badge = isActiveWindow(d, now) ? "LIVE" : "ARCHIVED";
-
+      const badge = isActiveAnnouncement(d) ? "LIVE" : "ARCHIVED";
       cards.push(`
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
