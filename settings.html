@@ -237,11 +237,11 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
 
 <script type="module">
   import { firebaseConfig } from "./firebase-config.js";
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, getDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-  // ✅ NEW: shared terms gate
+  // ✅ shared terms gate
   import { wireTermsGate } from "./terms-gate.js";
   wireTermsGate();
 
@@ -249,9 +249,9 @@ hr{border:0;border-top:1px solid var(--stroke); margin:14px 0}
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-  document.getElementById("backBtn").onclick = ()=> location.href="index.html";
+  document.getElementById("backBtn").onclick = ()=> location.href="./";
 
-  const app = initializeApp(firebaseConfig);
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
