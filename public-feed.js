@@ -1,10 +1,5 @@
 // public-feed.js (FULL FILE — MATCHES admin-9f3k2p.html PATHS)
 //
-// ✅ Works with your file structure:
-// - firebase-config.js
-// - index.html (library) can import: renderAnnouncements, submitSubscriber, renderBookStats
-// - read.html imports: bumpReaderCountOnce
-//
 // ✅ Firestore layout (MATCHES ADMIN DASHBOARD):
 // 1) Reader uniqueness + counts (per book)
 //    stats/{bookId}                        { totalReaders, signedInReaders, guestReaders, updatedAt, lastReaderAt }
@@ -14,11 +9,12 @@
 //    announcements/{autoId}               { title, body, startAt(optional), endAt(optional), createdAt, createdBy }
 //
 // 3) Subscribers (global)
-//    subscribers/{autoId}                 { email/phone, uid(optional), bookId(optional), notificationEmail/SMS, createdAt, source }
+//    subscribers/{autoId}                 { email/phone, uid(optional), bookId(optional), notificationEmail/SMS, createdAt, source, name(optional) }
 //
-// NOTE: Your Firestore rules must allow:
-// - public read of announcements + stats (or at least stats fields you show)
-// - public write of subscribers + stats/{bookId}/readers/{readerId} + stats/{bookId} update via transaction (or restrict)
+// NOTE: Firestore rules must allow:
+// - public read: announcements + stats (or at least stats fields you show)
+// - public write: subscribers + stats/{bookId}/readers/{readerId}
+// - stats/{bookId} update via transaction
 //
 
 import { firebaseConfig } from "./firebase-config.js";
@@ -35,8 +31,7 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  runTransaction,
-  Timestamp
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 // ---------- init ----------
@@ -78,30 +73,17 @@ function getGuestReaderToken() {
 function statsDoc(bookId) {
   return doc(db, "stats", bookId);
 }
-
 function readerMarkerDoc(bookId, readerId) {
   return doc(db, "stats", bookId, "readers", readerId);
 }
-
 function announcementsCol() {
   return collection(db, "announcements");
 }
-
 function subscribersCol() {
   return collection(db, "subscribers");
 }
 
 // ---------- 1) Reader count (unique per user/token) ----------
-/**
- * bumpReaderCountOnce
- * Unique count per UID (signed in) or guest token (guest).
- * Safe to call multiple times; it only increments on first unique reader marker.
- *
- * Updates stats/{bookId} fields used by admin dashboard:
- * - totalReaders
- * - signedInReaders
- * - guestReaders
- */
 export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}) {
   const readerId = uid || `guest_${getGuestReaderToken()}`;
   const markerRef = readerMarkerDoc(bookId, readerId);
@@ -110,7 +92,7 @@ export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {})
   await runTransaction(db, async (tx) => {
     const [markerSnap, statsSnap] = await Promise.all([tx.get(markerRef), tx.get(sRef)]);
 
-    // Already counted
+    // already counted
     if (markerSnap.exists()) return;
 
     const d = statsSnap.exists() ? (statsSnap.data() || {}) : {};
@@ -120,40 +102,38 @@ export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {})
 
     const isUser = !!uid;
 
-    tx.set(
-      markerRef,
-      {
-        readerId,
-        uid: uid || null,
-        kind: isUser ? "user" : "guest",
-        createdAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    tx.set(markerRef, {
+      readerId,
+      uid: uid || null,
+      kind: isUser ? "user" : "guest",
+      createdAt: serverTimestamp()
+    }, { merge: true });
 
-    tx.set(
-      sRef,
-      {
-        totalReaders: total + 1,
-        signedInReaders: signed + (isUser ? 1 : 0),
-        guestReaders: guest + (isUser ? 0 : 1),
-        updatedAt: serverTimestamp(),
-        lastReaderAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    tx.set(sRef, {
+      totalReaders: total + 1,
+      signedInReaders: signed + (isUser ? 1 : 0),
+      guestReaders: guest + (isUser ? 0 : 1),
+      updatedAt: serverTimestamp(),
+      lastReaderAt: serverTimestamp()
+    }, { merge: true });
   });
 }
 
-/**
- * renderBookStats
- * Displays totalReaders for a book into a mount element.
- *
- * @param {Object} p
- * @param {string} p.bookId
- * @param {string} p.mountId
- * @param {string} p.template  Use "{n}" placeholder
- */
+export async function getBookStats({ bookId = "book1" } = {}) {
+  try {
+    const snap = await getDoc(statsDoc(bookId));
+    if (!snap.exists()) return { totalReaders: 0, signedInReaders: 0, guestReaders: 0 };
+    const d = snap.data() || {};
+    return {
+      totalReaders: Number(d.totalReaders || 0),
+      signedInReaders: Number(d.signedInReaders || 0),
+      guestReaders: Number(d.guestReaders || 0)
+    };
+  } catch {
+    return { totalReaders: 0, signedInReaders: 0, guestReaders: 0 };
+  }
+}
+
 export async function renderBookStats({
   bookId = "book1",
   mountId = "bookStats",
@@ -163,38 +143,16 @@ export async function renderBookStats({
   if (!mount) return;
 
   mount.textContent = "Loading…";
-
   try {
-    const snap = await getDoc(statsDoc(bookId));
-    const d = snap.exists() ? (snap.data() || {}) : {};
-    const n = Number(d.totalReaders || 0);
-    mount.textContent = template.replace("{n}", String(n.toLocaleString()));
+    const s = await getBookStats({ bookId });
+    mount.textContent = template.replace("{n}", String((s.totalReaders || 0).toLocaleString()));
   } catch {
     mount.textContent = "—";
   }
 }
 
-// ---------- 2) Announcements (matches admin: startAt/endAt logic) ----------
-/**
- * renderAnnouncements
- * Renders announcements from top-level collection: announcements
- *
- * Admin writes:
- * { title, body, startAt:Timestamp|null, endAt:Timestamp|null, createdAt }
- *
- * This function shows only "LIVE" items:
- * - startAt missing/null OR startAt <= now
- * - endAt missing/null OR endAt >= now
- */
-export async function renderAnnouncements({
-  mountId = "announcements",
-  max = 6
-} = {}) {
-  const mount = document.getElementById(mountId);
-  if (!mount) return;
-
-  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
-
+// ---------- 2) Announcements (startAt/endAt live window) ----------
+export async function getLiveAnnouncements({ max = 6 } = {}) {
   try {
     const qy = query(
       announcementsCol(),
@@ -202,11 +160,7 @@ export async function renderAnnouncements({
       limit(Math.max(15, Number(max || 6) * 4))
     );
     const snap = await getDocs(qy);
-
-    if (snap.empty) {
-      mount.innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
-      return;
-    }
+    if (snap.empty) return [];
 
     const now = Date.now();
     const live = [];
@@ -224,59 +178,63 @@ export async function renderAnnouncements({
 
       if (!(okStart && okEnd)) return;
 
-      live.push({
-        id: s.id,
-        title,
-        body
-      });
+      live.push({ id: s.id, title, body });
     });
 
-    if (!live.length) {
-      mount.innerHTML = `<div style="opacity:.75">No announcements right now.</div>`;
-      return;
-    }
-
-    const list = live.slice(0, Math.max(1, Number(max || 6)));
-
-    mount.innerHTML = list
-      .map((a) => {
-        return `
-          <div style="
-            border:1px solid rgba(255,255,255,.12);
-            background: rgba(255,255,255,.06);
-            border-radius:16px;
-            padding:12px;
-            margin:10px 0;
-          ">
-            <div style="font:950 13px ui-sans-serif,system-ui;letter-spacing:.04em">
-              📣 ${escapeHtml(a.title)}
-            </div>
-            <div style="margin-top:8px;opacity:.92;line-height:1.55;font:600 13px ui-sans-serif,system-ui">
-              ${escapeHtml(a.body).replaceAll("\n", "<br>")}
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-  } catch (e) {
-    mount.innerHTML = `<div style="color:#ff9b9b">Could not load announcements.</div>`;
+    return live.slice(0, Math.max(1, Number(max || 6)));
+  } catch {
+    return [];
   }
 }
 
-// ---------- 3) Subscribers (matches admin: collection(db,"subscribers")) ----------
-/**
- * submitSubscriber
- * Saves a subscriber to Firestore (top-level "subscribers" collection).
- *
- * Supports:
- * - email (recommended)
- * - phone (optional)
- * - uid (optional)
- * - bookId (optional)
- *
- * Admin dashboard expects docs like:
- * { email/phone, uid, bookId, notificationEmail, notificationSMS, createdAt }
- */
+export async function renderAnnouncements({ mountId = "announcements", max = 6 } = {}) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+
+  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
+
+  const list = await getLiveAnnouncements({ max });
+  if (!list.length) {
+    mount.innerHTML = `<div style="opacity:.75">No announcements right now.</div>`;
+    return;
+  }
+
+  mount.innerHTML = list.map((a) => `
+    <div style="
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:12px;
+      margin:10px 0;
+    ">
+      <div style="font:950 13px ui-sans-serif,system-ui;letter-spacing:.04em">
+        📣 ${escapeHtml(a.title)}
+      </div>
+      <div style="margin-top:8px;opacity:.92;line-height:1.55;font:600 13px ui-sans-serif,system-ui">
+        ${escapeHtml(a.body).replaceAll("\n", "<br>")}
+      </div>
+    </div>
+  `).join("");
+}
+
+// Simple “one-line banner” helper for your hero line
+export async function renderAnnouncementBanner({ mountId = "announceLine" } = {}) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+
+  mount.textContent = "Loading announcements…";
+
+  const list = await getLiveAnnouncements({ max: 1 });
+  if (!list.length) {
+    mount.textContent = "No announcements right now.";
+    return;
+  }
+
+  const a = list[0];
+  mount.textContent = a.body ? `${a.title}: ${a.body}` : a.title;
+}
+
+// ---------- 3) Subscribers ----------
 export async function submitSubscriber({
   email = "",
   name = "",
@@ -285,12 +243,11 @@ export async function submitSubscriber({
   notificationEmail = true,
   notificationSMS = false,
   source = "library",
-  bookId = "" // optional
+  bookId = ""
 } = {}) {
   const e = normalizeEmail(email);
   const p = clampStr(phone, 40);
 
-  // Require at least email OR phone
   if (!e && !p) throw new Error("Enter a valid email (or phone).");
 
   const payload = {
