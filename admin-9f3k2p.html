@@ -280,6 +280,17 @@
       <div class="small" style="margin-top:10px;">
         Step: sign in → copy UID → paste UID into Firestore Rules (admin-only publishing).
       </div>
+
+      <!-- ✅ NEW: PRIVATE STATS -->
+      <hr>
+      <h2>Private Stats</h2>
+      <div class="row">
+        <div class="badge">Subscribers: <span class="mono" id="subCount">—</span></div>
+        <div class="badge">Total Readers (Public): <span class="mono" id="adminReaderCount">—</span></div>
+      </div>
+      <div class="small" style="margin-top:8px;">
+        Subscribers are private (only admin can read). Readers is a public counter and also shown on the Library page.
+      </div>
     </div>
 
     <div class="lockScreen" id="lockScreen">
@@ -359,7 +370,10 @@ Use **bold** for bold."></textarea>
 
       <div class="card">
         <h1>Announcements</h1>
-        <div class="small">Post a message that your library page can mirror later.</div>
+        <div class="small">
+          Post a message that will show at the <strong>top of the Library page</strong> automatically.
+          If Start/End are empty → it shows immediately and never expires.
+        </div>
 
         <div class="row2" style="margin-top:10px;">
           <div>
@@ -372,13 +386,27 @@ Use **bold** for bold."></textarea>
           </div>
         </div>
 
+        <!-- ✅ NEW: Expiry / schedule -->
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Start (optional)</label>
+            <input id="announceStart" type="datetime-local" />
+          </div>
+          <div>
+            <label>End (optional)</label>
+            <input id="announceEnd" type="datetime-local" />
+          </div>
+        </div>
+
         <div class="row" style="margin-top:12px;">
           <button class="btn primary" id="publishAnnounce">📣 Publish Announcement</button>
           <div class="small" id="announceMsg"></div>
         </div>
 
         <hr>
-        <div class="small">Tip: your main library page will show announcements after we wire it in.</div>
+        <div class="small">
+          It will stay visible until the end time (if set). After it expires it disappears automatically.
+        </div>
       </div>
 
     </div>
@@ -429,7 +457,10 @@ Use **bold** for bold."></textarea>
       getFirestore,
       collection, addDoc, serverTimestamp,
       getDocs, query, orderBy,
-      deleteDoc, doc
+      deleteDoc, doc,
+      getDoc,
+      Timestamp,
+      getCountFromServer
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     // ====== CONFIG ======
@@ -477,6 +508,10 @@ Use **bold** for bold."></textarea>
     const lockScreen = document.getElementById("lockScreen");
     const adminApp = document.getElementById("adminApp");
 
+    // ✅ NEW: private stats refs
+    const subCountEl = document.getElementById("subCount");
+    const adminReaderCountEl = document.getElementById("adminReaderCount");
+
     let UID = null;
 
     function applyGate(){
@@ -487,6 +522,29 @@ Use **bold** for bold."></textarea>
       }else{
         adminApp.classList.remove("show");
         lockScreen.classList.add("show");
+      }
+    }
+
+    // ✅ NEW: load private subscriber count (admin-only)
+    async function loadSubscriberCount(){
+      if(!UID || UID !== ADMIN_UID){ subCountEl.textContent = "—"; return; }
+      try{
+        const snap = await getCountFromServer(collection(db, "subscribers"));
+        subCountEl.textContent = String(snap.data().count || 0);
+      }catch{
+        subCountEl.textContent = "—";
+      }
+    }
+
+    // ✅ NEW: load public reader count (same as library)
+    async function loadReaderCount(bookId="book1"){
+      try{
+        const snap = await getDoc(doc(db, "stats", bookId));
+        const d = snap.exists() ? snap.data() : {};
+        const n = Number(d.totalReaders || 0);
+        adminReaderCountEl.textContent = n.toLocaleString();
+      }catch{
+        adminReaderCountEl.textContent = "—";
       }
     }
 
@@ -509,6 +567,7 @@ Use **bold** for bold."></textarea>
     }
 
     function inlineBold(text){
+      // **bold** -> <strong>bold</strong>
       return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     }
 
@@ -524,15 +583,13 @@ Use **bold** for bold."></textarea>
         const raw = para.join(" ").replace(/\s+/g," ").trim();
         para = [];
         if(!raw) return;
-
-        const withBold = inlineBold(escapeHtml(raw))
-          .replaceAll("&lt;strong&gt;","<strong>")
-          .replaceAll("&lt;/strong&gt;","</strong>");
-
+        const withBold = inlineBold(escapeHtml(raw)).replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
+        // dropcap only for first paragraph in this chapter block
         const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
         blocks.push(`<p${cls}>${withBold}</p>`);
       }
 
+      // header
       blocks.push(
         `<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`
       );
@@ -598,6 +655,7 @@ Use **bold** for bold."></textarea>
           createdAt: serverTimestamp(),
           createdBy: UID
         });
+
         publishMsg.textContent = "Published!";
         await renderChapters();
       }catch(e){
@@ -605,10 +663,22 @@ Use **bold** for bold."></textarea>
       }
     };
 
-    // ====== Announcements ======
+    // ====== Announcements (with expiry) ======
     const announceTitle = document.getElementById("announceTitle");
     const announceBody = document.getElementById("announceBody");
     const announceMsg = document.getElementById("announceMsg");
+
+    // ✅ NEW: start/end inputs
+    const announceStart = document.getElementById("announceStart");
+    const announceEnd = document.getElementById("announceEnd");
+
+    function dtLocalToTimestamp(val){
+      // val like "2026-02-15T13:45"
+      if(!val) return null;
+      const ms = Date.parse(val);
+      if(!Number.isFinite(ms)) return null;
+      return Timestamp.fromMillis(ms);
+    }
 
     document.getElementById("publishAnnounce").onclick = async ()=>{
       announceMsg.textContent = "";
@@ -622,14 +692,29 @@ Use **bold** for bold."></textarea>
         return;
       }
 
+      // ✅ NEW: optional schedule
+      const startAt = dtLocalToTimestamp((announceStart.value || "").trim());
+      const endAt   = dtLocalToTimestamp((announceEnd.value || "").trim());
+
+      if(startAt && endAt && endAt.toMillis() < startAt.toMillis()){
+        alert("End time must be after Start time.");
+        return;
+      }
+
       try{
-        await addDoc(collection(db, "announcements"), {
+        const payload = {
           title: t,
           body: b,
           createdAt: serverTimestamp(),
           createdBy: UID
-        });
+        };
+        if(startAt) payload.startAt = startAt;
+        if(endAt) payload.endAt = endAt;
+
+        await addDoc(collection(db, "announcements"), payload);
         announceMsg.textContent = "Published!";
+        // optional clear
+        // announceStart.value = ""; announceEnd.value = "";
       }catch(e){
         alert("Denied or error: " + e.message);
       }
@@ -697,10 +782,13 @@ Use **bold** for bold."></textarea>
     }
 
     refreshChapters.addEventListener("click", renderChapters);
-    bookIdEl.addEventListener("change", renderChapters);
+    bookIdEl.addEventListener("change", async ()=>{
+      await renderChapters();
+      await loadReaderCount(bookIdEl.value.trim() || "book1");
+    });
 
     // ====== Auth ======
-    onAuthStateChanged(auth, (user)=>{
+    onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
 
       uidLine.textContent = UID || "—";
@@ -712,9 +800,13 @@ Use **bold** for bold."></textarea>
       applyGate();
 
       if(user && UID === ADMIN_UID){
-        renderChapters();
+        await renderChapters();
+        await loadSubscriberCount();
+        await loadReaderCount(bookIdEl.value.trim() || "book1");
       }else{
         chaptersList.textContent = "—";
+        subCountEl.textContent = "—";
+        adminReaderCountEl.textContent = "—";
       }
     });
 
