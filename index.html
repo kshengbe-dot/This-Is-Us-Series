@@ -260,6 +260,7 @@
     }
     .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
 
+    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -276,17 +277,26 @@
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
+
+      /* ✅ mobile scroll fix */
+      max-height: 86vh;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
     }
     [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
     .modalHead{
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 6px 10px;
+      position:sticky; top:0;
+      background: inherit;
+      z-index:2;
     }
     .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
     .x{
       cursor:pointer; padding:8px 10px; border-radius:12px;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
+      flex:0 0 auto;
     }
     .grid{ display:grid; gap:10px; padding:6px; }
     label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
@@ -332,7 +342,7 @@
     }
     .checkRow input{ width:auto; margin-top:3px; }
 
-    /* Preview blocks */
+    /* ✅ Comment Preview (Carousel) */
     .previewWrap{ margin-top:16px; }
     .previewTitle{
       margin:26px 0 12px;
@@ -344,6 +354,93 @@
       letter-spacing:.12em;
       text-transform:uppercase;
       color:var(--muted);
+    }
+
+    .previewShell{
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      overflow:hidden;
+      position:relative;
+    }
+    .previewInner{
+      padding:14px;
+      min-height: 110px;
+      position:relative;
+    }
+    .previewSlide{
+      position:absolute;
+      inset:14px;
+      opacity:0;
+      transform: translateY(6px);
+      transition: opacity .65s ease, transform .65s ease;
+      pointer-events:none;
+    }
+    .previewSlide.show{
+      opacity:1;
+      transform:none;
+      pointer-events:auto;
+    }
+    .pTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      font: 900 12px ui-sans-serif,system-ui;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .pBook{
+      display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;
+    }
+    .pPill{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      padding:6px 9px;
+      border-radius:999px;
+      font: 900 11px ui-sans-serif,system-ui;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    .pName{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      min-width:0;
+    }
+    .pWho{
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 70vw;
+    }
+    .pText{
+      margin-top:8px;
+      color: var(--muted);
+      line-height:1.55;
+      font-size:13px;
+    }
+    .pMeta{
+      margin-top:10px;
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      font-size:12px; color:var(--muted);
+    }
+    .pHint{
+      padding:10px 14px 12px;
+      border-top:1px solid var(--stroke);
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
     }
 
     @media (max-width:980px){
@@ -369,7 +466,9 @@
       </div>
       <div class="right">
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
-        <div class="pill" id="openNewsBtn">📣 <strong>Announcements</strong></div>
+
+        <!-- ✅ Announcement button removed (announcements are auto shown / auto disappear) -->
+
         <div class="pill" id="openSubBtn">🔔 <strong>Subscribe</strong></div>
         <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
@@ -409,16 +508,29 @@
 
       <div class="card heroSide">
         <div class="stat"><div class="k">Readers</div><div class="v"><span id="readerCount">—</span> Total</div></div>
+        <div class="stat"><div class="k">Subscribers</div><div class="v"><span id="subCount">—</span> Total</div></div>
         <div class="stat"><div class="k">Theme</div><div class="v">Light / Dark</div></div>
-        <div class="stat"><div class="k">Cloud</div><div class="v">Optional Firebase Sync</div></div>
       </div>
     </div>
 
-    <!-- announcements always visible -->
-    <div id="announceBanner" style="margin-top:14px;"></div>
+    <!-- ✅ ALWAYS VISIBLE ANNOUNCEMENTS SECTION (AUTO, EXPIRES, NO BUTTON NEEDED) -->
+    <div id="announceBanner"></div>
 
-    <!-- comment preview -->
-    <div id="commentPreview" style="margin-top:14px;"></div>
+    <!-- ✅ Animated Comment Preview Carousel -->
+    <div class="previewWrap">
+      <div class="previewTitle">
+        <h2>What readers are saying</h2>
+        <div class="pill" style="cursor:default;">Auto preview</div>
+      </div>
+
+      <div class="previewShell">
+        <div class="previewInner" id="commentPreview">Loading…</div>
+        <div class="pHint">
+          <span>Tap a preview to jump to that comment.</span>
+          <span style="opacity:.9">Opens Community inside Reader</span>
+        </div>
+      </div>
+    </div>
 
     <div class="sectionTitle">
       <h2>Library</h2>
@@ -517,11 +629,11 @@
         </div>
 
         <div class="row2">
-          <button class="btn primary" id="loginBtn" type="button">Sign In</button>
-          <button class="btn" id="signupBtn" type="button">Create Account</button>
+          <button class="btn primary" id="loginBtn">Sign In</button>
+          <button class="btn" id="signupBtn">Create Account</button>
         </div>
 
-        <button class="btn" id="logoutBtn" type="button" style="display:none;">Sign Out</button>
+        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
 
         <p class="note">
           Reading works without login. Sign in only if you want cloud sync across devices.
@@ -530,20 +642,15 @@
     </div>
   </div>
 
-  <!-- NEWS/SUBSCRIBE MODAL -->
+  <!-- SUBSCRIBE MODAL -->
   <div class="modal" id="newsModal">
     <div class="modalCard">
       <div class="modalHead">
-        <h3>Updates</h3>
+        <h3>Subscribe</h3>
         <div class="x" id="newsClose">✕</div>
       </div>
 
       <div class="grid">
-        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Announcements</div>
-        <div id="announcementsMount">Loading…</div>
-
-        <hr style="border:0;border-top:1px solid var(--stroke);margin:10px 0;">
-
         <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Subscribe</div>
 
         <form id="subscribeForm" class="grid">
@@ -571,7 +678,7 @@
     </div>
   </div>
 
-  <!-- TERMS MODAL -->
+  <!-- TERMS MODAL (MANDATORY) -->
   <div class="modal" id="termsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -581,38 +688,50 @@
 
       <div class="termsBox" id="termsText">
         <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
-        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+        <p class="note" style="margin-top:10px">
+          Last updated: February 15, 2026
+        </p>
 
         <p><strong>1) Acceptance</strong><br>
           By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
         </p>
+
         <p><strong>2) Eligibility</strong><br>
           You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
         </p>
+
         <p><strong>3) Content & Reader Experience</strong><br>
           The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
         </p>
+
         <p><strong>4) Accounts</strong><br>
           Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
         </p>
+
         <p><strong>5) User Submissions</strong><br>
           If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
         </p>
+
         <p><strong>6) Notifications (Optional)</strong><br>
           If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
         </p>
+
         <p><strong>7) Privacy</strong><br>
           The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
         </p>
+
         <p><strong>8) Availability & Changes</strong><br>
           The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
         </p>
+
         <p><strong>9) Disclaimer</strong><br>
           The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
         </p>
+
         <p><strong>10) Limitation of Liability</strong><br>
           To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
         </p>
+
         <p><strong>11) Contact</strong><br>
           For questions, removal requests, or opt-out requests, contact the site owner.
         </p>
@@ -620,11 +739,13 @@
 
       <div class="checkRow">
         <input type="checkbox" id="agreeTerms">
-        <div class="note">I have read and agree to the Terms & Conditions.</div>
+        <div class="note">
+          I have read and agree to the Terms & Conditions.
+        </div>
       </div>
 
       <div class="grid" style="padding-top:10px">
-        <button class="btn primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
+        <button class="btn primary" id="acceptTermsBtn">Accept & Continue</button>
         <div class="note" id="termsMsg"></div>
       </div>
     </div>
@@ -643,12 +764,12 @@
 
     import {
       renderAnnouncementSection,
-      renderAnnouncementsList,
       setupSubscribeForm,
-      renderReaderCount
+      renderReaderCount,
+      renderSubscriberCount
     } from "./public-feed.js";
 
-    import { renderCommentPreview } from "./reader-community.js";
+    import { renderCommentPreviewCarousel } from "./reader-community.js";
     import { wireTermsGate } from "./terms-gate.js";
 
     // Theme (local first)
@@ -660,7 +781,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Theme toggle
     document.getElementById("themeBtn").onclick = async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
@@ -672,7 +792,6 @@
       }
     };
 
-    // Settings
     document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
 
     // ===== AUTH MODAL =====
@@ -680,28 +799,24 @@
     const openAuth = document.getElementById("openAuth");
     const authBtn  = document.getElementById("authBtn");
     const close = document.getElementById("close");
-    function openModal(){ modal.classList.add("show"); }
-    function closeModal(){ modal.classList.remove("show"); }
+    function openModal(){ modal.classList.add("show"); document.body.style.overflow="hidden"; }
+    function closeModal(){ modal.classList.remove("show"); document.body.style.overflow=""; }
     openAuth.onclick = openModal;
     authBtn.onclick  = openModal;
     close.onclick = closeModal;
     modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
 
-    // ===== NEWS MODAL =====
+    // ===== SUBSCRIBE MODAL =====
     const newsModal = document.getElementById("newsModal");
     const newsClose = document.getElementById("newsClose");
-    document.getElementById("openNewsBtn").onclick = ()=>{
-      newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 }).catch(()=>{});
-    };
     document.getElementById("openSubBtn").onclick = ()=>{
       newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 }).catch(()=>{});
+      document.body.style.overflow="hidden";
     };
-    newsClose.onclick = ()=> newsModal.classList.remove("show");
-    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) newsModal.classList.remove("show"); });
+    newsClose.onclick = ()=>{ newsModal.classList.remove("show"); document.body.style.overflow=""; };
+    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal){ newsModal.classList.remove("show"); document.body.style.overflow=""; } });
 
-    // Subscribe wiring
+    // Subscribe form
     setupSubscribeForm({ bookId:"book1" });
 
     // ===== PROFILE UI =====
@@ -739,10 +854,10 @@
       }
     }
 
-    // Terms gate
+    // ✅ TERMS GATE
     wireTermsGate();
 
-    // Auth state
+    // ===== AUTH STATE =====
     onAuthStateChanged(auth, async (user)=>{
       window.__UID = user ? user.uid : null;
 
@@ -754,12 +869,10 @@
         emailLine.textContent = user.email || "User";
         syncHint.textContent = "Cloud sync is ON";
 
-        try{
-          await setDoc(doc(db, "users", user.uid), {
-            email: user.email || "",
-            updatedAt: serverTimestamp()
-          }, { merge:true });
-        }catch{}
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email || "",
+          updatedAt: serverTimestamp()
+        }, { merge:true });
 
         await loadProfile(user.uid);
       }else{
@@ -797,10 +910,19 @@
       closeModal();
     };
 
-    // Public UI
+    // ✅ PUBLIC FEEDS (auto)
     renderAnnouncementSection({ mountId:"announceBanner", max: 10 });
+
+    // ✅ COUNTS (fixed)
     renderReaderCount({ bookId:"book1", mountId:"readerCount" });
-    renderCommentPreview({ bookId:"book1", mountId:"commentPreview", max: 4 });
+    renderSubscriberCount({ bookId:"book1", mountId:"subCount" });
+
+    // ✅ COMMENT PREVIEW CAROUSEL (animated + deep link)
+    renderCommentPreviewCarousel({
+      mountId:"commentPreview",
+      max: 8,
+      intervalMs: 4200
+    });
   </script>
 </body>
 </html>
