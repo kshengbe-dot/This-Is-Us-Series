@@ -207,9 +207,6 @@ export function setupSubscribeForm({
 }
 
 // ------------------------ STATS (FIXED) ------------------------
-// Your reader page calls bumpReaderCountOnce({ bookId, uid })
-// - uid = string means signed-in
-// - uid = null means guest
 export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}) {
   const key = `tiu_counted:${bookId}`;
   if (localStorage.getItem(key) === "yes") return;
@@ -230,7 +227,7 @@ export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {})
   }
 }
 
-// Backward compat (if any old page calls bumpReaderCountsOnce)
+// Backward compat
 export function bumpReaderCountsOnce({ bookId = "book1" } = {}) {
   const uid = auth.currentUser?.uid || null;
   return bumpReaderCountOnce({ bookId, uid });
