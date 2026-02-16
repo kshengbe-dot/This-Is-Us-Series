@@ -136,6 +136,9 @@
       align-items:center;
       gap:8px;
       transition: transform .15s ease, background .15s ease;
+      user-select:none;
+      font-family: ui-sans-serif, system-ui;
+      justify-content:center;
     }
     .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .btn.primary{
@@ -205,44 +208,51 @@
 
       <div class="row2">
         <div>
+          <label>Upload picture</label>
+          <button class="btn" id="uploadBtn" type="button">📷 Upload Avatar</button>
+          <input id="avatarFile" type="file" accept="image/*" style="display:none">
+          <div class="note" id="uploadMsg" style="margin-top:8px"></div>
+        </div>
+
+        <div>
           <label>Theme preference</label>
           <select id="themeSelect">
             <option value="dark">Dark</option>
             <option value="light">Light</option>
           </select>
-        </div>
-        <div style="display:flex;align-items:end;gap:10px;flex-wrap:wrap">
-          <button class="btn primary" id="saveBtn">Save</button>
-          <div class="note" id="msg"></div>
+
+          <div style="display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn primary" id="saveBtn" type="button" style="flex:1">Save</button>
+          </div>
+          <div class="note" id="msg" style="margin-top:8px"></div>
         </div>
       </div>
 
       <div style="height:10px"></div>
       <div class="note">
-        Tip: Avatar URL can be from anywhere (Google Drive direct image link, Imgur, your own hosted image, etc.).
+        Tip: You can upload directly here, or paste a URL. Upload requires being signed in.
       </div>
     </div>
   </div>
 
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
 
     // Theme local
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    const backBtn = document.getElementById("backBtn");
-    const themeBtn = document.getElementById("themeBtn");
-
-    backBtn.onclick = ()=> location.href = "index.html";
-    themeBtn.onclick = ()=>{
+    document.getElementById("backBtn").onclick = ()=> location.href = "index.html";
+    document.getElementById("themeBtn").onclick = ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
@@ -259,13 +269,15 @@
     const saveBtn = document.getElementById("saveBtn");
     const msg = document.getElementById("msg");
 
+    const uploadBtn = document.getElementById("uploadBtn");
+    const avatarFile = document.getElementById("avatarFile");
+    const uploadMsg = document.getElementById("uploadMsg");
+
     function setAvatar(url){
-      avatarBox.innerHTML = url
-        ? `<img src="${url}" alt="Profile">`
-        : `👤`;
+      const u = (typeof url === "string" && url.trim()) ? url.trim() : "";
+      avatarBox.innerHTML = u ? `<img src="${u}" alt="Profile">` : `👤`;
     }
 
-    // Load local theme into select
     themeSelect.value = document.documentElement.dataset.theme;
 
     let UID = null;
@@ -275,7 +287,7 @@
 
       if(!user){
         whoLine.textContent = "Guest";
-        emailLine.textContent = "Sign in to save settings to the cloud.";
+        emailLine.textContent = "Sign in to upload and save settings to the cloud.";
         setAvatar("");
         return;
       }
@@ -283,7 +295,6 @@
       whoLine.textContent = "Signed in";
       emailLine.textContent = user.email || "User";
 
-      // Load from Firestore
       try{
         const snap = await getDoc(doc(db,"users",user.uid));
         const d = snap.exists() ? (snap.data() || {}) : {};
@@ -301,8 +312,52 @@
     });
 
     // Live preview
-    photoURL.addEventListener("input", ()=>{
-      setAvatar(photoURL.value.trim());
+    photoURL.addEventListener("input", ()=> setAvatar(photoURL.value));
+
+    // Upload button
+    uploadBtn.addEventListener("click", ()=>{
+      uploadMsg.textContent = "";
+      if(!UID){
+        uploadMsg.textContent = "Sign in first to upload.";
+        return;
+      }
+      avatarFile.click();
+    });
+
+    avatarFile.addEventListener("change", async ()=>{
+      uploadMsg.textContent = "";
+      const f = avatarFile.files?.[0];
+      if(!f) return;
+
+      if(!UID){
+        uploadMsg.textContent = "Sign in first to upload.";
+        return;
+      }
+
+      if(!f.type.startsWith("image/")){
+        uploadMsg.textContent = "Please select an image file.";
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Uploading…";
+
+      try{
+        const path = `avatars/${UID}/avatar_${Date.now()}`;
+        const r = sRef(storage, path);
+        await uploadBytes(r, f, { contentType: f.type });
+        const url = await getDownloadURL(r);
+
+        photoURL.value = url;
+        setAvatar(url);
+
+        uploadMsg.textContent = "Uploaded ✅ (press Save to store it)";
+      }catch(e){
+        uploadMsg.textContent = "Upload failed: " + (e?.message || String(e));
+      }finally{
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "📷 Upload Avatar";
+      }
     });
 
     saveBtn.onclick = async ()=>{
@@ -311,10 +366,8 @@
       const url = photoURL.value.trim();
       const theme = themeSelect.value === "light" ? "light" : "dark";
 
-      // Always save theme locally
       document.documentElement.dataset.theme = theme;
       localStorage.setItem("theme", theme);
-
       setAvatar(url);
 
       if(!UID){
