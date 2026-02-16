@@ -20,7 +20,6 @@
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
 
-      /* text padding inside page */
       --footerSpace: 58px;
       --padX: 22px;
       --padT: 26px;
@@ -54,7 +53,6 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* ===== Desktop Top Bar ===== */
     .top{
       position:fixed; left:0; right:0; top:0;
       z-index:60;
@@ -79,7 +77,6 @@
     }
     .chip strong{color:var(--ink); font-weight:900}
 
-    /* ===== Stage ===== */
     .stage{
       height:100vh;
       display:flex;
@@ -94,15 +91,12 @@
       perspective: 1800px;
     }
 
-    /* Desktop spread */
     .spread{
       position:absolute; inset:0;
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:14px;
     }
-
-    /* Mobile single */
     .single{ position:absolute; inset:0; display:none; }
 
     .page{
@@ -121,7 +115,6 @@
       overflow:hidden;
     }
 
-    /* Typography */
     .inner h1,.inner h2,.inner h3,.inner h4{
       font-family: ui-sans-serif, system-ui;
       margin:0 0 10px;
@@ -139,7 +132,6 @@
     }
     .muted{color:var(--muted)}
 
-    /* Page number sits in reserved footer space */
     .pageNum{
       position:absolute;
       bottom:16px;
@@ -149,7 +141,6 @@
       pointer-events:none;
     }
 
-    /* ===== Flip Overlay ===== */
     .flip{
       position:absolute; top:0; bottom:0;
       width:50%;
@@ -182,7 +173,6 @@
     .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
     .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
 
-    /* ===== Novel Styling ===== */
     .chapter-cover{ text-align:center; padding: 18px 0 10px; }
     .chapter-cover h2{
       margin:0 0 8px; font-size:44px; font-weight:900;
@@ -225,7 +215,6 @@
       padding-right:10px; padding-top:6px; font-weight:800;
     }
 
-    /* ===== Mobile UI ===== */
     .mTop, .mBottom{ display:none; }
     @media (max-width:720px){
       .top{ display:none; }
@@ -310,7 +299,6 @@
       .inner p{ font-size:16px; line-height:1.82; }
     }
 
-    /* hidden measurer */
     .measureHost{
       position:fixed;
       left:-9999px;
@@ -319,7 +307,7 @@
       pointer-events:none;
     }
 
-    /* ===== TERMS MODAL (MANDATORY) ===== */
+    /* ===== MODALS ===== */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -381,7 +369,7 @@
       background: rgba(124,92,255,.16);
     }
 
-    /* ===== COMMUNITY MODAL ===== */
+    /* community */
     .xBtn{
       cursor:pointer;
       padding:8px 10px;
@@ -619,7 +607,7 @@
     </div>
   </div>
 
-  <!-- TERMS MODAL (MANDATORY) -->
+  <!-- TERMS MODAL -->
   <div class="modal" id="termsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -697,9 +685,10 @@
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    import { wireTermsGate } from "./terms-gate.js";
+    // ✅ reader stats
     import { bumpReaderCountOnce } from "./public-feed.js";
 
+    // ✅ community module
     import {
       renderComments,
       setupCommentForm,
@@ -737,7 +726,6 @@
 
     // ---- DOM refs ----
     const pageL = document.getElementById("pageL");
-    const pageR = document.getElementById("pageR");
     const pageS = document.getElementById("pageS");
 
     const leftPage = document.getElementById("leftPage");
@@ -768,11 +756,103 @@
     const db = getFirestore(app);
     let UID = null;
 
-    // ✅ Enforce terms on reader page too
-    wireTermsGate();
+    // ==========================
+    // ✅ TERMS GATE (fixed)
+    // - stored in localStorage
+    // - also stored on users/{uid} when signed-in
+    // ==========================
+    const TERMS_VERSION = "v1";
+    const TERMS_KEY = `tiu_terms_${TERMS_VERSION}`;
 
-    // ✅ Count readers when they START reading (including guests)
-    try { await bumpReaderCountOnce({ bookId }); } catch {}
+    const termsModal = document.getElementById("termsModal");
+    const agreeTerms = document.getElementById("agreeTerms");
+    const acceptTermsBtn = document.getElementById("acceptTermsBtn");
+    const termsMsg = document.getElementById("termsMsg");
+
+    function showTerms(){
+      termsModal.classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+    function hideTerms(){
+      termsModal.classList.remove("show");
+      document.body.style.overflow = "";
+    }
+    function localTermsAccepted(){
+      return localStorage.getItem(TERMS_KEY) === "yes";
+    }
+    function setLocalTermsAccepted(){
+      localStorage.setItem(TERMS_KEY, "yes");
+    }
+
+    async function cloudTermsAccepted(uid){
+      if(!uid) return false;
+      try{
+        const u = await getDoc(doc(db,"users",uid));
+        if(!u.exists()) return false;
+        const d = u.data() || {};
+        return d.termsAccepted === true && d.termsVersion === TERMS_VERSION;
+      }catch{
+        return false;
+      }
+    }
+
+    async function setCloudTermsAccepted(uid){
+      if(!uid) return;
+      try{
+        await setDoc(doc(db,"users",uid), {
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
+          termsAcceptedAt: serverTimestamp()
+        }, { merge:true });
+      }catch{}
+    }
+
+    async function runTermsGate(){
+      // already accepted on this device
+      if(localTermsAccepted()){
+        hideTerms();
+        return;
+      }
+
+      // if signed in and already accepted in cloud, sync it locally
+      if(UID){
+        const ok = await cloudTermsAccepted(UID);
+        if(ok){
+          setLocalTermsAccepted();
+          hideTerms();
+          return;
+        }
+      }
+
+      // otherwise force show
+      showTerms();
+    }
+
+    acceptTermsBtn.addEventListener("click", async ()=>{
+      termsMsg.textContent = "";
+      if(!agreeTerms.checked){
+        termsMsg.textContent = "Please check the box first.";
+        return;
+      }
+      setLocalTermsAccepted();
+      if(UID) await setCloudTermsAccepted(UID);
+      hideTerms();
+    });
+
+    // ==========================
+    // ✅ READER COUNT (fixed split)
+    // - run AFTER auth resolves so signed-in is counted correctly
+    // ==========================
+    const COUNT_KEY = `tiu_counted:${bookId}`;
+    async function bumpReaderAfterAuth(){
+      // prevent double counting on same device for same book
+      if(localStorage.getItem(COUNT_KEY) === "yes") return;
+      try{
+        // pass uid so your public-feed.js can split guest vs signed-in
+        await bumpReaderCountOnce({ bookId, uid: UID || null });
+        localStorage.setItem(COUNT_KEY, "yes");
+      }catch{}
+    }
 
     // ---- Progress keys ----
     const progressKeyLocal = `progress:${bookId}`;
@@ -813,7 +893,7 @@
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
 
-      // Community hint
+      // community hint
       const hint = document.getElementById("communityAuthHint");
       if(hint){
         hint.textContent = UID
@@ -821,6 +901,7 @@
           : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
       }
 
+      // sync chip
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
         syncText.textContent = "Synced";
@@ -834,11 +915,18 @@
             }
           }
         }catch{}
-        await loadCloudProgressIfAny();
-        render();
       }else{
         syncDot.style.color = "rgba(255,255,255,.65)";
         syncText.textContent = "Guest";
+      }
+
+      // ✅ run the fixed gates AFTER we know auth state
+      await runTermsGate();
+      await bumpReaderAfterAuth();
+
+      if(UID){
+        await loadCloudProgressIfAny();
+        render();
       }
     });
 
@@ -865,12 +953,10 @@
 
     async function loadChaptersFromCloud(){
       if(bookId !== "book1") return "";
-
       try{
-        const q = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
-        const snap = await getDocs(q);
+        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
+        const snap = await getDocs(qy);
         if(snap.empty) return "";
-
         const parts = [];
         snap.forEach(docSnap=>{
           const d = docSnap.data() || {};
@@ -878,7 +964,6 @@
             parts.push(d.html.trim());
           }
         });
-
         if(parts.length === 0) return "";
         return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
       }catch{
@@ -1163,10 +1248,8 @@
 
     document.getElementById("bookTap").addEventListener("click",(e)=>{
       if(!isMobile()) return;
-
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
-
       if(x < rect.width * 0.42) prev();
       else if(x > rect.width * 0.58) next();
     });
@@ -1191,9 +1274,7 @@
     }, {passive:true});
 
     function paginateAndRender(forceReflow=false){
-      if(forceReflow){
-        void document.body.offsetHeight;
-      }
+      if(forceReflow){ void document.body.offsetHeight; }
       PAGES = paginate(BOOK_HTML);
       render();
     }
@@ -1238,9 +1319,7 @@
 
     function setTab(id){
       tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
-      Object.keys(panels).forEach(k=>{
-        panels[k].classList.toggle("show", k === id);
-      });
+      Object.keys(panels).forEach(k=> panels[k].classList.toggle("show", k === id));
 
       if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
       if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
@@ -1255,7 +1334,6 @@
       });
     });
 
-    // comment form hookup
     setupCommentForm({
       bookId,
       formId:"commentForm",
@@ -1266,7 +1344,6 @@
       afterPostReload:true
     });
 
-    // rating submit hookup
     document.getElementById("saveMyRating").addEventListener("click", async ()=>{
       const msg = document.getElementById("ratingMsg");
       if(msg) msg.textContent = "";
@@ -1292,9 +1369,7 @@
         BOOK_HTML = `<p class="muted">${String(e)}</p>`;
       }
 
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        paginateAndRender(true);
-      }));
+      requestAnimationFrame(()=>requestAnimationFrame(()=> paginateAndRender(true)));
 
       let t=null;
       window.addEventListener("resize", ()=>{
