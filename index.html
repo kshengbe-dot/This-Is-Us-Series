@@ -171,6 +171,7 @@
       align-items:end;
       justify-content:space-between;
       gap:12px;
+      flex-wrap:wrap;
     }
     .sectionTitle h2{
       margin:0;
@@ -178,6 +179,72 @@
       letter-spacing:.12em;
       text-transform:uppercase;
       color:var(--muted);
+    }
+
+    /* ===== Tabs shell (Comments / Announcements) ===== */
+    .tabRow{ display:flex; gap:8px; flex-wrap:wrap; }
+    .tabBtn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      padding:8px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font: 950 12px ui-sans-serif,system-ui;
+      letter-spacing:.04em;
+      user-select:none;
+    }
+    .tabBtn.active{
+      color: var(--ink);
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
+
+    .tabShell{
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.14), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(0,255,198,.08), transparent 65%),
+        rgba(255,255,255,.04);
+      overflow:hidden;
+      position:relative;
+    }
+    [data-theme="light"] .tabShell{
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.10), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(2,6,23,.06), transparent 65%),
+        rgba(2,6,23,.02);
+    }
+    .tabInner{ padding:14px; min-height: 130px; position:relative; }
+    .tabPanel{ display:none; }
+    .tabPanel.show{ display:block; }
+
+    .pHint{
+      padding:10px 14px 12px;
+      border-top:1px solid var(--stroke);
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    /* Classes used by reader-community.js carousel */
+    .previewSlide{
+      position:absolute; inset:14px;
+      opacity:0;
+      transform: translateY(6px);
+      transition: opacity .65s ease, transform .65s ease;
+      pointer-events:none;
+    }
+    .previewSlide.show{ opacity:1; transform:none; pointer-events:auto; }
+    .previewSlide[style*="display: block"]{
+      position:relative; inset:auto;
+      opacity:1; transform:none; pointer-events:auto;
     }
 
     .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
@@ -221,7 +288,6 @@
     .meta{ padding:12px 12px 14px; }
     .meta .name{ font-weight:950; margin:0; font-size:16px; }
     .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
-
     .badge{
       position:absolute; top:12px; left:12px;
       padding:7px 10px; border-radius:999px;
@@ -234,55 +300,7 @@
     .badge.live{ border-color: rgba(0,255,198,.35); }
     .badge.soon{ border-color: rgba(255,198,0,.35); }
 
-    .previewShell{
-      border:1px solid var(--stroke);
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      background:
-        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.14), transparent 65%),
-        radial-gradient(520px 220px at 90% 20%, rgba(0,255,198,.08), transparent 65%),
-        rgba(255,255,255,.04);
-      overflow:hidden;
-      position:relative;
-    }
-    [data-theme="light"] .previewShell{
-      background:
-        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.10), transparent 65%),
-        radial-gradient(520px 220px at 90% 20%, rgba(2,6,23,.06), transparent 65%),
-        rgba(2,6,23,.02);
-    }
-    .previewInner{ padding:14px; min-height: 148px; position:relative; }
-    .pHint{
-      padding:10px 14px 12px;
-      border-top:1px solid var(--stroke);
-      color:var(--muted);
-      font-size:12px;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      position:relative;
-      z-index:2;
-    }
-
-    .previewSlide{
-      position:absolute; inset:14px;
-      opacity:0;
-      transform: translateY(6px);
-      transition: opacity .65s ease, transform .65s ease;
-      pointer-events:none;
-      z-index:1;
-    }
-    .previewSlide.show{ opacity:1; transform:none; pointer-events:auto; }
-
-    .pTop{ display:flex; justify-content:space-between; gap:10px; align-items:center; color:var(--muted); font: 900 12px ui-sans-serif,system-ui; letter-spacing:.04em; }
-    .pPill{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,.06); }
-    .pName{ display:flex; gap:10px; align-items:center; margin-top:10px; }
-    .pWho{ font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:54vw; }
-    .pText{ margin-top:10px; opacity:.92; line-height:1.55; }
-    .pMeta{ margin-top:12px; display:flex; justify-content:space-between; color:var(--muted); font: 800 12px ui-sans-serif,system-ui; }
-
+    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -389,7 +407,7 @@
           </div>
 
           <div class="small" id="announceLine" style="text-align:right;max-width:48ch">
-            Loading announcements…
+            Announcements are in the tab below ↘
           </div>
         </div>
       </div>
@@ -401,7 +419,7 @@
         </div>
         <div class="stat">
           <div class="k">Subscribers</div>
-          <div class="v" id="subsTotal">Private</div>
+          <div class="v" id="subsTotal">— Total</div>
         </div>
 
         <div class="stat">
@@ -416,15 +434,27 @@
     </div>
 
     <div class="sectionTitle">
-      <h2>What readers are saying</h2>
-      <div class="small">Tap a preview to jump to that comment.</div>
+      <h2>Community</h2>
+      <div class="tabRow">
+        <button class="tabBtn active" data-tab="tabComments">💬 Comments</button>
+        <button class="tabBtn" data-tab="tabAnnounce">📣 Announcements</button>
+      </div>
     </div>
 
-    <div class="previewShell">
-      <div class="previewInner" id="commentPreview">Loading…</div>
+    <div class="tabShell">
+      <div class="tabInner">
+        <div class="tabPanel show" id="tabComments">
+          <div id="commentPreview">Loading…</div>
+        </div>
+
+        <div class="tabPanel" id="tabAnnounce">
+          <div id="announceMount">Loading…</div>
+        </div>
+      </div>
+
       <div class="pHint">
-        <span>Opens Community inside Reader</span>
-        <span>Book I • Where We Began</span>
+        <span id="tabHintLeft">Opens Community inside Reader</span>
+        <span id="tabHintRight">Book I • Where We Began</span>
       </div>
     </div>
 
@@ -516,15 +546,16 @@
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
-      getFirestore, collection, getDocs, query, where, limit, doc, getDoc, setDoc, serverTimestamp
+      getFirestore, collection, addDoc, doc, getDoc, setDoc, serverTimestamp,
+      query, where, orderBy, limit, getDocs
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged,
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-    import { renderCommentPreviewCarousel, ADMIN_UID } from "./reader-community.js";
-    import { submitSubscriber, getBookStats, renderAnnouncementBanner } from "./public-feed.js";
+    import { renderCommentPreviewCarousel } from "./reader-community.js";
+    import { renderAnnouncements } from "./public-feed.js";
 
     // --- Theme ---
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -535,18 +566,14 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    let UID = null;
-
-    // Theme button
+    // --- Theme btn ---
     const themeBtn = document.getElementById("themeBtn");
     themeBtn.addEventListener("click", async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
       localStorage.setItem("theme", next);
       if(UID){
-        try{
-          await setDoc(doc(db,"users",UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
-        }catch{}
+        try{ await setDoc(doc(db,"users",UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true }); }catch{}
       }
     });
 
@@ -554,14 +581,32 @@
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
     document.getElementById("openBook1").addEventListener("click", ()=> location.href = "read.html?book=book1");
     document.getElementById("book1Card").addEventListener("click", ()=> location.href = "read.html?book=book1");
-
     const goComing = ()=> location.href = "read.html?book=coming";
     document.getElementById("book2Card").addEventListener("click", goComing);
     document.getElementById("book3Card").addEventListener("click", goComing);
     document.getElementById("book4Card").addEventListener("click", goComing);
-
     document.getElementById("openCommunityQuick").addEventListener("click", ()=>{
       location.href = "read.html?book=book1&open=community";
+    });
+
+    // ===== Tabs wiring =====
+    const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
+    const tabPanels = {
+      tabComments: document.getElementById("tabComments"),
+      tabAnnounce: document.getElementById("tabAnnounce"),
+    };
+    const tabHintLeft = document.getElementById("tabHintLeft");
+    function setTab(id){
+      tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
+      Object.keys(tabPanels).forEach(k=> tabPanels[k].classList.toggle("show", k === id));
+      if(id === "tabComments"){
+        tabHintLeft.textContent = "Opens Community inside Reader";
+      }else{
+        tabHintLeft.textContent = "Latest updates from Admin";
+      }
+    }
+    tabBtns.forEach(btn=>{
+      btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab")));
     });
 
     // --- Auth modal wiring ---
@@ -598,7 +643,6 @@
     const btnSignOut= document.getElementById("btnSignOut");
     const authMsg   = document.getElementById("authMsg");
 
-    // --- Profile line UI ---
     const heroAvatar = document.getElementById("heroAvatar");
     const whoLine = document.getElementById("whoLine");
     const whoSub  = document.getElementById("whoSub");
@@ -610,33 +654,7 @@
       heroAvatar.innerHTML = u ? `<img src="${u}" alt="Profile">` : "👤";
     }
 
-    // --- Counts UI ---
-    const readersTotal = document.getElementById("readersTotal");
-    const subsTotal = document.getElementById("subsTotal");
-
-    async function loadReadersTotal(){
-      const s = await getBookStats({ bookId:"book1" });
-      readersTotal.textContent = `${(s.totalReaders || 0).toLocaleString()} Total`;
-    }
-
-    async function loadSubscribersCountAdminOnly(){
-      // You wanted subscriber count private. Only admin sees it.
-      if(!UID || UID !== ADMIN_UID){
-        subsTotal.textContent = "Private";
-        return;
-      }
-      try{
-        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
-        subsTotal.textContent = `${snap.size} Total`;
-      }catch{
-        subsTotal.textContent = "—";
-      }
-    }
-
-    // --- Announcements banner ---
-    async function loadAnnouncementLine(){
-      await renderAnnouncementBanner({ mountId: "announceLine" });
-    }
+    let UID = null;
 
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
@@ -652,7 +670,6 @@
         whoLine.textContent = "Guest Reader";
         whoSub.textContent = "Progress saved locally • Sign in to save to cloud";
         setAvatar("");
-        await loadSubscribersCountAdminOnly();
         return;
       }
 
@@ -688,7 +705,7 @@
         }, { merge:true });
       }catch{}
 
-      await loadSubscribersCountAdminOnly();
+      loadSubscribersCount().catch(()=>{});
     });
 
     btnSignIn.addEventListener("click", async ()=>{
@@ -696,12 +713,8 @@
       const email = (authEmail.value || "").trim();
       const pass  = (authPass.value || "").trim();
       if(!email || !pass){ authMsg.textContent = "Enter email + password."; return; }
-      try{
-        await signInWithEmailAndPassword(auth, email, pass);
-        authMsg.textContent = "Signed in ✅";
-      }catch(e){
-        authMsg.textContent = (e?.message || "Could not sign in.");
-      }
+      try{ await signInWithEmailAndPassword(auth, email, pass); authMsg.textContent = "Signed in ✅"; }
+      catch(e){ authMsg.textContent = (e?.message || "Could not sign in."); }
     });
 
     btnSignUp.addEventListener("click", async ()=>{
@@ -710,32 +723,34 @@
       const pass  = (authPass.value || "").trim();
       if(!email || !pass){ authMsg.textContent = "Enter email + password."; return; }
       if(pass.length < 6){ authMsg.textContent = "Password must be at least 6 characters."; return; }
-      try{
-        await createUserWithEmailAndPassword(auth, email, pass);
-        authMsg.textContent = "Account created ✅";
-      }catch(e){
-        authMsg.textContent = (e?.message || "Could not sign up.");
-      }
+      try{ await createUserWithEmailAndPassword(auth, email, pass); authMsg.textContent = "Account created ✅"; }
+      catch(e){ authMsg.textContent = (e?.message || "Could not sign up."); }
     });
 
     btnSignOut.addEventListener("click", async ()=>{
       authMsg.textContent = "";
-      try{
-        await signOut(auth);
-        authMsg.textContent = "Signed out ✅";
-      }catch(e){
-        authMsg.textContent = (e?.message || "Could not sign out.");
-      }
+      try{ await signOut(auth); authMsg.textContent = "Signed out ✅"; }
+      catch(e){ authMsg.textContent = (e?.message || "Could not sign out."); }
     });
 
-    // --- Subscribers submit (matches public-feed.js schema) ---
+    // --- Subscribers ---
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
+    const subsTotal = document.getElementById("subsTotal");
 
     function looksLikeEmail(v){
       const s = String(v || "").trim();
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    }
+
+    async function loadSubscribersCount(){
+      try{
+        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
+        subsTotal.textContent = `${snap.size} Total`;
+      }catch{
+        subsTotal.textContent = "— Total";
+      }
     }
 
     subBtn.addEventListener("click", async ()=>{
@@ -748,17 +763,18 @@
       subBtn.disabled = true;
       subBtn.textContent = "Saving…";
       try{
-        await submitSubscriber({
-          email,
-          uid: UID || null,
-          source: "library",
-          bookId: "book1",
-          notificationEmail: true,
-          notificationSMS: false
-        });
-        subMsg.textContent = "Subscribed ✅";
-        subEmail.value = "";
-        await loadSubscribersCountAdminOnly();
+        const emailLower = email.toLowerCase();
+        const existing = await getDocs(query(collection(db,"subscribers"), where("emailLower","==", emailLower), limit(1)));
+        if(!existing.empty){
+          subMsg.textContent = "You’re already subscribed ✅";
+        }else{
+          await addDoc(collection(db,"subscribers"), {
+            email, emailLower, source: "library", createdAt: serverTimestamp()
+          });
+          subMsg.textContent = "Subscribed ✅";
+          subEmail.value = "";
+          await loadSubscribersCount();
+        }
       }catch(e){
         subMsg.textContent = "Could not subscribe: " + (e?.message || String(e));
       }finally{
@@ -767,7 +783,22 @@
       }
     });
 
-    // --- Comment preview carousel ---
+    // --- Readers total (stats/book1.totalReaders) ---
+    const readersTotal = document.getElementById("readersTotal");
+    async function loadReadersTotal(){
+      try{
+        const snap = await getDoc(doc(db,"stats","book1"));
+        if(snap.exists()){
+          const d = snap.data() || {};
+          const n = Number(d.totalReaders || 0);
+          readersTotal.textContent = `${n.toLocaleString()} Total`;
+          return;
+        }
+      }catch{}
+      readersTotal.textContent = "— Total";
+    }
+
+    // --- Comment preview carousel (Book I) ---
     async function loadPreview(){
       await renderCommentPreviewCarousel({
         bookId: "book1",
@@ -777,12 +808,17 @@
       });
     }
 
+    // --- Announcements tab ---
+    async function loadAnnouncementsTab(){
+      await renderAnnouncements({ mountId:"announceMount", max: 4 });
+    }
+
     // init
     (async ()=>{
       await loadPreview().catch(()=>{});
+      await loadAnnouncementsTab().catch(()=>{});
+      await loadSubscribersCount().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
-      await loadAnnouncementLine().catch(()=>{});
-      await loadSubscribersCountAdminOnly().catch(()=>{});
     })();
   </script>
 </body>
