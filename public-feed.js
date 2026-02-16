@@ -1,45 +1,19 @@
-// public-feed.js (FULL FILE — Library + Reader compatible, Firebase v12.9.0)
-//
-// Exports used by index.html:
-//   - renderAnnouncements({ mountId, max })
-//   - subscribeEmail({ email })
-//   - getBookStats({ bookId })
-//
-// Export used by read.html (and/or reader page):
-//   - bumpReaderCountOnce({ bookId, uid })
-//
-// Firestore layout (simple + works without Cloud Functions):
-//   announcements/{autoId}
-//     - title: string
-//     - body: string
-//     - createdAt: serverTimestamp()
-//     - pinned: boolean (optional)
-//
-//   subscribers/{encodedEmail}
-//     - email: string
-//     - emailLower: string
-//     - uid: string|null
-//     - createdAt: serverTimestamp()
-//     - updatedAt: serverTimestamp()
-//     - source: "library" | "reader" | ...
-//     - userAgent: string
-//
-//   books/{bookId}
-//     - pages: number (optional but recommended)
-//     - readers: number (approx, increments via bumpReaderCountOnce)
-//     - updatedAt: serverTimestamp()
-//
-//   books/{bookId}/readers/{uid}
-//     - uid: string
-//     - firstSeenAt: serverTimestamp()
-
+// public-feed.js (FULL FILE — shared public stats + announcements + subscribe helpers)
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {
   getFirestore,
-  collection, doc, getDoc, setDoc, addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  setDoc,
+  query,
+  where,
+  orderBy,
+  limit,
   serverTimestamp,
-  getDocs, query, orderBy, limit,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
@@ -48,215 +22,286 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* ----------------------------- helpers ----------------------------- */
-
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+// -----------------------------
+// Refs
+// -----------------------------
+function statsRef(bookId) {
+  // one small doc for totals (cheap + clean)
+  return doc(db, "books", bookId, "meta", "stats");
+}
+function announcementsCol() {
+  return collection(db, "announcements");
+}
+function subscribersCol() {
+  return collection(db, "subscribers");
 }
 
-function fmtWhen(ts){
-  try{
-    const d = ts?.toDate ? ts.toDate() : null;
-    if(!d) return "";
-    // short, clean (browser locale)
-    return d.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"numeric" });
-  }catch{
+// -----------------------------
+// Helpers
+// -----------------------------
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function looksLikeEmail(v) {
+  const s = String(v || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+function fmtDate(ts) {
+  try {
+    if (!ts) return "";
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
     return "";
   }
 }
 
-function bookRef(bookId){ return doc(db, "books", String(bookId || "book1")); }
-function commentsCol(bookId){ return collection(db, "books", String(bookId || "book1"), "comments"); }
+// -----------------------------
+// Public counts (readers, etc.)
+// -----------------------------
+export async function getBookStats({ bookId = "book1" } = {}) {
+  try {
+    const snap = await getDoc(statsRef(bookId));
+    const d = snap.exists() ? (snap.data() || {}) : {};
+    return {
+      readersTotal: Number(d.readersTotal || 0),
+      readsTotal: Number(d.readsTotal || 0),
+      opensTotal: Number(d.opensTotal || 0),
+      updatedAt: d.updatedAt || null
+    };
+  } catch {
+    return { readersTotal: 0, readsTotal: 0, opensTotal: 0, updatedAt: null };
+  }
+}
 
-/* ----------------------------- announcements ----------------------------- */
+/**
+ * Call when someone opens a book (library -> read.html).
+ * - increments opensTotal
+ * - increments readersTotal ONCE per device per book (local key)
+ */
+export async function bumpBookOpen({ bookId = "book1" } = {}) {
+  const onceKey = `tiu:uniqueReader:${bookId}`;
+  const firstTime = localStorage.getItem(onceKey) !== "1";
 
-export async function renderAnnouncements({ mountId="annMount", max=6 } = {}){
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = statsRef(bookId);
+      const snap = await tx.get(ref);
+      const d = snap.exists() ? (snap.data() || {}) : {};
+
+      const next = {
+        opensTotal: Number(d.opensTotal || 0) + 1,
+        updatedAt: serverTimestamp()
+      };
+
+      if (firstTime) {
+        next.readersTotal = Number(d.readersTotal || 0) + 1;
+      }
+
+      if (snap.exists()) tx.update(ref, next);
+      else tx.set(ref, { readersTotal: firstTime ? 1 : 0, opensTotal: 1, readsTotal: 0, ...next }, { merge: true });
+    });
+
+    if (firstTime) localStorage.setItem(onceKey, "1");
+    return true;
+  } catch {
+    // still mark local so we don't spam attempts
+    if (firstTime) localStorage.setItem(onceKey, "1");
+    return false;
+  }
+}
+
+/**
+ * Optional: call when user flips pages or starts reading.
+ * Keeps a total "readsTotal" (NOT unique).
+ */
+export async function bumpBookRead({ bookId = "book1", by = 1 } = {}) {
+  const n = Math.max(1, Number(by || 1));
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = statsRef(bookId);
+      const snap = await tx.get(ref);
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      const nextReads = Number(d.readsTotal || 0) + n;
+
+      if (snap.exists()) {
+        tx.update(ref, { readsTotal: nextReads, updatedAt: serverTimestamp() });
+      } else {
+        tx.set(ref, { readersTotal: 0, opensTotal: 0, readsTotal: nextReads, updatedAt: serverTimestamp() }, { merge: true });
+      }
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// -----------------------------
+// Subscribers
+// -----------------------------
+export async function getSubscribersCount({ max = 2000 } = {}) {
+  try {
+    const snap = await getDocs(query(subscribersCol(), limit(Math.max(1, Number(max || 2000)))));
+    return snap.size;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Subscribe email to Firestore.
+ * Dedupes by emailLower.
+ */
+export async function subscribeEmail({ email = "", source = "library" } = {}) {
+  const raw = String(email || "").trim();
+  if (!looksLikeEmail(raw)) throw new Error("Enter a valid email.");
+
+  const emailLower = raw.toLowerCase();
+
+  // check for duplicates
+  const existing = await getDocs(query(subscribersCol(), where("emailLower", "==", emailLower), limit(1)));
+  if (!existing.empty) return { ok: true, already: true };
+
+  await addDoc(subscribersCol(), {
+    email: raw,
+    emailLower,
+    source: String(source || "library"),
+    createdAt: serverTimestamp(),
+    uid: auth.currentUser?.uid || null
+  });
+
+  return { ok: true, already: false };
+}
+
+// -----------------------------
+// Announcements
+// -----------------------------
+export async function getLatestAnnouncement() {
+  try {
+    const qy = query(
+      announcementsCol(),
+      where("active", "==", true),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+    const snap = await getDocs(qy);
+    if (snap.empty) return null;
+
+    const d = snap.docs[0].data() || {};
+    return {
+      id: snap.docs[0].id,
+      title: String(d.title || "Announcement"),
+      body: String(d.body || ""),
+      createdAt: d.createdAt || null
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Render 1-line announcement into any element.
+ * Safe for library top line.
+ */
+export async function renderAnnouncementLine({ mountId = "announceLine" } = {}) {
+  const el = document.getElementById(mountId);
+  if (!el) return;
+
+  el.textContent = "Loading announcements…";
+
+  const a = await getLatestAnnouncement();
+  if (!a) {
+    el.textContent = "No announcements right now.";
+    return;
+  }
+
+  const t = (a.title || "").trim();
+  const b = (a.body || "").trim();
+  const date = fmtDate(a.createdAt);
+  const line = b ? `${t}: ${b}` : t;
+
+  el.textContent = date ? `${line} (${date})` : line;
+}
+
+/**
+ * Render a clean announcements list (for future use).
+ */
+export async function renderAnnouncementsList({
+  mountId = "announcements",
+  max = 6
+} = {}) {
   const mount = document.getElementById(mountId);
-  if(!mount) return;
+  if (!mount) return;
 
-  mount.innerHTML = `<div style="opacity:.75">Loading announcements…</div>`;
+  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
 
-  try{
-    const qy = query(collection(db, "announcements"), orderBy("createdAt","desc"), limit(Math.max(1, Number(max||6))));
+  try {
+    const qy = query(
+      announcementsCol(),
+      where("active", "==", true),
+      orderBy("createdAt", "desc"),
+      limit(Math.max(1, Number(max || 6)))
+    );
     const snap = await getDocs(qy);
 
-    if(snap.empty){
-      mount.innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
+    if (snap.empty) {
+      mount.innerHTML = `<div style="opacity:.75">No announcements.</div>`;
       return;
     }
 
     const rows = [];
-    snap.forEach(s=>{
-      const d = s.data() || {};
-      const title = escapeHtml(d.title || "Announcement");
-      const body  = escapeHtml(d.body || "");
-      const when  = fmtWhen(d.createdAt);
+    snap.forEach((docSnap) => {
+      const d = docSnap.data() || {};
+      const title = escapeHtml(String(d.title || "Announcement"));
+      const body = escapeHtml(String(d.body || ""));
+      const date = fmtDate(d.createdAt);
 
       rows.push(`
-        <div class="ann">
-          <div class="aTop">
-            <div class="aTitle">${title}</div>
-            <div class="aWhen">${escapeHtml(when)}</div>
-          </div>
-          <div class="aBody">${body || `<span style="opacity:.75">—</span>`}</div>
+        <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
+          <div style="font-weight:950">${title}</div>
+          ${date ? `<div style="opacity:.70;font-size:12px;margin-top:2px">${escapeHtml(date)}</div>` : ``}
+          ${body ? `<div style="opacity:.92;margin-top:8px;line-height:1.55">${body}</div>` : ``}
         </div>
       `);
     });
 
     mount.innerHTML = rows.join("");
-  }catch(e){
-    mount.innerHTML = `<div style="opacity:.75">Could not load announcements.</div>`;
+  } catch {
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load announcements.</div>`;
   }
 }
 
-/* ----------------------------- subscribe ----------------------------- */
+// -----------------------------
+// Small convenience: render basic counts
+// -----------------------------
+export async function renderCounts({
+  bookId = "book1",
+  readersMountId = "readersTotal",
+  subsMountId = "subsTotal"
+} = {}) {
+  const readersEl = document.getElementById(readersMountId);
+  const subsEl = document.getElementById(subsMountId);
 
-function safeDocIdFromEmail(emailLower){
-  // Firestore doc ids can’t contain "/" — encodeURIComponent removes that risk.
-  return encodeURIComponent(emailLower);
-}
+  if (readersEl) readersEl.textContent = "— Total";
+  if (subsEl) subsEl.textContent = "— Total";
 
-export async function subscribeEmail({ email="", source="library" } = {}){
-  const raw = String(email || "").trim();
-  if(!raw || !raw.includes("@")) throw new Error("Enter a valid email.");
+  const [stats, subs] = await Promise.all([
+    getBookStats({ bookId }),
+    getSubscribersCount({})
+  ]);
 
-  const emailLower = raw.toLowerCase();
-  const id = safeDocIdFromEmail(emailLower);
-
-  const user = auth.currentUser;
-  const uid = user?.uid || null;
-
-  // Upsert so user doesn’t get duplicated
-  await setDoc(doc(db, "subscribers", id), {
-    email: raw,
-    emailLower,
-    uid,
-    source: String(source || "library"),
-    userAgent: (typeof navigator !== "undefined" ? (navigator.userAgent || "") : ""),
-    updatedAt: serverTimestamp(),
-    // only set createdAt once if new
-    createdAt: serverTimestamp()
-  }, { merge:true });
-
-  return true;
-}
-
-/* ----------------------------- stats ----------------------------- */
-
-// Optional hard fallback (if you haven’t stored pages in Firestore yet)
-const FALLBACK_PAGES = {
-  book1: null, // put a number here if you want e.g. 120
-};
-
-async function countCommentsCheap(bookId){
-  // For small communities this is fine.
-  // If you grow big later, you’ll want a stored counter.
-  try{
-    const snap = await getDocs(query(commentsCol(bookId), limit(1200)));
-    return snap.size;
-  }catch{
-    return null;
+  if (readersEl) {
+    const n = Number(stats.readersTotal || 0);
+    readersEl.textContent = n ? `${n} Total` : "— Total";
   }
-}
-
-export async function getBookStats({ bookId="book1" } = {}){
-  const bid = String(bookId || "book1");
-
-  // 1) Try book doc (fast)
-  let pages = null, readers = null;
-
-  try{
-    const snap = await getDoc(bookRef(bid));
-    if(snap.exists()){
-      const d = snap.data() || {};
-      const p = Number(d.pages);
-      const r = Number(d.readers);
-      pages = Number.isFinite(p) && p > 0 ? p : null;
-      readers = Number.isFinite(r) && r >= 0 ? r : null;
-    }
-  }catch{}
-
-  // 2) Fallback pages
-  if(!pages){
-    const fp = Number(FALLBACK_PAGES[bid]);
-    pages = Number.isFinite(fp) && fp > 0 ? fp : null;
-  }
-
-  // 3) Comment count (cheap)
-  const comments = await countCommentsCheap(bid);
-
-  return {
-    bookId: bid,
-    pages: pages ?? "—",
-    readers: readers ?? "—",
-    comments: (comments ?? "—"),
-  };
-}
-
-/* ----------------------------- reader counter (unique-ish) ----------------------------- */
-
-function localReadKey(bookId, uid){
-  const u = uid ? `uid:${uid}` : "guest";
-  return `tiu:readOnce:${bookId}:${u}`;
-}
-
-export async function bumpReaderCountOnce({ bookId="book1", uid=null } = {}){
-  const bid = String(bookId || "book1");
-  const key = localReadKey(bid, uid);
-
-  // If already counted locally, stop.
-  if(localStorage.getItem(key) === "1") return false;
-
-  // Always set local first to prevent double taps
-  localStorage.setItem(key, "1");
-
-  const bRef = bookRef(bid);
-
-  // If signed in, try to be truly unique using /readers/{uid}
-  if(uid){
-    const rRef = doc(db, "books", bid, "readers", uid);
-
-    try{
-      await runTransaction(db, async (tx)=>{
-        const [bSnap, rSnap] = await Promise.all([tx.get(bRef), tx.get(rRef)]);
-
-        // If already has reader doc, do not increment
-        if(rSnap.exists()) return;
-
-        // Create reader marker
-        tx.set(rRef, { uid, firstSeenAt: serverTimestamp() }, { merge:true });
-
-        // Increment approximate counter on book doc
-        const d = bSnap.exists() ? (bSnap.data() || {}) : {};
-        const prev = Number(d.readers || 0);
-        const next = (Number.isFinite(prev) && prev >= 0) ? (prev + 1) : 1;
-
-        tx.set(bRef, { readers: next, updatedAt: serverTimestamp() }, { merge:true });
-      });
-
-      return true;
-    }catch{
-      // If transaction fails, keep local as counted and just stop quietly
-      return false;
-    }
-  }
-
-  // Guest mode: we can only do approximate counting
-  try{
-    await runTransaction(db, async (tx)=>{
-      const bSnap = await tx.get(bRef);
-      const d = bSnap.exists() ? (bSnap.data() || {}) : {};
-      const prev = Number(d.readers || 0);
-      const next = (Number.isFinite(prev) && prev >= 0) ? (prev + 1) : 1;
-      tx.set(bRef, { readers: next, updatedAt: serverTimestamp() }, { merge:true });
-    });
-    return true;
-  }catch{
-    return false;
+  if (subsEl) {
+    subsEl.textContent = `${Number(subs || 0)} Total`;
   }
 }
