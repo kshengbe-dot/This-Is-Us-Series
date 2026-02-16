@@ -227,7 +227,6 @@ export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {})
   }
 }
 
-// Backward compat
 export function bumpReaderCountsOnce({ bookId = "book1" } = {}) {
   const uid = auth.currentUser?.uid || null;
   return bumpReaderCountOnce({ bookId, uid });
