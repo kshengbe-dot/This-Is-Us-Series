@@ -356,19 +356,32 @@
       color:var(--muted);
     }
 
+    /* ✅ Background blend fix: use the same "card" tone (not a weird new color) */
     .previewShell{
       border:1px solid var(--stroke);
       border-radius:22px;
       box-shadow: var(--shadow);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.14), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(0,255,198,.08), transparent 65%),
+        rgba(255,255,255,.04);
       overflow:hidden;
       position:relative;
     }
+    [data-theme="light"] .previewShell{
+      background:
+        radial-gradient(700px 220px at 25% 0%, rgba(124,92,255,.10), transparent 65%),
+        radial-gradient(520px 220px at 90% 20%, rgba(2,6,23,.06), transparent 65%),
+        rgba(2,6,23,.02);
+    }
+
     .previewInner{
       padding:14px;
-      min-height: 110px;
+      min-height: 128px;
       position:relative;
     }
+
+    /* These classes are used by renderCommentPreviewCarousel() */
     .previewSlide{
       position:absolute;
       inset:14px;
@@ -376,61 +389,14 @@
       transform: translateY(6px);
       transition: opacity .65s ease, transform .65s ease;
       pointer-events:none;
+      cursor:pointer;
     }
     .previewSlide.show{
       opacity:1;
       transform:none;
       pointer-events:auto;
     }
-    .pTop{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      font: 900 12px ui-sans-serif,system-ui;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
-    .pBook{
-      display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap;
-    }
-    .pPill{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      padding:6px 9px;
-      border-radius:999px;
-      font: 900 11px ui-sans-serif,system-ui;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-    }
-    .pName{
-      margin-top:10px;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      min-width:0;
-    }
-    .pWho{
-      font-weight:950;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 70vw;
-    }
-    .pText{
-      margin-top:8px;
-      color: var(--muted);
-      line-height:1.55;
-      font-size:13px;
-    }
-    .pMeta{
-      margin-top:10px;
-      display:flex; justify-content:space-between; gap:10px; align-items:center;
-      font-size:12px; color:var(--muted);
-    }
+
     .pHint{
       padding:10px 14px 12px;
       border-top:1px solid var(--stroke);
@@ -913,7 +879,7 @@
     // ✅ PUBLIC FEEDS (auto)
     renderAnnouncementSection({ mountId:"announceBanner", max: 10 });
 
-    // ✅ COUNTS (fixed)
+    // ✅ COUNTS
     renderReaderCount({ bookId:"book1", mountId:"readerCount" });
     renderSubscriberCount({ bookId:"book1", mountId:"subCount" });
 
