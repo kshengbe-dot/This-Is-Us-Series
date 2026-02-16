@@ -7,7 +7,7 @@ import {
   getDocs, query, orderBy, limit,
   doc, getDoc, setDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -27,22 +27,27 @@ function toMillisMaybe(ts){
   if(typeof ts.toMillis === "function") return ts.toMillis();
   return null;
 }
-
 function isActiveAnnouncement(a){
   const now = Date.now();
   const startMs = toMillisMaybe(a.startAt);
   const endMs   = toMillisMaybe(a.endAt);
-
   const okStart = (startMs == null) ? true : (now >= startMs);
   const okEnd   = (endMs == null) ? true : (now <= endMs);
   return okStart && okEnd;
 }
 
+async function getUserOnce(){
+  // ensures we know if user is signed in before counting
+  return await new Promise((resolve)=>{
+    const unsub = onAuthStateChanged(auth, (u)=>{
+      unsub();
+      resolve(u || null);
+    });
+  });
+}
+
 // ------------------------ ANNOUNCEMENTS (ALWAYS VISIBLE SECTION) ------------------------
-export async function renderAnnouncementSection({
-  mountId = "announceBanner",
-  max = 10
-} = {}) {
+export async function renderAnnouncementSection({ mountId = "announceBanner", max = 10 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
 
@@ -59,20 +64,13 @@ export async function renderAnnouncementSection({
       const a = d.data() || {};
       if (isActiveAnnouncement(a) && (a.title || a.body)) active.push(a);
     });
-
     if (!active.length) return;
 
     const cards = active.map(a => {
       const title = escapeHtml(a.title || "Announcement");
       const body = escapeHtml(a.body || "");
       return `
-        <div style="
-          border:1px solid rgba(255,255,255,.12);
-          background: rgba(124,92,255,.12);
-          border-radius:18px;
-          padding:12px;
-          margin-top:10px;
-        ">
+        <div style="border:1px solid rgba(255,255,255,.12);background: rgba(124,92,255,.12);border-radius:18px;padding:12px;margin-top:10px;">
           <div style="font-weight:950; letter-spacing:.06em">${title}</div>
           <div style="opacity:.92; margin-top:6px; line-height:1.55">${body}</div>
         </div>
@@ -88,12 +86,9 @@ export async function renderAnnouncementSection({
       </div>
     `;
     mount.style.display = "block";
-  } catch {
-    // fail quietly
-  }
+  } catch {}
 }
 
-// Optional: modal list (keep for your UI)
 export async function renderAnnouncementsList({ mountId = "announcementsMount", max = 8 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -131,13 +126,8 @@ export async function renderAnnouncementsList({ mountId = "announcementsMount", 
 
 // ------------------------ SUBSCRIBE (STORE ONLY) ------------------------
 export function setupSubscribeForm({
-  formId = "subscribeForm",
-  emailId = "subEmail",
-  phoneId = "subPhone",
-  emailOptId = "optEmail",
-  smsOptId = "optSMS",
-  msgId = "subMsg",
-  bookId = "book1"
+  formId="subscribeForm", emailId="subEmail", phoneId="subPhone",
+  emailOptId="optEmail", smsOptId="optSMS", msgId="subMsg", bookId="book1"
 } = {}) {
   const form = document.getElementById(formId);
   if (!form) return;
@@ -163,23 +153,9 @@ export function setupSubscribeForm({
     const wantsEmail = !!emailOpt?.checked;
     const wantsSMS = !!smsOpt?.checked;
 
-    if (!wantsEmail && !wantsSMS) {
-      if (msgEl) msgEl.textContent = "Choose Email and/or SMS first.";
-      return;
-    }
-    if (wantsEmail && !email) {
-      if (msgEl) msgEl.textContent = "Enter your email to enable email notifications.";
-      return;
-    }
-    if (wantsSMS && !phone) {
-      if (msgEl) msgEl.textContent = "Enter your phone number to enable SMS notifications.";
-      return;
-    }
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      if (msgEl) msgEl.textContent = "That email doesn’t look right.";
-      return;
-    }
+    if (!wantsEmail && !wantsSMS) { if (msgEl) msgEl.textContent = "Choose Email and/or SMS first."; return; }
+    if (wantsEmail && !email) { if (msgEl) msgEl.textContent = "Enter your email."; return; }
+    if (wantsSMS && !phone) { if (msgEl) msgEl.textContent = "Enter your phone number."; return; }
 
     try {
       await addDoc(collection(db, "subscribers"), {
@@ -190,17 +166,8 @@ export function setupSubscribeForm({
         notificationSMS: wantsSMS,
         bookId,
         createdAt: serverTimestamp(),
-        consentText: "User opted in to notifications. Carrier rates may apply for SMS.",
         source: location.pathname
       });
-
-      await setDoc(doc(db, "users", user.uid), {
-        notificationEmail: wantsEmail,
-        notificationSMS: wantsSMS,
-        notifyEmailValue: wantsEmail ? email : null,
-        notifyPhoneValue: wantsSMS ? phone : null,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
 
       if (msgEl) msgEl.textContent = "Subscribed ✅";
       if (emailEl) emailEl.value = "";
@@ -211,32 +178,59 @@ export function setupSubscribeForm({
   });
 }
 
-// ------------------------ STATS: TOTAL READERS (PUBLIC) ------------------------
-export async function bumpReaderCountOnce({ bookId = "book1" } = {}) {
+// ------------------------ STATS (TOTAL + SPLIT) ------------------------
+export async function bumpReaderCountOnce({ bookId="book1" } = {}) {
   const key = `readerCounted:${bookId}`;
   if (localStorage.getItem(key) === "1") return;
+
+  const user = await getUserOnce();
+  const isSigned = !!user;
 
   try {
     await setDoc(doc(db, "stats", bookId), {
       totalReaders: increment(1),
+      guestReaders: increment(isSigned ? 0 : 1),
+      signedInReaders: increment(isSigned ? 1 : 0),
       updatedAt: serverTimestamp()
     }, { merge: true });
+
     localStorage.setItem(key, "1");
   } catch {
     // ignore
   }
 }
 
-export async function renderReaderCount({ bookId = "book1", mountId = "readerCount" } = {}) {
+export async function renderReaderCount({ bookId="book1", mountId="readerCount" } = {}) {
   const el = document.getElementById(mountId);
   if (!el) return;
 
   try {
     const snap = await getDoc(doc(db, "stats", bookId));
     const d = snap.exists() ? snap.data() : {};
-    const n = Number(d.totalReaders || 0);
-    el.textContent = n.toLocaleString();
+    el.textContent = Number(d.totalReaders || 0).toLocaleString();
   } catch {
     el.textContent = "—";
+  }
+}
+
+export async function renderReaderSplitAdmin({
+  bookId="book1",
+  totalId="readerTotalAdmin",
+  guestId="readerGuestAdmin",
+  signedId="readerSignedAdmin"
+} = {}) {
+  const tEl = document.getElementById(totalId);
+  const gEl = document.getElementById(guestId);
+  const sEl = document.getElementById(signedId);
+  try{
+    const snap = await getDoc(doc(db,"stats",bookId));
+    const d = snap.exists() ? snap.data() : {};
+    if(tEl) tEl.textContent = Number(d.totalReaders || 0).toLocaleString();
+    if(gEl) gEl.textContent = Number(d.guestReaders || 0).toLocaleString();
+    if(sEl) sEl.textContent = Number(d.signedInReaders || 0).toLocaleString();
+  }catch{
+    if(tEl) tEl.textContent = "—";
+    if(gEl) gEl.textContent = "—";
+    if(sEl) sEl.textContent = "—";
   }
 }
