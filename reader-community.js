@@ -1,21 +1,4 @@
 // reader-community.js (FULL FILE — INTEGRATED + CLEAN)
-// Matches your THIS IS US Reader + Library + Settings pages.
-//
-// ✅ Works with:
-// - settings.html saving users/{uid} { displayName, photoURL, theme }
-// - read.html community modal IDs + deep-links
-// - index.html preview widgets (optional)
-//
-// ✅ Exports used by read.html:
-//   renderComments, setupCommentForm, submitRating, loadMyRating,
-//   renderRatingSummary, trackAchievements, renderMyAchievements, guidelinesHTML
-//
-// ✅ Important fixes vs your pasted version:
-// - Removed duplicated file blocks (you had the whole file pasted twice).
-// - Deep-link IDs now match read.html: each comment wrapper id = c_<commentId>
-// - setupCommentForm now supports mountId + max (so refresh targets the right list)
-// - Enforced your requirement: Guests can READ, but must SIGN IN to post/reply/rate/react
-// - Avatars pull from Firestore users/{uid}.photoURL (Settings page), with auth fallback.
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -95,7 +78,7 @@ function starLine(n) {
   return "";
 }
 
-// ---------- PROFILE CACHE (avatars / display names from Settings page) ----------
+// ---------- PROFILE CACHE ----------
 const profileCache = new Map(); // uid -> { photoURL, displayName }
 const profileInFlight = new Map(); // uid -> Promise
 
@@ -197,7 +180,6 @@ function canEdit(d) {
   if (UID && d.uid && d.uid === UID) return true;
   return false;
 }
-
 function timeLeftMinutes(d) {
   const until = d.editableUntil?.toMillis ? d.editableUntil.toMillis() : 0;
   const ms = until - Date.now();
@@ -205,11 +187,10 @@ function timeLeftMinutes(d) {
   return Math.ceil(ms / 60000);
 }
 
-// ---------- Engagement tracking (local + cloud) ----------
+// ---------- Engagement tracking ----------
 function engagementRef(uid, bookId) {
   return doc(db, "users", uid, "meta", `engagement_${bookId}`);
 }
-
 async function trackEngagement({ bookId = "book1", event = "read" } = {}) {
   const key = `eng:${bookId}`;
   const local = JSON.parse(localStorage.getItem(key) || "{}");
@@ -229,7 +210,7 @@ async function trackEngagement({ bookId = "book1", event = "read" } = {}) {
   } catch {}
 }
 
-// ---------- Reactions (like/love) ----------
+// ---------- Reactions ----------
 async function toggleReaction({ bookId, commentId, kind }) {
   if (!mustSignIn("react")) return;
   if (kind !== "like" && kind !== "love") return;
@@ -392,7 +373,6 @@ export async function renderComments({ bookId = "book1", mountId = "commentsList
       const replyHtml = await renderReplies({ bookId, commentId: s.id });
 
       rows.push(`
-        <!-- IMPORTANT: id matches read.html deep-link: c_<id> -->
         <div id="c_${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
             <div style="display:flex;gap:10px;align-items:center;min-width:0">
@@ -686,7 +666,6 @@ export function setupCommentForm({
     const displayNameFromProfile = p.displayName || null;
     const photoURLFromProfile = p.photoURL || null;
 
-    // If user typed a name, allow it. Otherwise use their saved display name.
     const typedName = (nameEl?.value || "").trim();
     const finalName = isAdmin()
       ? "Admin"
@@ -784,73 +763,7 @@ export async function renderRatingSummary({ bookId = "book1", mountId = "ratingS
   }
 }
 
-// ---------- COMMENT PREVIEW (simple list — optional for index.html) ----------
-export async function renderCommentPreview({ bookId = "book1", mountId = "commentPreview", max = 4 } = {}) {
-  const mount = document.getElementById(mountId);
-  if (!mount) return;
-
-  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
-
-  try {
-    const qy = query(commentsCol(bookId), orderBy("createdAt", "desc"), limit(max));
-    const snap = await getDocs(qy);
-
-    if (snap.empty) {
-      mount.innerHTML = `<div style="opacity:.75">No comments yet.</div>`;
-      return;
-    }
-
-    const uids = new Set();
-    snap.forEach((s) => {
-      const d = s.data() || {};
-      if (d.uid) uids.add(d.uid);
-    });
-    await Promise.all([...uids].map((uid) => getProfile(uid)));
-
-    const rows = [];
-    snap.forEach((s) => {
-      const d = s.data() || {};
-      const isA = !!d.isAdmin;
-
-      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
-      const photo = d.photoURL || cached.photoURL || null;
-
-      const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
-      const raw = String(d.text || "");
-      const txt = escapeHtml(raw.slice(0, 140)) + (raw.length > 140 ? "…" : "");
-      const like = Number(d.reactLikeCount || 0);
-      const love = Number(d.reactLoveCount || 0);
-
-      rows.push(`
-        <div data-jump="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;cursor:pointer">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-            <div style="display:flex;gap:10px;align-items:center;min-width:0">
-              ${avatarHTML(photo)}
-              <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
-                ${isA ? "🛡️ " : ""}${who}
-              </div>
-            </div>
-            <div style="opacity:.75;font:900 12px ui-sans-serif,system-ui">👍 ${like} · ❤️ ${love}</div>
-          </div>
-          <div style="opacity:.90;margin-top:8px;line-height:1.55">${txt}</div>
-        </div>
-      `);
-    });
-
-    mount.innerHTML = rows.join("");
-
-    mount.querySelectorAll("[data-jump]").forEach((el) => {
-      el.addEventListener("click", () => {
-        const id = el.getAttribute("data-jump");
-        location.href = `read.html?book=${encodeURIComponent(bookId)}&open=community&comment=${encodeURIComponent(id)}`;
-      });
-    });
-  } catch {
-    mount.innerHTML = `<div style="color:#ff9b9b">Could not load preview.</div>`;
-  }
-}
-
-// ---------- COMMENT PREVIEW CAROUSEL (optional for index.html) ----------
+// ---------- COMMENT PREVIEW CAROUSEL (FIXED to match index.css .previewSlide.show) ----------
 export async function renderCommentPreviewCarousel({
   bookId = "book1",
   mountId = "commentPreview",
@@ -893,48 +806,39 @@ export async function renderCommentPreviewCarousel({
       const like = Number(d.reactLikeCount || 0);
       const love = Number(d.reactLoveCount || 0);
 
-      slides.push({
-        id: s.id,
-        html: `
-          <div class="previewSlide" data-slide="1" data-jump="${s.id}" style="cursor:pointer;display:none">
-            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px">
-              <div style="font:950 12px ui-sans-serif,system-ui;letter-spacing:.06em;text-transform:uppercase;opacity:.9">
-                Community
-              </div>
-              <div style="opacity:.75;font:900 12px ui-sans-serif,system-ui">👍 ${like} · ❤️ ${love}</div>
-            </div>
-
-            <div style="display:flex;gap:10px;align-items:center;min-width:0;margin-bottom:8px">
-              ${avatarHTML(photo)}
-              <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
-                ${isA ? "🛡️ " : ""}${who}
-              </div>
-            </div>
-
-            <div style="opacity:.90;line-height:1.55">${txt}</div>
-
-            <div style="display:flex;justify-content:space-between;margin-top:10px;opacity:.75;font:800 12px ui-sans-serif,system-ui">
-              <span>Tap to open</span>
-              <span>Book: ${escapeHtml(bookId)}</span>
-            </div>
+      slides.push(`
+        <div class="previewSlide" data-jump="${s.id}">
+          <div class="pTop">
+            <span class="pPill">Community</span>
+            <span>👍 ${like} · ❤️ ${love}</span>
           </div>
-        `
-      });
+
+          <div class="pName">
+            ${avatarHTML(photo)}
+            <div class="pWho">${isA ? "🛡️ " : ""}${who}</div>
+          </div>
+
+          <div class="pText">${txt}</div>
+
+          <div class="pMeta">
+            <span>Tap to open</span>
+            <span>Book: ${escapeHtml(bookId)}</span>
+          </div>
+        </div>
+      `);
     });
 
-    mount.innerHTML = `
-      <div style="position:relative;min-height:110px">
-        ${slides.map((s) => s.html).join("")}
-      </div>
-    `;
+    mount.innerHTML = slides.join("");
 
     const list = Array.from(mount.querySelectorAll(".previewSlide"));
     if (!list.length) return;
 
     let idx = 0;
+
     function show(n) {
-      list.forEach((el, i) => (el.style.display = i === n ? "block" : "none"));
+      list.forEach((el, i) => el.classList.toggle("show", i === n));
     }
+
     show(0);
 
     mount.querySelectorAll("[data-jump]").forEach((el) => {
@@ -964,7 +868,6 @@ const ACH = [
   ["page_50", "Fifty-Page Fighter"],
   ["page_75", "Seventy-Five Strong"],
   ["page_100", "Centurion Reader"],
-
   ["pct_10", "10% In"],
   ["pct_20", "20% In"],
   ["pct_33", "One-Third Done"],
@@ -973,12 +876,10 @@ const ACH = [
   ["pct_75", "75% Done"],
   ["pct_90", "90% Pressure"],
   ["finished", "Book Finished"],
-
   ["night_owl", "Night Owl Reader"],
   ["early_bird", "Early Bird Reader"],
   ["lunch_break", "Lunch Break Chapter"],
   ["weekend_reader", "Weekend Reader"],
-
   ["first_comment", "First Comment"],
   ["comment_3", "Comment Trio"],
   ["comment_5", "Chatty (5)"],
@@ -1020,7 +921,6 @@ export async function trackAchievements({ bookId = "book1", pageIndex = 0, total
     ["page_50", () => pageIndex >= 49],
     ["page_75", () => pageIndex >= 74],
     ["page_100", () => pageIndex >= 99],
-
     ["pct_10", () => pct >= 10],
     ["pct_20", () => pct >= 20],
     ["pct_33", () => pct >= 33],
@@ -1029,37 +929,26 @@ export async function trackAchievements({ bookId = "book1", pageIndex = 0, total
     ["pct_75", () => pct >= 75],
     ["pct_90", () => pct >= 90],
     ["finished", () => totalPages > 0 && pageIndex >= totalPages - 1],
-
     ["night_owl", () => isNight && pageIndex >= 2],
     ["early_bird", () => isEarly && pageIndex >= 2],
     ["lunch_break", () => isLunch && pageIndex >= 2],
     ["weekend_reader", () => isWeekend && pageIndex >= 2],
-
     ["first_comment", () => commentsMade >= 1],
     ["comment_3", () => commentsMade >= 3],
     ["comment_5", () => commentsMade >= 5],
     ["comment_10", () => commentsMade >= 10],
-
     ["first_reply", () => repliesMade >= 1],
     ["reply_3", () => repliesMade >= 3],
     ["reply_5", () => repliesMade >= 5],
-
     ["first_react", () => reactsMade >= 1],
     ["react_5", () => reactsMade >= 5],
     ["react_10", () => reactsMade >= 10],
-
     ["first_rating", () => rated >= 1]
   ];
 
-  const unlocked = rules
-    .filter(([_, fn]) => {
-      try { return !!fn(); } catch { return false; }
-    })
-    .map(([id]) => id);
-
+  const unlocked = rules.filter(([_, fn]) => { try { return !!fn(); } catch { return false; } }).map(([id]) => id);
   if (!unlocked.length) return;
 
-  // Guests can see popups, but not saved
   if (!UID) {
     unlocked.forEach((id) => toast(`Achievement: ${ACH_MAP[id] || id}`));
     return;
@@ -1109,22 +998,17 @@ export async function renderMyAchievements({ bookId = "book1", mountId = "achLis
 
     const list = [...arr].slice().reverse();
 
-    mount.innerHTML = list
-      .map(
-        (id) => `
+    mount.innerHTML = list.map((id) => `
       <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:14px;padding:10px;margin:8px 0;">
         <div style="font-weight:950">${escapeHtml(ACH_MAP[id] || id)}</div>
         <div style="opacity:.75;font-size:12px;margin-top:4px">${escapeHtml(id)}</div>
       </div>
-    `
-      )
-      .join("");
+    `).join("");
   } catch {
     mount.innerHTML = `<div style="color:#ff9b9b">Could not load achievements.</div>`;
   }
 }
 
-// ---------- GUIDELINES ----------
 export function guidelinesHTML() {
   return `
     <div style="line-height:1.6;opacity:.92">
