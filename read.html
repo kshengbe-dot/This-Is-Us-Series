@@ -8,306 +8,345 @@
   <style>
     :root{
       --bg:#0B1020;
-      --paper:#0F1731;
+      --card:#0F1731;
       --ink:#EAF0FF;
       --muted:#9FB0D6;
       --stroke:rgba(255,255,255,.12);
-      --shadow: 0 26px 80px rgba(0,0,0,.55);
-      --bar: rgba(10,14,28,.88);
-      --chip: rgba(255,255,255,.06);
-      --glow: rgba(124,92,255,.22);
-
+      --shadow: 0 28px 90px rgba(0,0,0,.55);
+      --glow: rgba(124,92,255,.45);
+      --accent:#7c5cff;
+      --accent2: rgba(0,255,198,.18);
+      --glass: rgba(0,0,0,.30);
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
-
-      --footerSpace: 58px;
-      --padX: 22px;
-      --padT: 26px;
-      --padB: calc(20px + var(--footerSpace));
-      --radius: 18px;
     }
-
     [data-theme="light"]{
       --bg:#F7F8FB;
-      --paper:#FFFFFF;
+      --card:#FFFFFF;
       --ink:#0F172A;
       --muted:#475569;
       --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.12);
-      --bar: rgba(255,255,255,.92);
-      --chip: rgba(2,6,23,.04);
-      --glow: rgba(124,92,255,.15);
+      --shadow: 0 18px 60px rgba(2,6,23,.10);
+      --glow: rgba(124,92,255,.18);
+      --accent:#7c5cff;
+      --accent2: rgba(2,6,23,.04);
+      --glass: rgba(255,255,255,.78);
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      overflow:hidden;
       color:var(--ink);
       background:
-        radial-gradient(1200px 900px at 30% 10%, var(--glow), transparent 60%),
+        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
+        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
         var(--bg);
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      overflow-x:hidden;
     }
+    a{color:inherit;text-decoration:none}
 
+    /* Top bar */
     .top{
-      position:fixed; left:0; right:0; top:0;
-      z-index:60;
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(14px);
+      background: var(--glass);
       border-bottom:1px solid var(--stroke);
-      background: var(--bar);
-      backdrop-filter: blur(12px);
-      padding: calc(10px + var(--safeTop)) 12px 10px;
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
     }
-    .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .chip{
+    .nav{
+      max-width:1200px; margin:0 auto;
+      padding: calc(10px + var(--safeTop)) 16px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:2px;
+      letter-spacing:.14em; text-transform:uppercase;
+      font-weight:950;
+      min-width:0;
+    }
+    .brand small{
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:46vw;
+    }
+    .right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width:70vw;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom:2px;
+    }
+    .right::-webkit-scrollbar{height:0}
+    .pill{
       border:1px solid var(--stroke);
-      background: var(--chip);
-      padding:8px 10px;
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      padding:9px 12px;
       border-radius:999px;
       font-size:12px;
-      color:var(--muted);
       cursor:pointer;
       user-select:none;
       display:inline-flex; align-items:center; gap:8px;
+      transition: transform .15s ease, background .15s ease;
       white-space:nowrap;
+      flex:0 0 auto;
     }
-    .chip strong{color:var(--ink); font-weight:900}
+    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .pill strong{color:var(--ink)}
+    .dot{font-size:12px; opacity:.9}
 
-    .stage{
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 78px 12px 16px;
+    /* Layout */
+    .wrap{max-width:1200px; margin:0 auto; padding:16px 16px calc(90px + var(--safeBot));}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:14px;
+      align-items:start;
     }
-    .book{
-      width:min(1120px, 98vw);
-      height:min(740px, 84vh);
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    /* Cards */
+    .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border-radius:22px;
+      box-shadow: var(--shadow);
       position:relative;
-      perspective: 1800px;
+      overflow:hidden;
     }
 
-    .spread{
-      position:absolute; inset:0;
+    /* Reader shell */
+    .readerCard{ padding:14px; }
+    .readerHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap;
+      padding:6px 6px 10px;
+    }
+    .titleLine{
+      display:flex; flex-direction:column; gap:4px;
+      min-width:0;
+    }
+    .titleLine h1{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-weight:950;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 64vw;
+    }
+    .titleLine .sub{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.04em;
+    }
+    .controls{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+    }
+    .btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:9px 11px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .15s ease, background .15s ease;
+      font-size:12px;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+    .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
+
+    /* Flipbook */
+    .bookStage{
+      position:relative;
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      overflow:hidden;
+      background: rgba(0,0,0,.12);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    [data-theme="light"] .bookStage{ background: rgba(2,6,23,.04); }
+
+    .book{
+      position:relative;
+      height: clamp(520px, 70vh, 860px);
+      perspective: 1400px;
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap:14px;
+      gap:0;
     }
-    .single{ position:absolute; inset:0; display:none; }
+    @media (max-width:760px){
+      .book{ grid-template-columns: 1fr; height: clamp(540px, 74vh, 900px); }
+    }
 
     .page{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid var(--stroke);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
       position:relative;
-      height:100%;
-    }
-
-    .inner{
-      height:100%;
-      padding: var(--padT) var(--padX) var(--padB);
       overflow:hidden;
+      background:
+        radial-gradient(900px 400px at 20% 0%, rgba(124,92,255,.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-right:1px solid var(--stroke);
+      padding:22px 22px 18px;
+    }
+    @media (max-width:760px){
+      .page{ border-right:none; }
     }
 
-    .inner h1,.inner h2,.inner h3,.inner h4{
-      font-family: ui-sans-serif, system-ui;
-      margin:0 0 10px;
-      line-height:1.15;
-      letter-spacing:.02em;
+    /* absolutely prevent text overflow / leaks */
+    .pageContent{
+      height:100%;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right:8px;
+      scrollbar-width: none;
     }
-    .inner h2{font-size:30px}
-    .inner h3{font-size:18px}
-    .inner h4{font-size:20px}
-    .inner p{
-      line-height:1.78;
-      margin:0 0 14px;
-      font-size:16px;
-      color:var(--ink);
+    .pageContent::-webkit-scrollbar{ width:0; height:0; }
+    .pageContent *{
+      max-width:100%;
+      word-break: break-word;
+      overflow-wrap:anywhere;
     }
-    .muted{color:var(--muted)}
 
-    .pageNum{
+    /* book typography */
+    .chapter-cover{ text-align:center; padding-top:10px; }
+    .chapter-cover h2{
+      margin:0;
+      font-size:28px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      font-weight:950;
+    }
+    .series-sub{ margin:10px 0 0; color:var(--muted); font-weight:800; letter-spacing:.04em; }
+    .author{ margin:10px 0 0; color:var(--muted); font-weight:800; }
+    .ornament{ border:none; height:1px; background: var(--stroke); margin:18px 0; }
+    .chapter-title h3{ margin:0; font-size:16px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted); }
+    .chapter-title h4{ margin:8px 0 0; font-size:22px; font-weight:950; }
+
+    p{ margin: 10px 0; line-height:1.75; font-size:15px; }
+    .dropcap:first-letter{
+      float:left;
+      font-size:52px;
+      line-height:1;
+      padding-right:10px;
+      padding-top:4px;
+      font-weight:950;
+    }
+
+    /* Page footer */
+    .pageFoot{
       position:absolute;
-      bottom:16px;
-      right:16px;
+      left:0; right:0; bottom:0;
+      padding:10px 14px;
+      border-top:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.22));
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
       font-size:12px;
       color:var(--muted);
-      pointer-events:none;
+    }
+    [data-theme="light"] .pageFoot{
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.88));
     }
 
-    .flip{
-      position:absolute; top:0; bottom:0;
-      width:50%;
-      transform-style:preserve-3d;
-      pointer-events:none;
-      opacity:0;
-      z-index:70;
-    }
-    .flip.fromRight{ left:50%; transform-origin:left; }
-    .flip.fromLeft{ left:0; transform-origin:right; }
-    .flip.full{ width:100%; left:0; }
-    .flip .front, .flip .back{
-      position:absolute; inset:0;
-      border-radius:var(--radius);
-      overflow:hidden;
-      background: var(--paper);
+    .progressBar{
+      height:10px;
       border:1px solid var(--stroke);
-      box-shadow:var(--shadow);
-      backface-visibility:hidden;
-    }
-    .flip .front .inner, .flip .back .inner{
-      padding: var(--padT) var(--padX) var(--padB);
-      height:100%;
+      border-radius:999px;
       overflow:hidden;
+      background: rgba(255,255,255,.04);
+      flex:1;
+      min-width:120px;
     }
-    .flip .back{ transform: rotateY(180deg); }
-
-    @keyframes flipForward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(-180deg)} }
-    @keyframes flipBackward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(180deg)} }
-    .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
-    .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
-
-    .chapter-cover{ text-align:center; padding: 18px 0 10px; }
-    .chapter-cover h2{
-      margin:0 0 8px; font-size:44px; font-weight:900;
-      letter-spacing:.10em; text-transform:uppercase;
-    }
-    .series-sub{
-      margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
-      font-size:14px; letter-spacing:.05em;
-    }
-    .author{
-      margin:10px 0 0; font-family: ui-sans-serif, system-ui;
-      font-size:14px; opacity:.92;
-    }
-    .chapter-title{ text-align:center; padding:10px 0 6px; }
-    .chapter-title h3{
-      margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
-      color:var(--muted); font-family: ui-sans-serif, system-ui;
-    }
-    .chapter-title h4{
-      margin:10px 0 0; font-size:30px; font-weight:900;
-      font-family: ui-sans-serif, system-ui;
-    }
-    hr.ornament{
-      border:0; border-top:1px solid var(--stroke);
-      margin:18px auto; width:66%; position:relative;
-    }
-    hr.ornament:after{
-      content:"✦"; position:absolute; left:50%;
-      transform:translate(-50%,-50%); top:0;
-      color:var(--muted); font-size:13px; padding:0 10px;
-      background: transparent;
-    }
-    .scene-break{
-      text-align:center; color:var(--muted);
-      letter-spacing:.35em; margin:16px 0 18px;
-      font-size:14px; user-select:none;
-    }
-    .dropcap:first-letter{
-      float:left; font-size:56px; line-height:.92;
-      padding-right:10px; padding-top:6px; font-weight:800;
+    .progressFill{
+      height:100%;
+      width:0%;
+      background: rgba(124,92,255,.50);
     }
 
-    .mTop, .mBottom{ display:none; }
-    @media (max-width:720px){
-      .top{ display:none; }
-
-      :root{
-        --padX: 18px;
-        --padT: 22px;
-        --padB: calc(18px + var(--footerSpace));
-      }
-
-      .mTop{
-        display:flex;
-        position:fixed; left:0; right:0; top:0;
-        z-index:80;
-        padding: calc(10px + var(--safeTop)) 12px 10px;
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-bottom:1px solid var(--stroke);
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-      }
-      .mTitle{
-        display:flex; flex-direction:column;
-        line-height:1.1;
-        min-width:0;
-      }
-      .mTitle .t1{
-        font-family: ui-sans-serif, system-ui;
-        font-weight:900;
-        font-size:14px;
-        white-space:nowrap;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        max-width: 44vw;
-      }
-      .mTitle .t2{
-        font-family: ui-sans-serif, system-ui;
-        font-size:12px;
-        color:var(--muted);
-      }
-      .mBtn{
-        border:1px solid var(--stroke);
-        background: rgba(0,0,0,.18);
-        color:var(--ink);
-        padding:10px 12px;
-        border-radius:999px;
-        font-family: ui-sans-serif, system-ui;
-        font-size:13px;
-        font-weight:800;
-        cursor:pointer;
-        user-select:none;
-        white-space:nowrap;
-      }
-      [data-theme="light"] .mBtn{ background: rgba(2,6,23,.06); }
-
-      .mBottom{
-        display:flex;
-        position:fixed; left:0; right:0; bottom:0;
-        z-index:80;
-        padding:10px 12px calc(10px + var(--safeBot));
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-top:1px solid var(--stroke);
-        gap:10px;
-      }
-      .mBottom .mBtn{ flex:1; text-align:center; }
-
-      .stage{
-        padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot));
-      }
-      .book{
-        width:98vw;
-        height: calc(100vh - (58px + var(--safeTop)) - (74px + var(--safeBot)) - 18px);
-      }
-      .spread{ display:none; }
-      .single{ display:block; }
-      .flip{ width:100%; left:0; }
-      .flip.fromRight{ left:0; transform-origin:left; }
-      .flip.fromLeft{ left:0; transform-origin:right; }
-
-      .inner p{ font-size:16px; line-height:1.82; }
-    }
-
-    .measureHost{
-      position:fixed;
-      left:-9999px;
-      top:-9999px;
-      visibility:hidden;
+    /* Flip animation overlay */
+    .flipLayer{
       pointer-events:none;
+      position:absolute;
+      inset:0;
+      display:none;
+    }
+    .flipLayer.show{ display:block; }
+    .flipHalf{
+      position:absolute;
+      top:0; bottom:0;
+      width:50%;
+      background: transparent;
+      transform-style: preserve-3d;
+    }
+    .flipHalf.left{ left:0; transform-origin: right center; }
+    .flipHalf.right{ right:0; transform-origin: left center; }
+    .flipFace{
+      position:absolute; inset:0;
+      backface-visibility:hidden;
+      border-right:1px solid var(--stroke);
+      background:
+        radial-gradient(900px 400px at 20% 0%, rgba(124,92,255,.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .flipBack{
+      position:absolute; inset:0;
+      backface-visibility:hidden;
+      transform: rotateY(180deg);
+      border-right:1px solid var(--stroke);
+      background:
+        radial-gradient(900px 400px at 20% 0%, rgba(0,255,198,.06), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
     }
 
-    /* ===== MODALS ===== */
+    /* Side panel */
+    .side{ padding:14px; }
+    .sideTitle{
+      font-weight:950;
+      letter-spacing:.10em;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-size:12px;
+      margin:4px 0 10px;
+    }
+    .stat{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
+      margin-bottom:10px;
+    }
+    [data-theme="light"] .stat{ background: rgba(2,6,23,.04); }
+    .stat .k{ color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase; font-weight:900; }
+    .stat .v{ font-weight:950; margin-top:4px; }
+
+    .tip{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(255,255,255,.06);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -317,388 +356,333 @@
       padding:16px;
     }
     .modal.show{display:flex}
-
-    /* ✅ FIX: make modal content scrollable (mobile + desktop) */
     .modalCard{
-      width:min(860px, 96vw);
+      width:min(900px, 96vw);
       border:1px solid var(--stroke);
       background: rgba(15,20,40,.96);
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
-
-      max-height: calc(100vh - 32px - var(--safeTop) - var(--safeBot));
+      max-height: 86vh;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
     }
     [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
-
     .modalHead{
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 6px 10px;
-      position: sticky;
-      top: 0;
-      z-index: 2;
+      position:sticky; top:0;
       background: inherit;
-      backdrop-filter: blur(10px);
+      z-index:2;
+      border-bottom: 1px solid var(--stroke);
     }
-    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
-
-    .termsBox{
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      padding:12px;
-      background: rgba(255,255,255,.06);
-      max-height: 56vh;
-      overflow:auto;
-      font-family: ui-sans-serif, system-ui;
-      color: var(--ink);
-    }
-    .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
-    .checkRow{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 6px 0;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .checkRow input{ width:auto; margin-top:3px; }
-    .btn2{
+    .modalHead h3{margin:0; font-size:15px; letter-spacing:.06em; text-transform:uppercase}
+    .x{
+      cursor:pointer; padding:8px 10px; border-radius:12px;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.06);
-      color:var(--ink);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      user-select:none;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .btn2:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn2.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-
-    /* community */
-    .xBtn{
-      cursor:pointer;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      font-family: ui-sans-serif, system-ui;
+      flex:0 0 auto;
       user-select:none;
     }
-    .tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      padding: 6px 6px 0;
-    }
-    .tabBtn{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      padding:8px 10px;
-      border-radius:999px;
-      cursor:pointer;
-      font: 900 12px ui-sans-serif,system-ui;
-      letter-spacing:.04em;
-      user-select:none;
-    }
-    .tabBtn.active{
-      color: var(--ink);
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .tabPanel{
-      display:none;
-      padding: 10px 6px 4px;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .tabPanel.show{ display:block; }
 
-    .fieldLabel{
-      font: 800 12px ui-sans-serif,system-ui;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color: var(--muted);
-      margin: 10px 0 6px;
+    /* Community layout */
+    .communityGrid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+      padding:10px 6px 6px;
     }
-    .inp, .sel, .txt{
+    .formRow{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width:640px){
+      .formRow{ grid-template-columns: 1fr; }
+    }
+    label{
+      font-size:12px;color:var(--muted);font-weight:800;
+      letter-spacing:.06em;text-transform:uppercase
+    }
+    input, select, textarea{
       width:100%;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.08);
       padding:10px 12px;
       border-radius:14px;
-      color: var(--ink);
+      color:var(--ink);
       outline:none;
-      font: 600 14px ui-sans-serif,system-ui;
+      font-size:14px;
+      font-family: ui-sans-serif, system-ui;
     }
-    .txt{ min-height: 110px; resize: vertical; line-height:1.5; }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:520px){
-      .grid2{ grid-template-columns: 1fr; }
-    }
+    textarea{ min-height:110px; resize:vertical; }
+    .note{ color:var(--muted); font-size:12px; line-height:1.55; }
 
-    .miniNote{
-      color: var(--muted);
-      font: 600 12px ui-sans-serif,system-ui;
-      line-height:1.45;
-      opacity:.92;
-      margin-top:8px;
-    }
-    .hrSoft{
-      border:0;
-      border-top:1px solid var(--stroke);
-      margin: 10px 0;
-      opacity:.9;
+    /* Bottom mobile hints */
+    .swipeHint{
+      margin-top:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:12px;
+      color:var(--muted);
     }
   </style>
 </head>
 
 <body>
-  <!-- Mobile top -->
-  <div class="mTop">
-    <div class="mBtn" id="mBack">← Library</div>
-
-    <div class="mTitle">
-      <div class="t1" id="mBookTitle">book</div>
-      <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
-    </div>
-
-    <!-- ✅ MOBILE COMMUNITY -->
-    <div style="display:flex;gap:8px;align-items:center;">
-      <div class="mBtn" id="mCommunity">💬</div>
-      <div class="mBtn" id="mTheme">Theme</div>
-    </div>
-  </div>
-
-  <!-- Desktop top -->
   <div class="top">
-    <div class="row">
-      <div class="chip" id="backBtn">← <strong>Library</strong></div>
-      <div class="chip">Book: <strong id="bookTitle">book</strong></div>
-      <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
-      <div class="chip" id="themeBtn">Theme</div>
-      <div class="chip" id="communityBtn">💬 <strong>Community</strong></div>
-      <div class="chip" id="syncChip"><span id="syncDot">●</span> <strong id="syncText">Guest</strong></div>
-    </div>
-    <div class="row">
-      <div class="chip" id="prevBtn">Prev</div>
-      <div class="chip" id="nextBtn">Next</div>
-    </div>
-  </div>
-
-  <!-- Mobile bottom -->
-  <div class="mBottom">
-    <div class="mBtn" id="mPrev">Prev</div>
-    <div class="mBtn" id="mNext">Next</div>
-  </div>
-
-  <div class="stage">
-    <div class="book" id="bookTap">
-      <div class="spread" id="spread">
-        <div class="page" id="pageL">
-          <div class="inner" id="leftPage"></div>
-          <div class="pageNum" id="leftNum"></div>
-        </div>
-        <div class="page" id="pageR">
-          <div class="inner" id="rightPage"></div>
-          <div class="pageNum" id="rightNum"></div>
-        </div>
+    <div class="nav">
+      <div class="brand" id="brand">
+        THIS IS US
+        <small id="brandSub">Reader</small>
       </div>
 
-      <div class="single" id="single">
-        <div class="page" id="pageS">
-          <div class="inner" id="singlePage"></div>
-          <div class="pageNum" id="singleNum"></div>
+      <div class="right">
+        <div class="pill" id="backBtn">← <strong>Library</strong></div>
+        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
+        <div class="pill" id="communityBtn">💬 <strong>Community</strong></div>
+        <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+        <div class="pill" id="statusPill">
+          <span class="dot">●</span>
+          <strong id="statusText">Guest</strong>
         </div>
-      </div>
-
-      <div class="flip" id="flip">
-        <div class="front"><div class="inner" id="flipFront"></div></div>
-        <div class="back"><div class="inner" id="flipBack"></div></div>
       </div>
     </div>
   </div>
 
-  <div class="measureHost" id="measureHost"></div>
+  <div class="wrap">
+    <div class="grid">
+      <!-- Reader -->
+      <div class="card readerCard">
+        <div class="readerHead">
+          <div class="titleLine">
+            <h1 id="bookTitle">Book</h1>
+            <div class="sub" id="bookMeta">Pages • Progress</div>
+          </div>
+
+          <div class="controls">
+            <button class="btn" id="prevBtn">← Prev</button>
+            <button class="btn primary" id="nextBtn">Next →</button>
+          </div>
+        </div>
+
+        <div class="bookStage" id="stage">
+          <div class="book" id="book">
+            <!-- Left page -->
+            <div class="page" id="leftPage">
+              <div class="pageContent" id="leftContent"></div>
+              <div class="pageFoot">
+                <span id="leftNum">—</span>
+                <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+                <span id="pct">0%</span>
+              </div>
+            </div>
+
+            <!-- Right page -->
+            <div class="page" id="rightPage">
+              <div class="pageContent" id="rightContent"></div>
+              <div class="pageFoot">
+                <span id="rightNum">—</span>
+                <span id="syncLine">Local</span>
+              </div>
+            </div>
+
+            <!-- Flip overlay -->
+            <div class="flipLayer" id="flipLayer" aria-hidden="true">
+              <div class="flipHalf right" id="flipRight">
+                <div class="flipFace"></div>
+                <div class="flipBack"></div>
+              </div>
+              <div class="flipHalf left" id="flipLeft">
+                <div class="flipFace"></div>
+                <div class="flipBack"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swipeHint">
+          <span>Desktop: use buttons / arrow keys</span>
+          <span>Mobile: swipe left/right</span>
+        </div>
+      </div>
+
+      <!-- Side panel -->
+      <div class="card side">
+        <div class="sideTitle">Stats</div>
+        <div class="stat">
+          <div class="k">Readers</div>
+          <div class="v"><span id="readerCount">—</span> Total</div>
+        </div>
+        <div class="stat">
+          <div class="k">Rating</div>
+          <div class="v" id="ratingSummary">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Your progress</div>
+          <div class="v"><span id="progressText">—</span></div>
+        </div>
+        <div class="tip" id="tipBox">
+          Tip: Sign in to sync your progress across devices and react to comments.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal" id="authModal">
+    <div class="modalCard" style="width:min(560px, 96vw);">
+      <div class="modalHead">
+        <h3>Account</h3>
+        <div class="x" id="authClose">✕</div>
+      </div>
+
+      <div class="communityGrid">
+        <div class="formRow">
+          <div>
+            <label>Email</label>
+            <input id="email" type="email" placeholder="Email">
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="password" type="password" placeholder="Password">
+          </div>
+        </div>
+
+        <div class="formRow">
+          <button class="btn primary" id="loginBtn">Sign In</button>
+          <button class="btn" id="signupBtn">Create Account</button>
+        </div>
+
+        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
+
+        <div class="note">
+          Reading works without login. Sign in only if you want cloud sync + reactions + ratings + achievements.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- COMMUNITY MODAL -->
-  <div class="modal" id="communityModal" aria-hidden="true">
-    <div class="modalCard" id="communityCard">
-      <div class="modalHead">
-        <h3>Community</h3>
-        <div class="xBtn" id="communityClose">✕</div>
-      </div>
-
-      <div class="miniNote" id="communityAuthHint" style="margin:0 6px 6px;">
-        Loading…
-      </div>
-
-      <div class="tabs">
-        <button class="tabBtn active" data-tab="commentsTab">Comments</button>
-        <button class="tabBtn" data-tab="ratingTab">Rating</button>
-        <button class="tabBtn" data-tab="achTab">Achievements</button>
-        <button class="tabBtn" data-tab="guideTab">Guidelines</button>
-      </div>
-
-      <div class="tabPanel show" id="commentsTab">
-        <div class="miniNote">Leave a comment for this book. (Rating inside comments is optional.)</div>
-
-        <form id="commentForm" style="margin-top:10px;">
-          <div class="grid2">
-            <div>
-              <div class="fieldLabel">Name</div>
-              <input class="inp" id="cName" placeholder="Reader" />
-            </div>
-            <div>
-              <div class="fieldLabel">Rating (optional)</div>
-              <select class="sel" id="cRating">
-                <option value="0">No rating</option>
-                <option value="1">★ 1</option>
-                <option value="2">★ 2</option>
-                <option value="3">★ 3</option>
-                <option value="4">★ 4</option>
-                <option value="5">★ 5</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="margin-top:10px;">
-            <div class="fieldLabel">Comment</div>
-            <textarea class="txt" id="cText" placeholder="Write your comment…"></textarea>
-          </div>
-
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-            <button class="btn2 primary" type="submit">Post Comment</button>
-            <div class="note" id="cMsg"></div>
-          </div>
-        </form>
-
-        <hr class="hrSoft">
-
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px;">
-          Latest comments
-        </div>
-        <div id="commentsList" style="margin-top:10px;">Loading…</div>
-      </div>
-
-      <div class="tabPanel" id="ratingTab">
-        <div class="miniNote">Signed-in users can rate once (you can update it anytime).</div>
-
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;min-width:180px;">
-            <div style="font-weight:950">Average</div>
-            <div id="ratingSummary" style="margin-top:6px;opacity:.9;">Loading…</div>
-          </div>
-
-          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;">
-            <div class="fieldLabel" style="margin:0 0 6px;">Your rating</div>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <select class="sel" id="myRatingSel" style="width:auto;min-width:170px;">
-                <option value="0">Select…</option>
-                <option value="1">★ 1</option>
-                <option value="2">★ 2</option>
-                <option value="3">★ 3</option>
-                <option value="4">★ 4</option>
-                <option value="5">★ 5</option>
-              </select>
-              <button class="btn2 primary" id="saveMyRating" type="button">Save</button>
-            </div>
-            <div class="note" id="ratingMsg" style="margin-top:8px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabPanel" id="achTab">
-        <div class="miniNote">Achievements unlock as you read. Guests can see popups, but sign in to save them.</div>
-        <div id="achList" style="margin-top:10px;">Loading…</div>
-      </div>
-
-      <div class="tabPanel" id="guideTab">
-        <div id="guideMount" style="margin-top:10px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TERMS MODAL -->
-  <div class="modal" id="termsModal">
+  <div class="modal" id="communityModal">
     <div class="modalCard">
       <div class="modalHead">
-        <h3>Terms & Conditions</h3>
-        <div></div>
+        <h3>Community</h3>
+        <div class="x" id="communityClose">✕</div>
       </div>
 
-      <div class="termsBox" id="termsText">
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
-        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+      <div class="communityGrid">
+        <div class="card" style="box-shadow:none; border-radius:18px; padding:12px;">
+          <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px">Rate this book</div>
+          <div class="formRow" style="margin-top:10px">
+            <div>
+              <label>Your rating</label>
+              <select id="myRating">
+                <option value="0">Select…</option>
+                <option value="1">1 ★</option>
+                <option value="2">2 ★★</option>
+                <option value="3">3 ★★★</option>
+                <option value="4">4 ★★★★</option>
+                <option value="5">5 ★★★★★</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:end;gap:10px">
+              <button class="btn primary" id="rateBtn">Submit</button>
+              <div class="note" id="rateMsg"></div>
+            </div>
+          </div>
+        </div>
 
-        <p><strong>1) Acceptance</strong><br>
-          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
-        </p>
-        <p><strong>2) Eligibility</strong><br>
-          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
-        </p>
-        <p><strong>3) Content & Reader Experience</strong><br>
-          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
-        </p>
-        <p><strong>4) Accounts</strong><br>
-          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
-        </p>
-        <p><strong>5) User Submissions</strong><br>
-          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
-        </p>
-        <p><strong>6) Notifications (Optional)</strong><br>
-          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
-        </p>
-        <p><strong>7) Privacy</strong><br>
-          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
-        </p>
-        <p><strong>8) Availability & Changes</strong><br>
-          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
-        </p>
-        <p><strong>9) Disclaimer</strong><br>
-          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
-        </p>
-        <p><strong>10) Limitation of Liability</strong><br>
-          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
-        </p>
-        <p><strong>11) Contact</strong><br>
-          For questions, removal requests, or opt-out requests, contact the site owner.
-        </p>
-      </div>
+        <div class="card" style="box-shadow:none; border-radius:18px; padding:12px;">
+          <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px">Leave a comment</div>
 
-      <div class="checkRow">
-        <input type="checkbox" id="agreeTerms">
-        <div class="note">I have read and agree to the Terms & Conditions.</div>
-      </div>
+          <form id="commentForm" style="margin-top:10px">
+            <div class="formRow">
+              <div>
+                <label>Name</label>
+                <input id="cName" placeholder="Your name (optional)">
+              </div>
+              <div>
+                <label>Stars (optional)</label>
+                <select id="cRating">
+                  <option value="0">None</option>
+                  <option value="1">1 ★</option>
+                  <option value="2">2 ★★</option>
+                  <option value="3">3 ★★★</option>
+                  <option value="4">4 ★★★★</option>
+                  <option value="5">5 ★★★★★</option>
+                </select>
+              </div>
+            </div>
 
-      <div style="display:grid; gap:10px; padding-top:10px">
-        <button class="btn2 primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
-        <div class="note" id="termsMsg"></div>
+            <div style="margin-top:10px">
+              <label>Comment</label>
+              <textarea id="cText" placeholder="Share your thoughts…"></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px">
+              <button class="btn primary" type="submit">Post</button>
+              <div class="note" id="cMsg"></div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" style="box-shadow:none; border-radius:18px; padding:12px;">
+          <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px">Comments</div>
+          <div id="commentsList" style="margin-top:10px"></div>
+        </div>
+
+        <div class="card" style="box-shadow:none; border-radius:18px; padding:12px;">
+          <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px">Your achievements</div>
+          <div id="achList" style="margin-top:10px"></div>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- BOOK CONTENT (IN-PAGE so it never breaks/overlaps) -->
+  <template id="book1Content">
+    <section class="chapter-cover">
+      <h2>THIS IS US</h2>
+      <p class="series-sub">Book I — <em>Where We Began</em></p>
+      <p class="author">by Shengbe Koker</p>
+    </section>
+
+    <hr class="ornament"/>
+
+    <section class="chapter-title">
+      <h3>Chapter One</h3>
+      <h4>Fresh Starts</h4>
+    </section>
+
+    <p class="dropcap">Mukeh did not believe in fresh starts.</p>
+    <p>He believed in survival.</p>
+    <p>When he transferred at the beginning of the academic year, people treated it like opportunity — a clean slate, a reset button, a chance to become someone new.</p>
+    <p>But walking through the school gates that first morning didn’t feel new.</p>
+    <p>It felt heavy.</p>
+    <p>The courtyard was already alive — voices layered over each other, laughter breaking easily between groups who had known each other for years. Students leaned against walls with the comfort of familiarity. Others crossed the grounds like they belonged to every inch of it.</p>
+    <p>Mukeh adjusted the strap of his bag and walked forward.</p>
+
+    <!-- Add more paragraphs here. The reader will auto-split into pages. -->
+  </template>
 
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
-      getFirestore, doc, getDoc, setDoc, serverTimestamp,
-      collection, getDocs, query, orderBy
+      getAuth, onAuthStateChanged,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
+    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    import { wireTermsGate } from "./terms-gate.js";
-    wireTermsGate();
-
-    import { bumpReaderCountOnce } from "./public-feed.js";
+    import {
+      bumpReaderCountOnce,
+      renderReaderCount
+    } from "./public-feed.js";
 
     import {
       renderComments,
@@ -706,572 +690,221 @@
       submitRating,
       loadMyRating,
       renderRatingSummary,
-      trackAchievements,
       renderMyAchievements,
+      trackAchievements,
       guidelinesHTML
     } from "./reader-community.js";
 
-    const BOOK_FILES = {
-      book1: "./books/book1.html",
-      coming: "./books/coming-soon.html"
-    };
+    // =========================
+    // Utilities
+    // =========================
+    function qs(k){ return new URLSearchParams(location.search).get(k); }
+    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
-    const params = new URLSearchParams(location.search);
-    const bookId = params.get("book") || "book1";
-    const bookFile = BOOK_FILES[bookId] || BOOK_FILES.coming;
-
-    document.getElementById("bookTitle").textContent = bookId;
-    document.getElementById("mBookTitle").textContent = bookId;
-
-    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
-
+    // =========================
     // Theme
+    // =========================
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    // Navigation
-    function goLibrary(){ location.href = "index.html"; }
-    document.getElementById("backBtn").addEventListener("click", goLibrary);
-    document.getElementById("mBack").addEventListener("click", goLibrary);
-
-    // DOM refs
-    const pageL = document.getElementById("pageL");
-    const pageS = document.getElementById("pageS");
-
-    const leftPage = document.getElementById("leftPage");
-    const rightPage = document.getElementById("rightPage");
-    const singlePage = document.getElementById("singlePage");
-
-    const leftNum = document.getElementById("leftNum");
-    const rightNum = document.getElementById("rightNum");
-    const singleNum = document.getElementById("singleNum");
-
-    const pageLabel = document.getElementById("pageLabel");
-    const pageTotalEl = document.getElementById("pageTotal");
-    const mPageLabel = document.getElementById("mPageLabel");
-    const mPageTotal = document.getElementById("mPageTotal");
-
-    const flip = document.getElementById("flip");
-    const flipFront = document.getElementById("flipFront");
-    const flipBack  = document.getElementById("flipBack");
-
-    const measureHost = document.getElementById("measureHost");
-
-    const syncDot = document.getElementById("syncDot");
-    const syncText = document.getElementById("syncText");
-
-    // Firebase (safe init)
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    // =========================
+    // Firebase
+    // =========================
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    let UID = null;
 
-    // Reader count
-    const COUNT_KEY = `tiu_counted:${bookId}`;
-    async function bumpReaderAfterAuth(){
-      if(localStorage.getItem(COUNT_KEY) === "yes") return;
-      try{
-        await bumpReaderCountOnce({ bookId, uid: UID || null });
-        localStorage.setItem(COUNT_KEY, "yes");
-      }catch{}
+    // =========================
+    // Book selection
+    // =========================
+    const bookId = qs("book") || "book1";
+    const brandSub = document.getElementById("brandSub");
+    const bookTitle = document.getElementById("bookTitle");
+    const bookMeta = document.getElementById("bookMeta");
+    const syncLine = document.getElementById("syncLine");
+    const progressText = document.getElementById("progressText");
+
+    const BOOKS = {
+      book1: {
+        title: "Book I — Where We Began",
+        templateId: "book1Content"
+      },
+      coming: {
+        title: "Coming Soon",
+        templateId: null
+      }
+    };
+
+    const bookInfo = BOOKS[bookId] || BOOKS.book1;
+    brandSub.textContent = bookInfo.title;
+    bookTitle.textContent = bookInfo.title;
+
+    // =========================
+    // Navigation buttons
+    // =========================
+    document.getElementById("backBtn").onclick = ()=> location.href = "index.html";
+    document.getElementById("themeBtn").onclick = async ()=>{
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+      if(window.__UID){
+        try{
+          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
+        }catch{}
+      }
+    };
+
+    // =========================
+    // AUTH modal
+    // =========================
+    const authModal = document.getElementById("authModal");
+    const authBtn  = document.getElementById("authBtn");
+    const authText = document.getElementById("authText");
+    const authClose = document.getElementById("authClose");
+
+    function openAuthModal(){ authModal.classList.add("show"); document.body.style.overflow="hidden"; }
+    function closeAuthModal(){ authModal.classList.remove("show"); document.body.style.overflow=""; }
+
+    authBtn.onclick = openAuthModal;
+    authClose.onclick = closeAuthModal;
+    authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuthModal(); });
+
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // =========================
+    // COMMUNITY modal
+    // =========================
+    const communityModal = document.getElementById("communityModal");
+    const communityBtn = document.getElementById("communityBtn");
+    const communityClose = document.getElementById("communityClose");
+
+    function openCommunity(){
+      communityModal.classList.add("show");
+      document.body.style.overflow="hidden";
+      // render community content every open (fresh counts, new comments, etc.)
+      renderComments({ bookId, mountId:"commentsList", max: 40 });
+      renderRatingSummary({ bookId, mountId:"ratingSummary" });
+      renderMyAchievements({ bookId, mountId:"achList" });
+
+      // jump to comment if deep link exists
+      const targetId = qs("comment");
+      if(targetId){
+        setTimeout(()=>{
+          const el = document.getElementById("comment-" + targetId);
+          if(el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+        }, 450);
+      }
+    }
+    function closeCommunity(){
+      communityModal.classList.remove("show");
+      document.body.style.overflow="";
     }
 
-    const progressKeyLocal = `progress:${bookId}`;
-    let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
-    if (isNaN(i) || i < 0) i = 0;
+    communityBtn.onclick = openCommunity;
+    communityClose.onclick = closeCommunity;
+    communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
 
-    function progressDocRef(uid){
-      return doc(db, "users", uid, "progress", bookId);
+    // auto-open if URL says open=community
+    if(qs("open") === "community"){
+      setTimeout(()=> openCommunity(), 300);
     }
 
-    async function loadCloudProgressIfAny(){
-      if(!UID) return;
+    // =========================
+    // Auth state + sync hints
+    // =========================
+    const statusText = document.getElementById("statusText");
+    const tipBox = document.getElementById("tipBox");
+
+    async function loadUserThemeAndApply(uid){
       try{
-        const snap = await getDoc(progressDocRef(UID));
-        if(snap.exists()){
-          const d = snap.data() || {};
-          if(Number.isFinite(d.index) && d.index >= 0){
-            i = Math.max(i, Math.floor(d.index));
-          }
+        const snap = await getDoc(doc(db,"users",uid));
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        if(d.theme && (d.theme==="dark" || d.theme==="light")){
+          document.documentElement.dataset.theme = d.theme;
+          localStorage.setItem("theme", d.theme);
         }
-      }catch{}
-    }
-
-    async function saveCloudProgress(){
-      if(!UID) return;
-      try{
-        await setDoc(progressDocRef(UID), { index: i, updatedAt: serverTimestamp() }, { merge:true });
-      }catch{}
-    }
-
-    async function saveCloudTheme(theme){
-      if(!UID) return;
-      try{
-        await setDoc(doc(db,"users",UID), { theme, updatedAt: serverTimestamp() }, { merge:true });
       }catch{}
     }
 
     onAuthStateChanged(auth, async (user)=>{
-      UID = user ? user.uid : null;
+      window.__UID = user ? user.uid : null;
 
-      const hint = document.getElementById("communityAuthHint");
-      if(hint){
-        hint.textContent = UID
-          ? "Signed in — you can post comments and rate."
-          : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
-      }
+      if(user){
+        statusText.textContent = "Synced";
+        authText.textContent = "Account";
+        logoutBtn.style.display = "inline-flex";
+        syncLine.textContent = "Cloud sync";
+        tipBox.textContent = "Cloud sync is ON. Reactions, ratings, achievements enabled.";
 
-      if(UID){
-        syncDot.style.color = "rgba(0,255,198,.9)";
-        syncText.textContent = "Synced";
+        await setDoc(doc(db,"users",user.uid), {
+          email: user.email || "",
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+
+        await loadUserThemeAndApply(user.uid);
+
+        // load my rating into selector
         try{
-          const u = await getDoc(doc(db,"users",UID));
-          if(u.exists()){
-            const data = u.data() || {};
-            if(data.theme === "dark" || data.theme === "light"){
-              document.documentElement.dataset.theme = data.theme;
-              localStorage.setItem("theme", data.theme);
-            }
-          }
+          const mine = await loadMyRating({ bookId });
+          document.getElementById("myRating").value = String(mine || 0);
         }catch{}
       }else{
-        syncDot.style.color = "rgba(255,255,255,.65)";
-        syncText.textContent = "Guest";
-      }
+        statusText.textContent = "Guest";
+        authText.textContent = "Sign in";
+        logoutBtn.style.display = "none";
+        syncLine.textContent = "Local";
+        tipBox.textContent = "Tip: Sign in to sync your progress across devices and react to comments.";
 
-      await bumpReaderAfterAuth();
-
-      if(UID){
-        await loadCloudProgressIfAny();
-        render();
+        document.getElementById("myRating").value = "0";
       }
     });
 
-    function toggleTheme(){
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      saveCloudTheme(next);
-      paginateAndRender(true);
-    }
-    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-    document.getElementById("mTheme").addEventListener("click", toggleTheme);
-
-    // Load book HTML
-    let BOOK_HTML = "<p class='muted'>Loading…</p>";
-    let PAGES = [];
-
-    async function loadBook(){
-      const res = await fetch(bookFile, { cache:"no-store" });
-      if(!res.ok) throw new Error("Could not load: " + res.status);
-      BOOK_HTML = await res.text();
-    }
-
-    async function loadChaptersFromCloud(){
-      if(bookId !== "book1") return "";
+    loginBtn.onclick = async ()=>{
       try{
-        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
-        const snap = await getDocs(qy);
-        if(snap.empty) return "";
-        const parts = [];
-        snap.forEach(docSnap=>{
-          const d = docSnap.data() || {};
-          if(d && typeof d.html === "string" && d.html.trim().length){
-            parts.push(d.html.trim());
-          }
-        });
-        if(parts.length === 0) return "";
-        return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
-      }catch{
-        return "";
-      }
-    }
-
-    function injectChapterBreaks(html){
-      return html
-        .replaceAll('<section class="chapter-cover">','<!--PAGEBREAK--><section class="chapter-cover">')
-        .replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
-    }
-
-    function escapeHtml(str){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function buildMeasurer(){
-      const innerVisible = isMobile() ? singlePage : leftPage;
-      const pageVisible  = isMobile() ? pageS : pageL;
-
-      const pageW = Math.max(320, Math.floor(pageVisible.getBoundingClientRect().width));
-      const cs = getComputedStyle(innerVisible);
-
-      const meas = document.createElement("div");
-      meas.className = "inner";
-      meas.style.width = pageW + "px";
-      meas.style.padding = cs.padding;
-      meas.style.fontFamily = cs.fontFamily;
-      meas.style.fontSize = cs.fontSize;
-      meas.style.lineHeight = cs.lineHeight;
-      meas.style.letterSpacing = cs.letterSpacing;
-
-      measureHost.innerHTML = "";
-      measureHost.appendChild(meas);
-      return { meas, pageVisible, innerVisible };
-    }
-
-    function getAvailableTextHeight(pageEl, innerEl){
-      const pageH = Math.max(240, pageEl.getBoundingClientRect().height);
-      const cs = getComputedStyle(innerEl);
-      const padTop = parseFloat(cs.paddingTop) || 0;
-      const padBot = parseFloat(cs.paddingBottom) || 0;
-      return Math.max(140, Math.floor(pageH - padTop - padBot - 2));
-    }
-
-    function paginate(html){
-      const src = injectChapterBreaks(html);
-      const container = document.createElement("div");
-      container.innerHTML = src;
-
-      const blocks = Array.from(container.childNodes).filter(n => {
-        if(n.nodeType === 3) return n.textContent.trim().length;
-        if(n.nodeType === 1) return true;
-        if(n.nodeType === 8) return true;
-        return false;
-      });
-
-      const { meas, pageVisible, innerVisible } = buildMeasurer();
-      const maxH = getAvailableTextHeight(pageVisible, innerVisible);
-
-      const pages = [];
-      let pageHTML = "";
-
-      function fits(testHTML){
-        meas.innerHTML = testHTML;
-        return meas.scrollHeight <= maxH;
-      }
-
-      function pushPage(){
-        const trimmed = pageHTML.trim();
-        if(trimmed.length){
-          pages.push(trimmed);
-          pageHTML = "";
-        }
-      }
-
-      function splitParagraphNode(pNode){
-        const cls = pNode.getAttribute("class");
-        const text = (pNode.innerText || pNode.textContent || "").trim();
-        const words = text.split(/\s+/).filter(Boolean);
-
-        let buf = "";
-        const out = [];
-
-        for(const w of words){
-          const next = buf ? (buf + " " + w) : w;
-          const part = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
-          if(fits(pageHTML + part)){
-            buf = next;
-          }else{
-            if(buf){
-              out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-              buf = w;
-            }else{
-              pushPage();
-              buf = w;
-            }
-          }
-        }
-
-        if(buf){
-          out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-        }
-        return out;
-      }
-
-      for(const node of blocks){
-        if(node.nodeType === 8 && String(node.data||"").includes("PAGEBREAK")){
-          pushPage();
-          continue;
-        }
-
-        let nodeHTML = "";
-        if(node.nodeType === 3){
-          nodeHTML = `<p>${escapeHtml(node.textContent)}</p>`;
-        }else if(node.nodeType === 1){
-          nodeHTML = node.outerHTML || "";
-        }else{
-          continue;
-        }
-
-        if(fits(pageHTML + nodeHTML)){
-          pageHTML += nodeHTML;
-          continue;
-        }
-
-        if(pageHTML.length){
-          pushPage();
-          if(fits(pageHTML + nodeHTML)){
-            pageHTML += nodeHTML;
-            continue;
-          }
-        }
-
-        if(node.nodeType === 1 && node.tagName === "P"){
-          const parts = splitParagraphNode(node);
-          for(const part of parts){
-            if(fits(pageHTML + part)){
-              pageHTML += part;
-            }else{
-              pushPage();
-              pageHTML = part;
-            }
-          }
-          continue;
-        }
-
-        pageHTML = nodeHTML;
-        pushPage();
-      }
-
-      pushPage();
-      return pages.filter(p => p.trim().length);
-    }
-
-    function normalizeIndex(){
-      if(i < 0) i = 0;
-      if(i > PAGES.length - 1) i = PAGES.length - 1;
-      if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
-    }
-
-    function updateCounters(){
-      const total = String(PAGES.length || 0);
-      pageTotalEl.textContent = total;
-      mPageTotal.textContent = total;
-      pageLabel.textContent = String(i+1);
-      mPageLabel.textContent = String(i+1);
-    }
-
-    function saveProgressLocal(){
-      localStorage.setItem(progressKeyLocal, String(i));
-    }
-
-    async function saveProgressAll(){
-      saveProgressLocal();
-      await saveCloudProgress();
-    }
-
-    // Achievements
-    let __lastAchIndex = -999;
-
-    function render(){
-      if(PAGES.length === 0){
-        if(isMobile()){
-          singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
-        }else{
-          leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
-          rightPage.innerHTML = "";
-        }
-        updateCounters();
-        return;
-      }
-
-      normalizeIndex();
-      updateCounters();
-
-      if(isMobile()){
-        singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
-        singleNum.textContent = String(i+1);
-      }else{
-        const leftIdx = i;
-        const rightIdx = i+1;
-        leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
-        rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
-        leftNum.textContent = String(leftIdx+1);
-        rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
-      }
-
-      saveProgressAll();
-
-      if(__lastAchIndex !== i){
-        __lastAchIndex = i;
-        trackAchievements({ bookId, pageIndex: i, totalPages: PAGES.length }).catch(()=>{});
-      }
-    }
-
-    function animateFlip(nextIndex){
-      if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
-
-      const forward = nextIndex > i;
-
-      flip.className = "flip";
-      void flip.offsetWidth;
-
-      if(isMobile()){
-        flip.classList.add("full");
-        if(forward){ flip.classList.add("fromRight","animForward"); }
-        else{ flip.classList.add("fromLeft","animBackward"); }
-
-        flipFront.innerHTML = PAGES[i] || "";
-        flipBack.innerHTML  = PAGES[nextIndex] || "";
-      }else{
-        if(forward){
-          flip.classList.add("fromRight","animForward");
-          flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
-        }else{
-          flip.classList.add("fromLeft","animBackward");
-          flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
-        }
-      }
-
-      setTimeout(()=>{
-        i = nextIndex;
-        render();
-        flip.className = "flip";
-      }, 560);
-    }
-
-    function next(){
-      if(isMobile()){
-        if(i+1 <= PAGES.length-1) animateFlip(i+1);
-      }else{
-        if(i+2 <= PAGES.length-1) animateFlip(i+2);
-      }
-    }
-
-    function prev(){
-      if(isMobile()){
-        if(i-1 >= 0) animateFlip(i-1);
-      }else{
-        if(i-2 >= 0) animateFlip(i-2);
-      }
-    }
-
-    document.getElementById("nextBtn").addEventListener("click", next);
-    document.getElementById("prevBtn").addEventListener("click", prev);
-    document.getElementById("mNext").addEventListener("click", next);
-    document.getElementById("mPrev").addEventListener("click", prev);
-
-    document.addEventListener("keydown",(e)=>{
-      if(e.key==="ArrowRight") next();
-      if(e.key==="ArrowLeft") prev();
-      if(e.key==="Escape"){
-        const cm = document.getElementById("communityModal");
-        const tm = document.getElementById("termsModal");
-        if(cm?.classList.contains("show")){
-          cm.classList.remove("show");
-          cm.setAttribute("aria-hidden","true");
-          document.body.style.overflow = "";
-        }
-        if(tm?.classList.contains("show")){
-          // terms modal is mandatory gate; do nothing on ESC
-        }
-      }
-    });
-
-    document.getElementById("bookTap").addEventListener("click",(e)=>{
-      if(!isMobile()) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      if(x < rect.width * 0.42) prev();
-      else if(x > rect.width * 0.58) next();
-    });
-
-    let sx=0, sy=0, st=0;
-    document.getElementById("bookTap").addEventListener("touchstart",(e)=>{
-      if(!isMobile()) return;
-      const t = e.touches[0];
-      sx = t.clientX; sy = t.clientY; st = Date.now();
-    }, {passive:true});
-
-    document.getElementById("bookTap").addEventListener("touchend",(e)=>{
-      if(!isMobile()) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx;
-      const dy = t.clientY - sy;
-      const dt = Date.now() - st;
-      if(Math.abs(dx) > 45 && Math.abs(dy) < 70 && dt < 700){
-        if(dx < 0) next();
-        else prev();
-      }
-    }, {passive:true});
-
-    function paginateAndRender(forceReflow=false){
-      if(forceReflow){ void document.body.offsetHeight; }
-      PAGES = paginate(BOOK_HTML);
-      render();
-    }
-
-    // COMMUNITY MODAL WIRING
-    const communityModal = document.getElementById("communityModal");
-    const communityCard  = document.getElementById("communityCard");
-    const communityBtn = document.getElementById("communityBtn");
-    const communityClose = document.getElementById("communityClose");
-    const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
-    const panels = {
-      commentsTab: document.getElementById("commentsTab"),
-      ratingTab: document.getElementById("ratingTab"),
-      achTab: document.getElementById("achTab"),
-      guideTab: document.getElementById("guideTab")
+        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+        closeAuthModal();
+      }catch(e){ alert(e.message); }
+    };
+    signupBtn.onclick = async ()=>{
+      try{
+        const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          email: email.value.trim(),
+          createdAt: serverTimestamp(),
+          theme: localStorage.getItem("theme") || "dark"
+        }, { merge:true });
+        closeAuthModal();
+      }catch(e){ alert(e.message); }
+    };
+    logoutBtn.onclick = async ()=>{
+      await signOut(auth);
+      closeAuthModal();
     };
 
-    function openCommunity(){
-      communityModal.classList.add("show");
-      communityModal.setAttribute("aria-hidden","false");
-      document.body.style.overflow = "hidden";
+    // =========================
+    // Rating submit
+    // =========================
+    const rateBtn = document.getElementById("rateBtn");
+    const rateMsg = document.getElementById("rateMsg");
+    rateBtn.onclick = async ()=>{
+      rateMsg.textContent = "";
+      const val = Number(document.getElementById("myRating").value || 0);
+      try{
+        await submitRating({ bookId, rating: val });
+        rateMsg.textContent = "Saved ✅";
+        renderRatingSummary({ bookId, mountId:"ratingSummary" });
+      }catch(e){
+        rateMsg.textContent = e?.message || "Could not rate.";
+      }
+    };
 
-      // ✅ ensure modal starts at top on open
-      if(communityCard) communityCard.scrollTop = 0;
-
-      renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
-      renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
-      renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
-      document.getElementById("guideMount").innerHTML = guidelinesHTML();
-
-      loadMyRating({ bookId }).then(r=>{
-        const sel = document.getElementById("myRatingSel");
-        if(sel) sel.value = String(r || 0);
-      }).catch(()=>{});
-    }
-
-    function closeCommunity(){
-      communityModal.classList.remove("show");
-      communityModal.setAttribute("aria-hidden","true");
-      document.body.style.overflow = "";
-    }
-
-    communityBtn.addEventListener("click", openCommunity);
-    communityClose.addEventListener("click", closeCommunity);
-    communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
-
-    // MOBILE COMMUNITY CLICK
-    document.getElementById("mCommunity").addEventListener("click", openCommunity);
-
-    function setTab(id){
-      tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
-      Object.keys(panels).forEach(k=> panels[k].classList.toggle("show", k === id));
-
-      // ✅ keep header visible; scroll inside modal content
-      if(communityCard) communityCard.scrollTop = 0;
-
-      if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
-      if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
-      if(id === "achTab") renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
-      if(id === "guideTab") document.getElementById("guideMount").innerHTML = guidelinesHTML();
-    }
-
-    tabBtns.forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const id = btn.getAttribute("data-tab");
-        setTab(id);
-      });
-    });
-
+    // =========================
+    // Comment form setup
+    // =========================
     setupCommentForm({
       bookId,
       formId:"commentForm",
@@ -1282,1359 +915,328 @@
       afterPostReload:true
     });
 
-    document.getElementById("saveMyRating").addEventListener("click", async ()=>{
-      const msg = document.getElementById("ratingMsg");
-      if(msg) msg.textContent = "";
-      const sel = document.getElementById("myRatingSel");
-      const r = Number(sel?.value || 0);
-      try{
-        await submitRating({ bookId, rating: r });
-        if(msg) msg.textContent = "Saved ✅";
-        await renderRatingSummary({ bookId, mountId:"ratingSummary" });
-      }catch(e){
-        if(msg) msg.textContent = (e?.message || "Please sign in to rate.");
-      }
-    });
-
-    (async ()=>{
-      try{
-        await loadBook();
-        const cloud = await loadChaptersFromCloud();
-        if(cloud && cloud.trim().length){
-          BOOK_HTML = BOOK_HTML + "\n\n" + cloud;
-        }
-      }catch(e){
-        BOOK_HTML = `<p class="muted">${String(e)}</p>`;
-      }
-
-      requestAnimationFrame(()=>requestAnimationFrame(()=> paginateAndRender(true)));
-
-      let t=null;
-      window.addEventListener("resize", ()=>{
-        clearTimeout(t);
-        t=setTimeout(()=>paginateAndRender(true), 160);
-      });
-    })();
-  </script>
-</body>
-</html>
-<!doctype html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>THIS IS US — Reader</title>
-
-  <style>
-    :root{
-      --bg:#0B1020;
-      --paper:#0F1731;
-      --ink:#EAF0FF;
-      --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12);
-      --shadow: 0 26px 80px rgba(0,0,0,.55);
-      --bar: rgba(10,14,28,.88);
-      --chip: rgba(255,255,255,.06);
-      --glow: rgba(124,92,255,.22);
-
-      --safeTop: env(safe-area-inset-top);
-      --safeBot: env(safe-area-inset-bottom);
-
-      --footerSpace: 58px;
-      --padX: 22px;
-      --padT: 26px;
-      --padB: calc(20px + var(--footerSpace));
-      --radius: 18px;
+    // =========================
+    // Reader counts
+    // =========================
+    renderReaderCount({ bookId, mountId:"readerCount" });
+    // bump reader count once per device per day
+    const bumpKey = `bump:${bookId}:${new Date().toISOString().slice(0,10)}`;
+    if(!localStorage.getItem(bumpKey)){
+      localStorage.setItem(bumpKey, "1");
+      bumpReaderCountOnce({ bookId, uid: window.__UID || null }).catch(()=>{});
     }
 
-    [data-theme="light"]{
-      --bg:#F7F8FB;
-      --paper:#FFFFFF;
-      --ink:#0F172A;
-      --muted:#475569;
-      --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.12);
-      --bar: rgba(255,255,255,.92);
-      --chip: rgba(2,6,23,.04);
-      --glow: rgba(124,92,255,.15);
-    }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      overflow:hidden;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 900px at 30% 10%, var(--glow), transparent 60%),
-        var(--bg);
-      font-family: ui-serif, Georgia, "Times New Roman", Times, serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    .top{
-      position:fixed; left:0; right:0; top:0;
-      z-index:60;
-      border-bottom:1px solid var(--stroke);
-      background: var(--bar);
-      backdrop-filter: blur(12px);
-      padding: calc(10px + var(--safeTop)) 12px 10px;
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .chip{
-      border:1px solid var(--stroke);
-      background: var(--chip);
-      padding:8px 10px;
-      border-radius:999px;
-      font-size:12px;
-      color:var(--muted);
-      cursor:pointer;
-      user-select:none;
-      display:inline-flex; align-items:center; gap:8px;
-      white-space:nowrap;
-    }
-    .chip strong{color:var(--ink); font-weight:900}
-
-    .stage{
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 78px 12px 16px;
-    }
-    .book{
-      width:min(1120px, 98vw);
-      height:min(740px, 84vh);
-      position:relative;
-      perspective: 1800px;
-    }
-
-    .spread{
-      position:absolute; inset:0;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:14px;
-    }
-    .single{ position:absolute; inset:0; display:none; }
-
-    .page{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border:1px solid var(--stroke);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-      position:relative;
-      height:100%;
-    }
-
-    .inner{
-      height:100%;
-      padding: var(--padT) var(--padX) var(--padB);
-      overflow:hidden;
-    }
-
-    .inner h1,.inner h2,.inner h3,.inner h4{
-      font-family: ui-sans-serif, system-ui;
-      margin:0 0 10px;
-      line-height:1.15;
-      letter-spacing:.02em;
-    }
-    .inner h2{font-size:30px}
-    .inner h3{font-size:18px}
-    .inner h4{font-size:20px}
-    .inner p{
-      line-height:1.78;
-      margin:0 0 14px;
-      font-size:16px;
-      color:var(--ink);
-    }
-    .muted{color:var(--muted)}
-
-    .pageNum{
-      position:absolute;
-      bottom:16px;
-      right:16px;
-      font-size:12px;
-      color:var(--muted);
-      pointer-events:none;
-    }
-
-    .flip{
-      position:absolute; top:0; bottom:0;
-      width:50%;
-      transform-style:preserve-3d;
-      pointer-events:none;
-      opacity:0;
-      z-index:70;
-    }
-    .flip.fromRight{ left:50%; transform-origin:left; }
-    .flip.fromLeft{ left:0; transform-origin:right; }
-    .flip.full{ width:100%; left:0; }
-    .flip .front, .flip .back{
-      position:absolute; inset:0;
-      border-radius:var(--radius);
-      overflow:hidden;
-      background: var(--paper);
-      border:1px solid var(--stroke);
-      box-shadow:var(--shadow);
-      backface-visibility:hidden;
-    }
-    .flip .front .inner, .flip .back .inner{
-      padding: var(--padT) var(--padX) var(--padB);
-      height:100%;
-      overflow:hidden;
-    }
-    .flip .back{ transform: rotateY(180deg); }
-
-    @keyframes flipForward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(-180deg)} }
-    @keyframes flipBackward{ 0%{transform:rotateY(0)} 100%{transform:rotateY(180deg)} }
-    .flip.animForward{ opacity:1; animation: flipForward .55s ease-in-out forwards; }
-    .flip.animBackward{ opacity:1; animation: flipBackward .55s ease-in-out forwards; }
-
-    .chapter-cover{ text-align:center; padding: 18px 0 10px; }
-    .chapter-cover h2{
-      margin:0 0 8px; font-size:44px; font-weight:900;
-      letter-spacing:.10em; text-transform:uppercase;
-    }
-    .series-sub{
-      margin:0; font-family: ui-sans-serif, system-ui; color:var(--muted);
-      font-size:14px; letter-spacing:.05em;
-    }
-    .author{
-      margin:10px 0 0; font-family: ui-sans-serif, system-ui;
-      font-size:14px; opacity:.92;
-    }
-    .chapter-title{ text-align:center; padding:10px 0 6px; }
-    .chapter-title h3{
-      margin:0; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
-      color:var(--muted); font-family: ui-sans-serif, system-ui;
-    }
-    .chapter-title h4{
-      margin:10px 0 0; font-size:30px; font-weight:900;
-      font-family: ui-sans-serif, system-ui;
-    }
-    hr.ornament{
-      border:0; border-top:1px solid var(--stroke);
-      margin:18px auto; width:66%; position:relative;
-    }
-    hr.ornament:after{
-      content:"✦"; position:absolute; left:50%;
-      transform:translate(-50%,-50%); top:0;
-      color:var(--muted); font-size:13px; padding:0 10px;
-      background: transparent;
-    }
-    .scene-break{
-      text-align:center; color:var(--muted);
-      letter-spacing:.35em; margin:16px 0 18px;
-      font-size:14px; user-select:none;
-    }
-    .dropcap:first-letter{
-      float:left; font-size:56px; line-height:.92;
-      padding-right:10px; padding-top:6px; font-weight:800;
-    }
-
-    .mTop, .mBottom{ display:none; }
-    @media (max-width:720px){
-      .top{ display:none; }
-
-      :root{
-        --padX: 18px;
-        --padT: 22px;
-        --padB: calc(18px + var(--footerSpace));
-      }
-
-      .mTop{
-        display:flex;
-        position:fixed; left:0; right:0; top:0;
-        z-index:80;
-        padding: calc(10px + var(--safeTop)) 12px 10px;
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-bottom:1px solid var(--stroke);
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-      }
-      .mTitle{
-        display:flex; flex-direction:column;
-        line-height:1.1;
-        min-width:0;
-      }
-      .mTitle .t1{
-        font-family: ui-sans-serif, system-ui;
-        font-weight:900;
-        font-size:14px;
-        white-space:nowrap;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        max-width: 44vw;
-      }
-      .mTitle .t2{
-        font-family: ui-sans-serif, system-ui;
-        font-size:12px;
-        color:var(--muted);
-      }
-      .mBtn{
-        border:1px solid var(--stroke);
-        background: rgba(0,0,0,.18);
-        color:var(--ink);
-        padding:10px 12px;
-        border-radius:999px;
-        font-family: ui-sans-serif, system-ui;
-        font-size:13px;
-        font-weight:800;
-        cursor:pointer;
-        user-select:none;
-        white-space:nowrap;
-      }
-      [data-theme="light"] .mBtn{ background: rgba(2,6,23,.06); }
-
-      .mBottom{
-        display:flex;
-        position:fixed; left:0; right:0; bottom:0;
-        z-index:80;
-        padding:10px 12px calc(10px + var(--safeBot));
-        background: var(--bar);
-        backdrop-filter: blur(12px);
-        border-top:1px solid var(--stroke);
-        gap:10px;
-      }
-      .mBottom .mBtn{ flex:1; text-align:center; }
-
-      .stage{
-        padding: calc(58px + var(--safeTop)) 10px calc(74px + var(--safeBot));
-      }
-      .book{
-        width:98vw;
-        height: calc(100vh - (58px + var(--safeTop)) - (74px + var(--safeBot)) - 18px);
-      }
-      .spread{ display:none; }
-      .single{ display:block; }
-      .flip{ width:100%; left:0; }
-      .flip.fromRight{ left:0; transform-origin:left; }
-      .flip.fromLeft{ left:0; transform-origin:right; }
-
-      .inner p{ font-size:16px; line-height:1.82; }
-    }
-
-    .measureHost{
-      position:fixed;
-      left:-9999px;
-      top:-9999px;
-      visibility:hidden;
-      pointer-events:none;
-    }
-
-    /* ===== MODALS ===== */
-    .modal{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.60);
-      z-index:1000;
-      padding:16px;
-    }
-    .modal.show{display:flex}
-
-    /* ✅ FIX: make modal content scrollable (mobile + desktop) */
-    .modalCard{
-      width:min(860px, 96vw);
-      border:1px solid var(--stroke);
-      background: rgba(15,20,40,.96);
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:14px;
-
-      max-height: calc(100vh - 32px - var(--safeTop) - var(--safeBot));
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-    }
-    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
-
-    .modalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:6px 6px 10px;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: inherit;
-      backdrop-filter: blur(10px);
-    }
-    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
-
-    .termsBox{
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      padding:12px;
-      background: rgba(255,255,255,.06);
-      max-height: 56vh;
-      overflow:auto;
-      font-family: ui-sans-serif, system-ui;
-      color: var(--ink);
-    }
-    .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
-    .checkRow{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 6px 0;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .checkRow input{ width:auto; margin-top:3px; }
-    .btn2{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--ink);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      user-select:none;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .btn2:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn2.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-
-    /* community */
-    .xBtn{
-      cursor:pointer;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      font-family: ui-sans-serif, system-ui;
-      user-select:none;
-    }
-    .tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      padding: 6px 6px 0;
-    }
-    .tabBtn{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      padding:8px 10px;
-      border-radius:999px;
-      cursor:pointer;
-      font: 900 12px ui-sans-serif,system-ui;
-      letter-spacing:.04em;
-      user-select:none;
-    }
-    .tabBtn.active{
-      color: var(--ink);
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .tabPanel{
-      display:none;
-      padding: 10px 6px 4px;
-      font-family: ui-sans-serif, system-ui;
-    }
-    .tabPanel.show{ display:block; }
-
-    .fieldLabel{
-      font: 800 12px ui-sans-serif,system-ui;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color: var(--muted);
-      margin: 10px 0 6px;
-    }
-    .inp, .sel, .txt{
-      width:100%;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
-      padding:10px 12px;
-      border-radius:14px;
-      color: var(--ink);
-      outline:none;
-      font: 600 14px ui-sans-serif,system-ui;
-    }
-    .txt{ min-height: 110px; resize: vertical; line-height:1.5; }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:520px){
-      .grid2{ grid-template-columns: 1fr; }
-    }
-
-    .miniNote{
-      color: var(--muted);
-      font: 600 12px ui-sans-serif,system-ui;
-      line-height:1.45;
-      opacity:.92;
-      margin-top:8px;
-    }
-    .hrSoft{
-      border:0;
-      border-top:1px solid var(--stroke);
-      margin: 10px 0;
-      opacity:.9;
-    }
-  </style>
-</head>
-
-<body>
-  <!-- Mobile top -->
-  <div class="mTop">
-    <div class="mBtn" id="mBack">← Library</div>
-
-    <div class="mTitle">
-      <div class="t1" id="mBookTitle">book</div>
-      <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
-    </div>
-
-    <!-- ✅ MOBILE COMMUNITY -->
-    <div style="display:flex;gap:8px;align-items:center;">
-      <div class="mBtn" id="mCommunity">💬</div>
-      <div class="mBtn" id="mTheme">Theme</div>
-    </div>
-  </div>
-
-  <!-- Desktop top -->
-  <div class="top">
-    <div class="row">
-      <div class="chip" id="backBtn">← <strong>Library</strong></div>
-      <div class="chip">Book: <strong id="bookTitle">book</strong></div>
-      <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
-      <div class="chip" id="themeBtn">Theme</div>
-      <div class="chip" id="communityBtn">💬 <strong>Community</strong></div>
-      <div class="chip" id="syncChip"><span id="syncDot">●</span> <strong id="syncText">Guest</strong></div>
-    </div>
-    <div class="row">
-      <div class="chip" id="prevBtn">Prev</div>
-      <div class="chip" id="nextBtn">Next</div>
-    </div>
-  </div>
-
-  <!-- Mobile bottom -->
-  <div class="mBottom">
-    <div class="mBtn" id="mPrev">Prev</div>
-    <div class="mBtn" id="mNext">Next</div>
-  </div>
-
-  <div class="stage">
-    <div class="book" id="bookTap">
-      <div class="spread" id="spread">
-        <div class="page" id="pageL">
-          <div class="inner" id="leftPage"></div>
-          <div class="pageNum" id="leftNum"></div>
-        </div>
-        <div class="page" id="pageR">
-          <div class="inner" id="rightPage"></div>
-          <div class="pageNum" id="rightNum"></div>
-        </div>
-      </div>
-
-      <div class="single" id="single">
-        <div class="page" id="pageS">
-          <div class="inner" id="singlePage"></div>
-          <div class="pageNum" id="singleNum"></div>
-        </div>
-      </div>
-
-      <div class="flip" id="flip">
-        <div class="front"><div class="inner" id="flipFront"></div></div>
-        <div class="back"><div class="inner" id="flipBack"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="measureHost" id="measureHost"></div>
-
-  <!-- COMMUNITY MODAL -->
-  <div class="modal" id="communityModal" aria-hidden="true">
-    <div class="modalCard" id="communityCard">
-      <div class="modalHead">
-        <h3>Community</h3>
-        <div class="xBtn" id="communityClose">✕</div>
-      </div>
-
-      <div class="miniNote" id="communityAuthHint" style="margin:0 6px 6px;">
-        Loading…
-      </div>
-
-      <div class="tabs">
-        <button class="tabBtn active" data-tab="commentsTab">Comments</button>
-        <button class="tabBtn" data-tab="ratingTab">Rating</button>
-        <button class="tabBtn" data-tab="achTab">Achievements</button>
-        <button class="tabBtn" data-tab="guideTab">Guidelines</button>
-      </div>
-
-      <div class="tabPanel show" id="commentsTab">
-        <div class="miniNote">Leave a comment for this book. (Rating inside comments is optional.)</div>
-
-        <form id="commentForm" style="margin-top:10px;">
-          <div class="grid2">
-            <div>
-              <div class="fieldLabel">Name</div>
-              <input class="inp" id="cName" placeholder="Reader" />
-            </div>
-            <div>
-              <div class="fieldLabel">Rating (optional)</div>
-              <select class="sel" id="cRating">
-                <option value="0">No rating</option>
-                <option value="1">★ 1</option>
-                <option value="2">★ 2</option>
-                <option value="3">★ 3</option>
-                <option value="4">★ 4</option>
-                <option value="5">★ 5</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="margin-top:10px;">
-            <div class="fieldLabel">Comment</div>
-            <textarea class="txt" id="cText" placeholder="Write your comment…"></textarea>
-          </div>
-
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-            <button class="btn2 primary" type="submit">Post Comment</button>
-            <div class="note" id="cMsg"></div>
-          </div>
-        </form>
-
-        <hr class="hrSoft">
-
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px;">
-          Latest comments
-        </div>
-        <div id="commentsList" style="margin-top:10px;">Loading…</div>
-      </div>
-
-      <div class="tabPanel" id="ratingTab">
-        <div class="miniNote">Signed-in users can rate once (you can update it anytime).</div>
-
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
-          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;min-width:180px;">
-            <div style="font-weight:950">Average</div>
-            <div id="ratingSummary" style="margin-top:6px;opacity:.9;">Loading…</div>
-          </div>
-
-          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;">
-            <div class="fieldLabel" style="margin:0 0 6px;">Your rating</div>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <select class="sel" id="myRatingSel" style="width:auto;min-width:170px;">
-                <option value="0">Select…</option>
-                <option value="1">★ 1</option>
-                <option value="2">★ 2</option>
-                <option value="3">★ 3</option>
-                <option value="4">★ 4</option>
-                <option value="5">★ 5</option>
-              </select>
-              <button class="btn2 primary" id="saveMyRating" type="button">Save</button>
-            </div>
-            <div class="note" id="ratingMsg" style="margin-top:8px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabPanel" id="achTab">
-        <div class="miniNote">Achievements unlock as you read. Guests can see popups, but sign in to save them.</div>
-        <div id="achList" style="margin-top:10px;">Loading…</div>
-      </div>
-
-      <div class="tabPanel" id="guideTab">
-        <div id="guideMount" style="margin-top:10px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TERMS MODAL -->
-  <div class="modal" id="termsModal">
-    <div class="modalCard">
-      <div class="modalHead">
-        <h3>Terms & Conditions</h3>
-        <div></div>
-      </div>
-
-      <div class="termsBox" id="termsText">
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
-        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
-
-        <p><strong>1) Acceptance</strong><br>
-          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
-        </p>
-        <p><strong>2) Eligibility</strong><br>
-          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
-        </p>
-        <p><strong>3) Content & Reader Experience</strong><br>
-          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
-        </p>
-        <p><strong>4) Accounts</strong><br>
-          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
-        </p>
-        <p><strong>5) User Submissions</strong><br>
-          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
-        </p>
-        <p><strong>6) Notifications (Optional)</strong><br>
-          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
-        </p>
-        <p><strong>7) Privacy</strong><br>
-          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
-        </p>
-        <p><strong>8) Availability & Changes</strong><br>
-          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
-        </p>
-        <p><strong>9) Disclaimer</strong><br>
-          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
-        </p>
-        <p><strong>10) Limitation of Liability</strong><br>
-          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
-        </p>
-        <p><strong>11) Contact</strong><br>
-          For questions, removal requests, or opt-out requests, contact the site owner.
-        </p>
-      </div>
-
-      <div class="checkRow">
-        <input type="checkbox" id="agreeTerms">
-        <div class="note">I have read and agree to the Terms & Conditions.</div>
-      </div>
-
-      <div style="display:grid; gap:10px; padding-top:10px">
-        <button class="btn2 primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
-        <div class="note" id="termsMsg"></div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-    import {
-      getFirestore, doc, getDoc, setDoc, serverTimestamp,
-      collection, getDocs, query, orderBy
-    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-    import { wireTermsGate } from "./terms-gate.js";
-    wireTermsGate();
-
-    import { bumpReaderCountOnce } from "./public-feed.js";
-
-    import {
-      renderComments,
-      setupCommentForm,
-      submitRating,
-      loadMyRating,
-      renderRatingSummary,
-      trackAchievements,
-      renderMyAchievements,
-      guidelinesHTML
-    } from "./reader-community.js";
-
-    const BOOK_FILES = {
-      book1: "./books/book1.html",
-      coming: "./books/coming-soon.html"
-    };
-
-    const params = new URLSearchParams(location.search);
-    const bookId = params.get("book") || "book1";
-    const bookFile = BOOK_FILES[bookId] || BOOK_FILES.coming;
-
-    document.getElementById("bookTitle").textContent = bookId;
-    document.getElementById("mBookTitle").textContent = bookId;
-
-    const isMobile = ()=> matchMedia("(max-width:720px)").matches;
-
-    // Theme
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-
-    // Navigation
-    function goLibrary(){ location.href = "index.html"; }
-    document.getElementById("backBtn").addEventListener("click", goLibrary);
-    document.getElementById("mBack").addEventListener("click", goLibrary);
-
-    // DOM refs
-    const pageL = document.getElementById("pageL");
-    const pageS = document.getElementById("pageS");
-
-    const leftPage = document.getElementById("leftPage");
-    const rightPage = document.getElementById("rightPage");
-    const singlePage = document.getElementById("singlePage");
-
+    // =========================
+    // Book content -> pages
+    // (NO missing words: we paginate based on measured height)
+    // =========================
+    const leftContent = document.getElementById("leftContent");
+    const rightContent = document.getElementById("rightContent");
     const leftNum = document.getElementById("leftNum");
     const rightNum = document.getElementById("rightNum");
-    const singleNum = document.getElementById("singleNum");
+    const progressFill = document.getElementById("progressFill");
+    const pctEl = document.getElementById("pct");
 
-    const pageLabel = document.getElementById("pageLabel");
-    const pageTotalEl = document.getElementById("pageTotal");
-    const mPageLabel = document.getElementById("mPageLabel");
-    const mPageTotal = document.getElementById("mPageTotal");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
 
-    const flip = document.getElementById("flip");
-    const flipFront = document.getElementById("flipFront");
-    const flipBack  = document.getElementById("flipBack");
+    const flipLayer = document.getElementById("flipLayer");
+    const flipLeft = document.getElementById("flipLeft");
+    const flipRight = document.getElementById("flipRight");
 
-    const measureHost = document.getElementById("measureHost");
+    let PAGES = []; // html strings
+    let idx = 0;    // left page index (0-based)
+    let isFlipping = false;
 
-    const syncDot = document.getElementById("syncDot");
-    const syncText = document.getElementById("syncText");
-
-    // Firebase (safe init)
-    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    let UID = null;
-
-    // Reader count
-    const COUNT_KEY = `tiu_counted:${bookId}`;
-    async function bumpReaderAfterAuth(){
-      if(localStorage.getItem(COUNT_KEY) === "yes") return;
+    function getLocalProgressKey(){ return `progress:${bookId}`; }
+    function loadLocalProgress(){
       try{
-        await bumpReaderCountOnce({ bookId, uid: UID || null });
-        localStorage.setItem(COUNT_KEY, "yes");
+        const v = JSON.parse(localStorage.getItem(getLocalProgressKey()) || "{}");
+        return Number(v.leftIndex || 0);
+      }catch{ return 0; }
+    }
+    function saveLocalProgress(leftIndex){
+      localStorage.setItem(getLocalProgressKey(), JSON.stringify({
+        leftIndex,
+        updatedAt: Date.now()
+      }));
+    }
+
+    async function saveCloudProgress(leftIndex){
+      if(!window.__UID) return;
+      try{
+        await setDoc(doc(db,"users",window.__UID,"progress",bookId), {
+          leftIndex,
+          updatedAt: serverTimestamp()
+        }, { merge:true });
       }catch{}
     }
 
-    const progressKeyLocal = `progress:${bookId}`;
-    let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
-    if (isNaN(i) || i < 0) i = 0;
-
-    function progressDocRef(uid){
-      return doc(db, "users", uid, "progress", bookId);
-    }
-
-    async function loadCloudProgressIfAny(){
-      if(!UID) return;
+    async function loadCloudProgress(){
+      if(!window.__UID) return null;
       try{
-        const snap = await getDoc(progressDocRef(UID));
-        if(snap.exists()){
-          const d = snap.data() || {};
-          if(Number.isFinite(d.index) && d.index >= 0){
-            i = Math.max(i, Math.floor(d.index));
-          }
-        }
-      }catch{}
+        const snap = await getDoc(doc(db,"users",window.__UID,"progress",bookId));
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        const v = Number(d.leftIndex ?? NaN);
+        if(Number.isFinite(v)) return v;
+        return null;
+      }catch{ return null; }
     }
 
-    async function saveCloudProgress(){
-      if(!UID) return;
-      try{
-        await setDoc(progressDocRef(UID), { index: i, updatedAt: serverTimestamp() }, { merge:true });
-      }catch{}
+    function setProgressUI(){
+      const total = Math.max(1, PAGES.length);
+      const current = clamp(idx, 0, total-1);
+      const rightIndex = current + 1;
+
+      leftNum.textContent = `${current+1} / ${total}`;
+      rightNum.textContent = rightIndex < total ? `${rightIndex+1} / ${total}` : `—`;
+      const percent = Math.floor(((current+1)/total) * 100);
+      pctEl.textContent = `${percent}%`;
+      progressFill.style.width = `${percent}%`;
+      progressText.textContent = `${percent}% • page ${current+1}`;
+
+      bookMeta.textContent = `${total} pages • ${percent}%`;
     }
-
-    async function saveCloudTheme(theme){
-      if(!UID) return;
-      try{
-        await setDoc(doc(db,"users",UID), { theme, updatedAt: serverTimestamp() }, { merge:true });
-      }catch{}
-    }
-
-    onAuthStateChanged(auth, async (user)=>{
-      UID = user ? user.uid : null;
-
-      const hint = document.getElementById("communityAuthHint");
-      if(hint){
-        hint.textContent = UID
-          ? "Signed in — you can post comments and rate."
-          : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
-      }
-
-      if(UID){
-        syncDot.style.color = "rgba(0,255,198,.9)";
-        syncText.textContent = "Synced";
-        try{
-          const u = await getDoc(doc(db,"users",UID));
-          if(u.exists()){
-            const data = u.data() || {};
-            if(data.theme === "dark" || data.theme === "light"){
-              document.documentElement.dataset.theme = data.theme;
-              localStorage.setItem("theme", data.theme);
-            }
-          }
-        }catch{}
-      }else{
-        syncDot.style.color = "rgba(255,255,255,.65)";
-        syncText.textContent = "Guest";
-      }
-
-      await bumpReaderAfterAuth();
-
-      if(UID){
-        await loadCloudProgressIfAny();
-        render();
-      }
-    });
-
-    function toggleTheme(){
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      saveCloudTheme(next);
-      paginateAndRender(true);
-    }
-    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-    document.getElementById("mTheme").addEventListener("click", toggleTheme);
-
-    // Load book HTML
-    let BOOK_HTML = "<p class='muted'>Loading…</p>";
-    let PAGES = [];
-
-    async function loadBook(){
-      const res = await fetch(bookFile, { cache:"no-store" });
-      if(!res.ok) throw new Error("Could not load: " + res.status);
-      BOOK_HTML = await res.text();
-    }
-
-    async function loadChaptersFromCloud(){
-      if(bookId !== "book1") return "";
-      try{
-        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
-        const snap = await getDocs(qy);
-        if(snap.empty) return "";
-        const parts = [];
-        snap.forEach(docSnap=>{
-          const d = docSnap.data() || {};
-          if(d && typeof d.html === "string" && d.html.trim().length){
-            parts.push(d.html.trim());
-          }
-        });
-        if(parts.length === 0) return "";
-        return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
-      }catch{
-        return "";
-      }
-    }
-
-    function injectChapterBreaks(html){
-      return html
-        .replaceAll('<section class="chapter-cover">','<!--PAGEBREAK--><section class="chapter-cover">')
-        .replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
-    }
-
-    function escapeHtml(str){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function buildMeasurer(){
-      const innerVisible = isMobile() ? singlePage : leftPage;
-      const pageVisible  = isMobile() ? pageS : pageL;
-
-      const pageW = Math.max(320, Math.floor(pageVisible.getBoundingClientRect().width));
-      const cs = getComputedStyle(innerVisible);
-
-      const meas = document.createElement("div");
-      meas.className = "inner";
-      meas.style.width = pageW + "px";
-      meas.style.padding = cs.padding;
-      meas.style.fontFamily = cs.fontFamily;
-      meas.style.fontSize = cs.fontSize;
-      meas.style.lineHeight = cs.lineHeight;
-      meas.style.letterSpacing = cs.letterSpacing;
-
-      measureHost.innerHTML = "";
-      measureHost.appendChild(meas);
-      return { meas, pageVisible, innerVisible };
-    }
-
-    function getAvailableTextHeight(pageEl, innerEl){
-      const pageH = Math.max(240, pageEl.getBoundingClientRect().height);
-      const cs = getComputedStyle(innerEl);
-      const padTop = parseFloat(cs.paddingTop) || 0;
-      const padBot = parseFloat(cs.paddingBottom) || 0;
-      return Math.max(140, Math.floor(pageH - padTop - padBot - 2));
-    }
-
-    function paginate(html){
-      const src = injectChapterBreaks(html);
-      const container = document.createElement("div");
-      container.innerHTML = src;
-
-      const blocks = Array.from(container.childNodes).filter(n => {
-        if(n.nodeType === 3) return n.textContent.trim().length;
-        if(n.nodeType === 1) return true;
-        if(n.nodeType === 8) return true;
-        return false;
-      });
-
-      const { meas, pageVisible, innerVisible } = buildMeasurer();
-      const maxH = getAvailableTextHeight(pageVisible, innerVisible);
-
-      const pages = [];
-      let pageHTML = "";
-
-      function fits(testHTML){
-        meas.innerHTML = testHTML;
-        return meas.scrollHeight <= maxH;
-      }
-
-      function pushPage(){
-        const trimmed = pageHTML.trim();
-        if(trimmed.length){
-          pages.push(trimmed);
-          pageHTML = "";
-        }
-      }
-
-      function splitParagraphNode(pNode){
-        const cls = pNode.getAttribute("class");
-        const text = (pNode.innerText || pNode.textContent || "").trim();
-        const words = text.split(/\s+/).filter(Boolean);
-
-        let buf = "";
-        const out = [];
-
-        for(const w of words){
-          const next = buf ? (buf + " " + w) : w;
-          const part = `<p${cls?` class="${cls}"`:``}>${escapeHtml(next)}</p>`;
-          if(fits(pageHTML + part)){
-            buf = next;
-          }else{
-            if(buf){
-              out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-              buf = w;
-            }else{
-              pushPage();
-              buf = w;
-            }
-          }
-        }
-
-        if(buf){
-          out.push(`<p${cls?` class="${cls}"`:``}>${escapeHtml(buf)}</p>`);
-        }
-        return out;
-      }
-
-      for(const node of blocks){
-        if(node.nodeType === 8 && String(node.data||"").includes("PAGEBREAK")){
-          pushPage();
-          continue;
-        }
-
-        let nodeHTML = "";
-        if(node.nodeType === 3){
-          nodeHTML = `<p>${escapeHtml(node.textContent)}</p>`;
-        }else if(node.nodeType === 1){
-          nodeHTML = node.outerHTML || "";
-        }else{
-          continue;
-        }
-
-        if(fits(pageHTML + nodeHTML)){
-          pageHTML += nodeHTML;
-          continue;
-        }
-
-        if(pageHTML.length){
-          pushPage();
-          if(fits(pageHTML + nodeHTML)){
-            pageHTML += nodeHTML;
-            continue;
-          }
-        }
-
-        if(node.nodeType === 1 && node.tagName === "P"){
-          const parts = splitParagraphNode(node);
-          for(const part of parts){
-            if(fits(pageHTML + part)){
-              pageHTML += part;
-            }else{
-              pushPage();
-              pageHTML = part;
-            }
-          }
-          continue;
-        }
-
-        pageHTML = nodeHTML;
-        pushPage();
-      }
-
-      pushPage();
-      return pages.filter(p => p.trim().length);
-    }
-
-    function normalizeIndex(){
-      if(i < 0) i = 0;
-      if(i > PAGES.length - 1) i = PAGES.length - 1;
-      if(!isMobile() && i % 2 !== 0) i = Math.max(0, i - 1);
-    }
-
-    function updateCounters(){
-      const total = String(PAGES.length || 0);
-      pageTotalEl.textContent = total;
-      mPageTotal.textContent = total;
-      pageLabel.textContent = String(i+1);
-      mPageLabel.textContent = String(i+1);
-    }
-
-    function saveProgressLocal(){
-      localStorage.setItem(progressKeyLocal, String(i));
-    }
-
-    async function saveProgressAll(){
-      saveProgressLocal();
-      await saveCloudProgress();
-    }
-
-    // Achievements
-    let __lastAchIndex = -999;
 
     function render(){
       if(PAGES.length === 0){
-        if(isMobile()){
-          singlePage.innerHTML = "<p class='muted'>No content yet.</p>";
-        }else{
-          leftPage.innerHTML = "<p class='muted'>No content yet.</p>";
-          rightPage.innerHTML = "";
-        }
-        updateCounters();
+        leftContent.innerHTML = `<div style="color:var(--muted);font-weight:900">No pages yet.</div>`;
+        rightContent.innerHTML = "";
+        setProgressUI();
         return;
       }
+      idx = clamp(idx, 0, PAGES.length-1);
+      const rightIndex = idx + 1;
 
-      normalizeIndex();
-      updateCounters();
+      leftContent.innerHTML = PAGES[idx] || "";
+      rightContent.innerHTML = (rightIndex < PAGES.length) ? (PAGES[rightIndex] || "") : `<div style="opacity:.75;color:var(--muted);font-weight:900">End of available pages.</div>`;
 
-      if(isMobile()){
-        singlePage.innerHTML = PAGES[i] || "<p class='muted'>End.</p>";
-        singleNum.textContent = String(i+1);
-      }else{
-        const leftIdx = i;
-        const rightIdx = i+1;
-        leftPage.innerHTML = PAGES[leftIdx] || "<p class='muted'>End.</p>";
-        rightPage.innerHTML = PAGES[rightIdx] || "<p class='muted'>End.</p>";
-        leftNum.textContent = String(leftIdx+1);
-        rightNum.textContent = (rightIdx+1 <= PAGES.length) ? String(rightIdx+1) : "";
-      }
+      setProgressUI();
+      saveLocalProgress(idx);
+      saveCloudProgress(idx);
 
-      saveProgressAll();
-
-      if(__lastAchIndex !== i){
-        __lastAchIndex = i;
-        trackAchievements({ bookId, pageIndex: i, totalPages: PAGES.length }).catch(()=>{});
-      }
+      // achievements tracking (pageIndex = idx)
+      trackAchievements({ bookId, pageIndex: idx, totalPages: PAGES.length }).catch(()=>{});
     }
 
-    function animateFlip(nextIndex){
-      if(nextIndex < 0 || nextIndex > PAGES.length-1) return;
+    // Flip animation (simple, reliable)
+    function doFlip(dir){
+      if(isFlipping) return;
+      isFlipping = true;
 
-      const forward = nextIndex > i;
+      flipLayer.classList.add("show");
+      flipLeft.style.transform = "none";
+      flipRight.style.transform = "none";
 
-      flip.className = "flip";
-      void flip.offsetWidth;
+      // choose which half rotates depending on direction
+      const target = dir === "next" ? flipRight : flipLeft;
+      const deg = dir === "next" ? -180 : 180;
 
-      if(isMobile()){
-        flip.classList.add("full");
-        if(forward){ flip.classList.add("fromRight","animForward"); }
-        else{ flip.classList.add("fromLeft","animBackward"); }
-
-        flipFront.innerHTML = PAGES[i] || "";
-        flipBack.innerHTML  = PAGES[nextIndex] || "";
-      }else{
-        if(forward){
-          flip.classList.add("fromRight","animForward");
-          flipFront.innerHTML = PAGES[i+1] || "<p class='muted'>End.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex+1] || "<p class='muted'>End.</p>";
-        }else{
-          flip.classList.add("fromLeft","animBackward");
-          flipFront.innerHTML = PAGES[i] || "<p class='muted'>Start.</p>";
-          flipBack.innerHTML  = PAGES[nextIndex] || "<p class='muted'>Start.</p>";
-        }
-      }
+      target.style.transition = "transform .38s ease";
+      target.style.transform = `rotateY(${deg}deg)`;
 
       setTimeout(()=>{
-        i = nextIndex;
-        render();
-        flip.className = "flip";
-      }, 560);
+        target.style.transition = "";
+        target.style.transform = "none";
+        flipLayer.classList.remove("show");
+        isFlipping = false;
+      }, 410);
     }
 
     function next(){
-      if(isMobile()){
-        if(i+1 <= PAGES.length-1) animateFlip(i+1);
-      }else{
-        if(i+2 <= PAGES.length-1) animateFlip(i+2);
+      if(idx + 2 < PAGES.length){
+        doFlip("next");
+        idx += 2;
+        render();
+      }else if(idx + 1 < PAGES.length){
+        // allow one last step
+        doFlip("next");
+        idx += 1;
+        render();
       }
     }
-
     function prev(){
-      if(isMobile()){
-        if(i-1 >= 0) animateFlip(i-1);
-      }else{
-        if(i-2 >= 0) animateFlip(i-2);
+      if(idx - 2 >= 0){
+        doFlip("prev");
+        idx -= 2;
+        render();
+      }else if(idx - 1 >= 0){
+        doFlip("prev");
+        idx -= 1;
+        render();
       }
     }
 
-    document.getElementById("nextBtn").addEventListener("click", next);
-    document.getElementById("prevBtn").addEventListener("click", prev);
-    document.getElementById("mNext").addEventListener("click", next);
-    document.getElementById("mPrev").addEventListener("click", prev);
+    nextBtn.onclick = next;
+    prevBtn.onclick = prev;
 
-    document.addEventListener("keydown",(e)=>{
-      if(e.key==="ArrowRight") next();
-      if(e.key==="ArrowLeft") prev();
-      if(e.key==="Escape"){
-        const cm = document.getElementById("communityModal");
-        const tm = document.getElementById("termsModal");
-        if(cm?.classList.contains("show")){
-          cm.classList.remove("show");
-          cm.setAttribute("aria-hidden","true");
-          document.body.style.overflow = "";
-        }
-        if(tm?.classList.contains("show")){
-          // terms modal is mandatory gate; do nothing on ESC
-        }
+    // keyboard
+    window.addEventListener("keydown",(e)=>{
+      if(e.key === "ArrowRight") next();
+      if(e.key === "ArrowLeft") prev();
+      if(e.key === "Escape"){
+        if(communityModal.classList.contains("show")) closeCommunity();
+        if(authModal.classList.contains("show")) closeAuthModal();
       }
     });
 
-    document.getElementById("bookTap").addEventListener("click",(e)=>{
-      if(!isMobile()) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      if(x < rect.width * 0.42) prev();
-      else if(x > rect.width * 0.58) next();
-    });
+    // swipe (mobile)
+    const stage = document.getElementById("stage");
+    let touchX = 0, touchY = 0;
+    stage.addEventListener("touchstart",(e)=>{
+      const t = e.touches?.[0];
+      if(!t) return;
+      touchX = t.clientX;
+      touchY = t.clientY;
+    }, { passive:true });
 
-    let sx=0, sy=0, st=0;
-    document.getElementById("bookTap").addEventListener("touchstart",(e)=>{
-      if(!isMobile()) return;
-      const t = e.touches[0];
-      sx = t.clientX; sy = t.clientY; st = Date.now();
-    }, {passive:true});
+    stage.addEventListener("touchend",(e)=>{
+      const t = e.changedTouches?.[0];
+      if(!t) return;
+      const dx = t.clientX - touchX;
+      const dy = t.clientY - touchY;
+      if(Math.abs(dx) < 40) return;
+      if(Math.abs(dy) > Math.abs(dx)) return; // ignore vertical scroll
+      if(dx < 0) next();
+      else prev();
+    }, { passive:true });
 
-    document.getElementById("bookTap").addEventListener("touchend",(e)=>{
-      if(!isMobile()) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx;
-      const dy = t.clientY - sy;
-      const dt = Date.now() - st;
-      if(Math.abs(dx) > 45 && Math.abs(dy) < 70 && dt < 700){
-        if(dx < 0) next();
-        else prev();
+    // =========================
+    // Pagination engine
+    // =========================
+    function getBookHTML(){
+      if(bookId === "coming"){
+        return `
+          <section class="chapter-cover">
+            <h2>COMING SOON</h2>
+            <p class="series-sub">This book is loading…</p>
+            <p class="author">Check back for updates.</p>
+          </section>
+          <hr class="ornament"/>
+          <p class="dropcap">You’re early.</p>
+          <p>The next part of THIS IS US is being built right now.</p>
+          <p>Return to the library and subscribe for updates.</p>
+        `;
       }
-    }, {passive:true});
+      const tpl = document.getElementById(bookInfo.templateId);
+      return tpl ? tpl.innerHTML.trim() : `<p class="dropcap">Missing content.</p>`;
+    }
 
-    function paginateAndRender(forceReflow=false){
-      if(forceReflow){ void document.body.offsetHeight; }
-      PAGES = paginate(BOOK_HTML);
+    function buildPagesFromHTML(html){
+      // create a hidden measurer using the same page width
+      const meas = document.createElement("div");
+      meas.style.cssText = `
+        position:fixed; left:-9999px; top:0;
+        width:${leftContent.clientWidth}px;
+        height:${leftContent.clientHeight}px;
+        overflow:auto;
+        padding-right:8px;
+        color:var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      `;
+      // match your inside page padding context
+      // (we measure content only, not page container)
+      document.body.appendChild(meas);
+
+      // split by paragraphs/blocks but preserve formatting
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html;
+
+      const blocks = Array.from(tmp.childNodes).filter(n=>{
+        if(n.nodeType === 3) return n.textContent.trim().length; // text node
+        if(n.nodeType === 1) return true; // element
+        return false;
+      });
+
+      const pages = [];
+      let cur = document.createElement("div");
+      meas.innerHTML = "";
+      meas.appendChild(cur);
+
+      function pushPage(){
+        pages.push(cur.innerHTML.trim() || `<div style="opacity:.75;color:var(--muted);font-weight:900">…</div>`);
+        cur = document.createElement("div");
+        meas.innerHTML = "";
+        meas.appendChild(cur);
+      }
+
+      for(const b of blocks){
+        const clone = (b.nodeType === 3)
+          ? document.createTextNode(b.textContent)
+          : b.cloneNode(true);
+
+        cur.appendChild(clone);
+
+        // if overflow, rollback and create new page
+        if(meas.scrollHeight > meas.clientHeight + 2){
+          cur.removeChild(clone);
+
+          // if single block too big, force it alone (still scrolls inside page)
+          if(cur.childNodes.length === 0){
+            cur.appendChild(clone);
+            pushPage();
+            continue;
+          }
+
+          pushPage();
+          cur.appendChild(clone);
+
+          // if still overflow, keep it alone
+          if(meas.scrollHeight > meas.clientHeight + 2){
+            pushPage();
+          }
+        }
+      }
+
+      if(cur.childNodes.length) pushPage();
+      document.body.removeChild(meas);
+      return pages;
+    }
+
+    function repaginate(){
+      const html = getBookHTML();
+      PAGES = buildPagesFromHTML(html);
+
+      // load progress: cloud (if signed in) else local
+      idx = loadLocalProgress();
+      idx = clamp(idx, 0, Math.max(0, PAGES.length-1));
+      // keep left index even when possible (nice spread)
+      if(idx % 2 === 1 && idx > 0) idx -= 1;
+
       render();
     }
 
-    // COMMUNITY MODAL WIRING
-    const communityModal = document.getElementById("communityModal");
-    const communityCard  = document.getElementById("communityCard");
-    const communityBtn = document.getElementById("communityBtn");
-    const communityClose = document.getElementById("communityClose");
-    const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
-    const panels = {
-      commentsTab: document.getElementById("commentsTab"),
-      ratingTab: document.getElementById("ratingTab"),
-      achTab: document.getElementById("achTab"),
-      guideTab: document.getElementById("guideTab")
-    };
+    // repaginate after first paint (sizes correct)
+    setTimeout(repaginate, 80);
 
-    function openCommunity(){
-      communityModal.classList.add("show");
-      communityModal.setAttribute("aria-hidden","false");
-      document.body.style.overflow = "hidden";
-
-      // ✅ ensure modal starts at top on open
-      if(communityCard) communityCard.scrollTop = 0;
-
-      renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
-      renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
-      renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
-      document.getElementById("guideMount").innerHTML = guidelinesHTML();
-
-      loadMyRating({ bookId }).then(r=>{
-        const sel = document.getElementById("myRatingSel");
-        if(sel) sel.value = String(r || 0);
-      }).catch(()=>{});
-    }
-
-    function closeCommunity(){
-      communityModal.classList.remove("show");
-      communityModal.setAttribute("aria-hidden","true");
-      document.body.style.overflow = "";
-    }
-
-    communityBtn.addEventListener("click", openCommunity);
-    communityClose.addEventListener("click", closeCommunity);
-    communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
-
-    // MOBILE COMMUNITY CLICK
-    document.getElementById("mCommunity").addEventListener("click", openCommunity);
-
-    function setTab(id){
-      tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
-      Object.keys(panels).forEach(k=> panels[k].classList.toggle("show", k === id));
-
-      // ✅ keep header visible; scroll inside modal content
-      if(communityCard) communityCard.scrollTop = 0;
-
-      if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
-      if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
-      if(id === "achTab") renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
-      if(id === "guideTab") document.getElementById("guideMount").innerHTML = guidelinesHTML();
-    }
-
-    tabBtns.forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const id = btn.getAttribute("data-tab");
-        setTab(id);
-      });
+    // repaginate on resize (debounced)
+    let rz = null;
+    window.addEventListener("resize", ()=>{
+      clearTimeout(rz);
+      rz = setTimeout(()=> repaginate(), 220);
     });
 
-    setupCommentForm({
-      bookId,
-      formId:"commentForm",
-      nameId:"cName",
-      textId:"cText",
-      ratingId:"cRating",
-      msgId:"cMsg",
-      afterPostReload:true
+    // if user signs in later, try to load cloud progress once and apply if ahead
+    let cloudApplied = false;
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user || cloudApplied) return;
+      cloudApplied = true;
+      const v = await loadCloudProgress();
+      if(v == null) return;
+
+      const local = loadLocalProgress();
+      // choose the furthest progress
+      let chosen = Math.max(Number(local||0), Number(v||0));
+      chosen = clamp(chosen, 0, Math.max(0, PAGES.length-1));
+      if(chosen % 2 === 1 && chosen > 0) chosen -= 1;
+      idx = chosen;
+      render();
     });
 
-    document.getElementById("saveMyRating").addEventListener("click", async ()=>{
-      const msg = document.getElementById("ratingMsg");
-      if(msg) msg.textContent = "";
-      const sel = document.getElementById("myRatingSel");
-      const r = Number(sel?.value || 0);
-      try{
-        await submitRating({ bookId, rating: r });
-        if(msg) msg.textContent = "Saved ✅";
-        await renderRatingSummary({ bookId, mountId:"ratingSummary" });
-      }catch(e){
-        if(msg) msg.textContent = (e?.message || "Please sign in to rate.");
-      }
-    });
+    // preload rating summary + comments only when community opens
+    // but keep side rating updated
+    renderRatingSummary({ bookId, mountId:"ratingSummary" });
 
-    (async ()=>{
-      try{
-        await loadBook();
-        const cloud = await loadChaptersFromCloud();
-        if(cloud && cloud.trim().length){
-          BOOK_HTML = BOOK_HTML + "\n\n" + cloud;
-        }
-      }catch(e){
-        BOOK_HTML = `<p class="muted">${String(e)}</p>`;
-      }
-
-      requestAnimationFrame(()=>requestAnimationFrame(()=> paginateAndRender(true)));
-
-      let t=null;
-      window.addEventListener("resize", ()=>{
-        clearTimeout(t);
-        t=setTimeout(()=>paginateAndRender(true), 160);
-      });
-    })();
   </script>
 </body>
 </html>
