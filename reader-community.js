@@ -1,4 +1,4 @@
-// reader-community.js (FULL FILE — UPDATED, KEEPING YOUR FEATURES)
+// reader-community.js (FULL FILE — UPDATED: real profile avatars per user)
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {
@@ -62,7 +62,69 @@ function getGuestToken(){
   return v;
 }
 
-// --------- DATA REFS ----------
+// ---------- PROFILE CACHE (for avatars) ----------
+const profileCache = new Map(); // uid -> { photoURL, name }
+const profileInFlight = new Map(); // uid -> Promise
+
+function userDoc(uid){ return doc(db, "users", uid); }
+
+async function getProfile(uid){
+  if(!uid) return { photoURL:null, name:null };
+  if(profileCache.has(uid)) return profileCache.get(uid);
+
+  if(profileInFlight.has(uid)) return await profileInFlight.get(uid);
+
+  const p = (async ()=>{
+    try{
+      const snap = await getDoc(userDoc(uid));
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      const out = {
+        photoURL: (typeof d.photoURL === "string" && d.photoURL.trim()) ? d.photoURL.trim() : null,
+        name: (typeof d.displayName === "string" && d.displayName.trim()) ? d.displayName.trim() : null
+      };
+      profileCache.set(uid, out);
+      return out;
+    }catch{
+      const out = { photoURL:null, name:null };
+      profileCache.set(uid, out);
+      return out;
+    }finally{
+      profileInFlight.delete(uid);
+    }
+  })();
+
+  profileInFlight.set(uid, p);
+  return await p;
+}
+
+function avatarHTML(photoURL){
+  const url = (typeof photoURL === "string" && photoURL.trim()) ? photoURL.trim() : "";
+  if(!url){
+    return `
+      <div style="
+        width:36px;height:36px;border-radius:50%;
+        border:1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.06);
+        display:flex;align-items:center;justify-content:center;
+        font-weight:950; opacity:.9;
+        flex:none;
+      ">👤</div>
+    `;
+  }
+  return `
+    <div style="
+      width:36px;height:36px;border-radius:50%;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      overflow:hidden;
+      flex:none;
+    ">
+      <img src="${escapeHtml(url)}" alt="Profile" style="width:100%;height:100%;object-fit:cover;display:block">
+    </div>
+  `;
+}
+
+// ---------- DATA REFS ----------
 function commentsCol(bookId){ return collection(db, "books", bookId, "comments"); }
 function commentDoc(bookId, id){ return doc(db, "books", bookId, "comments", id); }
 function repliesCol(bookId, commentId){ return collection(db, "books", bookId, "comments", commentId, "replies"); }
@@ -71,7 +133,7 @@ function ratingsDoc(bookId, uid){ return doc(db, "books", bookId, "ratings", uid
 function achDoc(bookId, uid){ return doc(db, "users", uid, "achievements", bookId); }
 function reactDoc(bookId, commentId, uid){ return doc(db, "books", bookId, "comments", commentId, "reactions", uid); }
 
-// --------- EDIT WINDOW ----------
+// ---------- EDIT WINDOW ----------
 function canEdit(d){
   const now = Date.now();
   const editableUntil = d.editableUntil?.toMillis ? d.editableUntil.toMillis() : 0;
@@ -99,24 +161,15 @@ function starLine(n){
   return "";
 }
 
-// --------- LOCAL ENG SNAPSHOT HELPERS ----------
-function readLocalEng(bookId){
-  try{ return JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}"); }
-  catch{ return {}; }
+// ---------- LOCAL LOVE COUNTER (for achievements flavor) ----------
+function bumpLocalLoveNet(delta){
+  const k = "reactLoveNet";
+  const v = Number(localStorage.getItem(k) || 0);
+  const next = Math.max(0, v + delta);
+  localStorage.setItem(k, String(next));
 }
-function writeLocalEng(bookId, obj){
-  try{ localStorage.setItem(`eng:${bookId}`, JSON.stringify(obj || {})); }catch{}
-}
-function bumpLocalField(bookId, key, by){
-  const eng = readLocalEng(bookId);
-  eng[key] = Math.max(0, Number(eng[key] || 0) + Number(by || 0));
-  eng.lastAt = Date.now();
-  writeLocalEng(bookId, eng);
-}
-function bumpLocalReactionNet(bookId, kind, delta){
-  // Keeps a simple "net" of loves/likes the user has active (best-effort local)
-  if(kind === "like") bumpLocalField(bookId, "reactLikeNet", delta);
-  if(kind === "love") bumpLocalField(bookId, "reactLoveNet", delta);
+function loveCountLocal(){
+  return Number(localStorage.getItem("reactLoveNet") || 0);
 }
 
 // --------- REACTIONS (COUNTS + TOGGLE) ----------
@@ -127,9 +180,7 @@ async function toggleReaction({ bookId, commentId, kind }){
   const cRef = commentDoc(bookId, commentId);
   const rRef = reactDoc(bookId, commentId, UID);
 
-  // We’ll capture net deltas so Achievements can track “love” properly (local only).
-  let deltaLike = 0;
-  let deltaLove = 0;
+  let loveDelta = 0;
 
   try{
     await runTransaction(db, async (tx)=>{
@@ -145,43 +196,31 @@ async function toggleReaction({ bookId, commentId, kind }){
       let nextLike = likeCount;
       let nextLove = loveCount;
 
-      // reset deltas each run
-      deltaLike = 0;
-      deltaLove = 0;
-
       // If same kind -> remove reaction (toggle off)
       if(prevKind === kind){
         tx.delete(rRef);
-        if(kind === "like"){ nextLike = Math.max(0, nextLike - 1); deltaLike = -1; }
-        if(kind === "love"){ nextLove = Math.max(0, nextLove - 1); deltaLove = -1; }
+        if(kind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(kind === "love") { nextLove = Math.max(0, nextLove - 1); loveDelta = -1; }
       }else{
         // switching kinds or adding new
         tx.set(rRef, { uid: UID, kind, updatedAt: serverTimestamp() }, { merge:true });
 
-        // remove previous (if any)
-        if(prevKind === "like"){ nextLike = Math.max(0, nextLike - 1); deltaLike = -1; }
-        if(prevKind === "love"){ nextLove = Math.max(0, nextLove - 1); deltaLove = -1; }
+        // remove previous
+        if(prevKind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(prevKind === "love") { nextLove = Math.max(0, nextLove - 1); loveDelta = -1; }
 
         // add new
-        if(kind === "like"){ nextLike += 1; deltaLike += 1; }
-        if(kind === "love"){ nextLove += 1; deltaLove += 1; }
+        if(kind === "like") nextLike += 1;
+        if(kind === "love") { nextLove += 1; loveDelta += 1; }
       }
 
-      tx.update(cRef, {
-        reactLikeCount: nextLike,
-        reactLoveCount: nextLove,
-        reactedAt: serverTimestamp()
-      });
+      tx.update(cRef, { reactLikeCount: nextLike, reactLoveCount: nextLove, reactedAt: serverTimestamp() });
     });
 
-    // Local snapshots:
-    // 1) Count the action as engagement
-    trackEngagement({ bookId, event: "react" }).catch(()=>{});
-    // 2) Maintain net state counts (best-effort local)
-    if(deltaLike) bumpLocalReactionNet(bookId, "like", deltaLike);
-    if(deltaLove) bumpLocalReactionNet(bookId, "love", deltaLove);
+    if(loveDelta !== 0) bumpLocalLoveNet(loveDelta);
 
     toast(kind === "like" ? "👍 Updated" : "❤️ Updated");
+    trackEngagement({ bookId, event: "react" }).catch(()=>{});
   }catch{
     toast("Could not react.");
   }
@@ -194,21 +233,42 @@ async function renderReplies({ bookId, commentId }){
     const snap = await getDocs(qy);
     if(snap.empty) return "";
 
+    // preload profiles for signed-in replies
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
+
     const out = [];
     snap.forEach(s=>{
       const d = s.data() || {};
-      const who = escapeHtml(d.name || (d.isAdmin ? "Admin" : "Reader"));
-      const txt = escapeHtml(d.text || "");
       const isA = !!d.isAdmin;
       const editOk = canEdit(d);
       const mins = timeLeftMinutes(d);
 
+      const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
+      const txt = escapeHtml(d.text || "");
+
+      // avatar priority: snapshot on doc -> profile cache -> default
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
       out.push(`
         <div style="margin-top:10px;margin-left:14px;padding-left:12px;border-left:2px solid rgba(255,255,255,.10)">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-            <div style="font-weight:950;opacity:${isA?1:.95}">${isA ? "🛡️ " : ""}${who}</div>
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="min-width:0">
+                <div style="font-weight:950;opacity:${isA?1:.95};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                  ${isA ? "🛡️ " : ""}${who}
+                </div>
+              </div>
+            </div>
             <div style="opacity:.72;font-size:12px">${editOk && mins ? `editable ${mins}m` : ""}</div>
           </div>
+
           <div style="opacity:.92;margin-top:6px;line-height:1.55">${txt}</div>
 
           ${editOk ? `
@@ -253,10 +313,20 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       return;
     }
 
+    // Preload profiles for signed-in commenters
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
+
     const rows = [];
     for (const s of snap.docs){
       const d = s.data() || {};
-      const name = escapeHtml(d.name || (d.isAdmin ? "Admin" : "Reader"));
+      const isA = !!d.isAdmin;
+
+      const name = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
       const text = escapeHtml(d.text || "");
       const rating = starLine(d.rating);
       const mins = timeLeftMinutes(d);
@@ -265,16 +335,27 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       const likeCount = Number(d.reactLikeCount || 0);
       const loveCount = Number(d.reactLoveCount || 0);
 
+      // avatar priority: snapshot on doc -> profile cache -> default
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
       const replyHtml = await renderReplies({ bookId, commentId: s.id });
 
       rows.push(`
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-            <div style="font-weight:950">${d.isAdmin ? "🛡️ " : ""}${name}</div>
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="min-width:0">
+                <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                  ${isA ? "🛡️ " : ""}${name}
+                </div>
+              </div>
+            </div>
             <div style="opacity:.85">${rating}</div>
           </div>
 
-          <div style="opacity:.92;margin-top:6px;line-height:1.6">${text}</div>
+          <div style="opacity:.92;margin-top:8px;line-height:1.6">${text}</div>
 
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <button
@@ -338,7 +419,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
       });
     });
 
-    // Reply send
+    // Reply send (stores photoURL snapshot if possible)
     mount.querySelectorAll("[data-replysend]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const id = btn.getAttribute("data-replysend");
@@ -350,6 +431,14 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
           if(msg) msg.textContent = "Write a reply first.";
           return;
         }
+
+        // snapshot avatar
+        let photoURL = null;
+        if(UID){
+          const p = await getProfile(UID);
+          photoURL = p.photoURL || (auth.currentUser?.photoURL || null);
+        }
+
         try{
           const editableUntil = Timestamp.fromMillis(Date.now() + 60*60*1000);
           await addDoc(repliesCol(bookId, id), {
@@ -358,6 +447,7 @@ export async function renderComments({ bookId="book1", mountId="commentsList", m
             isAdmin: isAdmin(),
             name: isAdmin() ? "Admin" : "Reader",
             text,
+            photoURL: photoURL || null,
             createdAt: serverTimestamp(),
             editableUntil
           });
@@ -505,6 +595,13 @@ export function setupCommentForm({
       return;
     }
 
+    // snapshot avatar for signed-in users
+    let photoURL = null;
+    if(UID){
+      const p = await getProfile(UID);
+      photoURL = p.photoURL || (auth.currentUser?.photoURL || null);
+    }
+
     try{
       const editableUntil = Timestamp.fromMillis(Date.now() + 60*60*1000);
 
@@ -514,6 +611,7 @@ export function setupCommentForm({
         isAdmin: isAdmin(),
         name,
         text,
+        photoURL: photoURL || null,
         rating: (rating>=1 && rating<=5) ? rating : null,
         createdAt: serverTimestamp(),
         editableUntil,
@@ -604,10 +702,23 @@ export async function renderCommentPreview({ bookId="book1", mountId="commentPre
       return;
     }
 
+    // preload profiles
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
+
     const rows = [];
     snap.forEach(s=>{
       const d = s.data() || {};
-      const who = escapeHtml(d.name || (d.isAdmin ? "Admin" : "Reader"));
+      const isA = !!d.isAdmin;
+
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
+      const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
       const raw = String(d.text || "");
       const txt = escapeHtml(raw.slice(0, 140)) + (raw.length > 140 ? "…" : "");
       const like = Number(d.reactLikeCount || 0);
@@ -616,10 +727,15 @@ export async function renderCommentPreview({ bookId="book1", mountId="commentPre
       rows.push(`
         <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-            <div style="font-weight:950">${d.isAdmin ? "🛡️ " : ""}${who}</div>
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                ${isA ? "🛡️ " : ""}${who}
+              </div>
+            </div>
             <div style="opacity:.75;font:900 12px ui-sans-serif,system-ui">👍 ${like} · ❤️ ${love}</div>
           </div>
-          <div style="opacity:.90;margin-top:6px;line-height:1.55">${txt}</div>
+          <div style="opacity:.90;margin-top:8px;line-height:1.55">${txt}</div>
         </div>
       `);
     });
@@ -636,12 +752,11 @@ function engagementRef(uid, bookId){
 }
 
 async function trackEngagement({ bookId="book1", event="read" } = {}){
-  // local snapshot (works for guests too)
   const key = `eng:${bookId}`;
-  const local = readLocalEng(bookId);
+  const local = JSON.parse(localStorage.getItem(key) || "{}");
   local[event] = (local[event] || 0) + 1;
   local.lastAt = Date.now();
-  writeLocalEng(bookId, local);
+  localStorage.setItem(key, JSON.stringify(local));
 
   if(!UID) return;
 
@@ -655,9 +770,8 @@ async function trackEngagement({ bookId="book1", event="read" } = {}){
   }catch{}
 }
 
-// ---------- ACHIEVEMENTS (50+ UNIQUE) ----------
+// ---------- ACHIEVEMENTS ----------
 const ACH = [
-  // Reading
   ["first_page","First Step"],
   ["page_5","Five Pages Deep"],
   ["page_10","Ten-Page Lock-in"],
@@ -675,13 +789,11 @@ const ACH = [
   ["pct_90","90% Pressure"],
   ["finished","Book Finished"],
 
-  // Time flavor
   ["night_owl","Night Owl Reader"],
   ["early_bird","Early Bird Reader"],
   ["lunch_break","Lunch Break Chapter"],
   ["weekend_reader","Weekend Reader"],
 
-  // Community
   ["first_comment","First Comment"],
   ["comment_3","Comment Trio"],
   ["comment_5","Chatty (5)"],
@@ -694,7 +806,6 @@ const ACH = [
   ["react_10","Reaction Machine (10)"],
   ["first_rating","First Rating"],
 
-  // Mixes
   ["social_reader","Social Reader"],
   ["critic","The Critic"],
   ["superfan","Superfan"],
@@ -704,7 +815,6 @@ const ACH = [
   ["peacekeeper","Peacekeeper"],
   ["loyal_reader","Loyal Reader"],
 
-  // Progress mini-milestones
   ["mil_1","Bookmark Keeper"],
   ["mil_2","Turning Pages"],
   ["mil_3","Locked In"],
@@ -716,7 +826,6 @@ const ACH = [
   ["mil_9","Final Stretch"],
   ["mil_10","No Skips"],
 
-  // Extra “cool” ones
   ["mood_vibes","Vibes Only"],
   ["heart_on_sleeve","Heart on Sleeve"],
   ["sharp_eye","Sharp Eye"],
@@ -732,7 +841,7 @@ const ACH_MAP = Object.fromEntries(ACH);
 export async function trackAchievements({ bookId="book1", pageIndex=0, totalPages=1 } = {}){
   const now = new Date();
   const hour = now.getHours();
-  const day = now.getDay(); // 0 Sun
+  const day = now.getDay();
 
   const isNight = hour >= 0 && hour <= 4;
   const isEarly = hour >= 5 && hour <= 8;
@@ -741,17 +850,13 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
 
   const pct = totalPages > 0 ? Math.floor(((pageIndex+1)/totalPages)*100) : 0;
 
-  const eng = readLocalEng(bookId);
+  const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
   const commentsMade = Number(eng.comment || 0);
   const repliesMade  = Number(eng.reply || 0);
   const reactsMade   = Number(eng.react || 0);
   const rated        = Number(eng.rate || 0);
 
-  // NEW: use local net love state, not “any react”
-  const loveNet = Number(eng.reactLoveNet || 0);
-
   const rules = [
-    // pages
     ["first_page", ()=> pageIndex >= 0],
     ["page_5", ()=> pageIndex >= 4],
     ["page_10", ()=> pageIndex >= 9],
@@ -760,7 +865,6 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
     ["page_75", ()=> pageIndex >= 74],
     ["page_100", ()=> pageIndex >= 99],
 
-    // pct
     ["pct_10", ()=> pct >= 10],
     ["pct_20", ()=> pct >= 20],
     ["pct_33", ()=> pct >= 33],
@@ -770,13 +874,11 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
     ["pct_90", ()=> pct >= 90],
     ["finished", ()=> totalPages > 0 && pageIndex >= totalPages - 1],
 
-    // time
     ["night_owl", ()=> isNight && pageIndex >= 2],
     ["early_bird", ()=> isEarly && pageIndex >= 2],
     ["lunch_break", ()=> isLunch && pageIndex >= 2],
     ["weekend_reader", ()=> isWeekend && pageIndex >= 2],
 
-    // community counters
     ["first_comment", ()=> commentsMade >= 1],
     ["comment_3", ()=> commentsMade >= 3],
     ["comment_5", ()=> commentsMade >= 5],
@@ -792,7 +894,6 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
 
     ["first_rating", ()=> rated >= 1],
 
-    // mixes
     ["social_reader", ()=> commentsMade >= 1 && reactsMade >= 1],
     ["critic", ()=> rated >= 1 && commentsMade >= 1],
     ["superfan", ()=> pct >= 75 && commentsMade >= 3],
@@ -802,7 +903,6 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
     ["peacekeeper", ()=> repliesMade >= 3],
     ["loyal_reader", ()=> pct >= 50 && (isWeekend || isNight || isEarly)],
 
-    // minis
     ["mil_1", ()=> pageIndex >= 1],
     ["mil_2", ()=> pageIndex >= 6],
     ["mil_3", ()=> pageIndex >= 12],
@@ -814,9 +914,8 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
     ["mil_9", ()=> pct >= 95],
     ["mil_10", ()=> pct >= 10 && pageIndex >= 10],
 
-    // fun
     ["mood_vibes", ()=> reactsMade >= 1 && pageIndex >= 5],
-    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveNet >= 1)],
+    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveCountLocal() >= 1)],
     ["sharp_eye", ()=> commentsMade >= 1 && pct >= 20],
     ["storm_chaser", ()=> pct >= 33 && isNight],
     ["quiet_support", ()=> repliesMade >= 1 && reactsMade >= 1],
@@ -832,7 +931,6 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
 
   if(!unlocked.length) return;
 
-  // Guest: toast only
   if(!UID){
     unlocked.forEach(id=>{
       const label = ACH_MAP[id] || id;
@@ -879,7 +977,6 @@ export async function renderMyAchievements({ bookId="book1", mountId="achList" }
       return;
     }
 
-    // newest first
     const list = [...arr].slice().reverse();
 
     mount.innerHTML = list.map(id=>`
