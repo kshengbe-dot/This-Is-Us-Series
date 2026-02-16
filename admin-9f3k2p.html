@@ -275,21 +275,14 @@
       <div class="row">
         <div class="badge">UID: <span class="mono" id="uidLine">—</span></div>
         <div class="badge">Status: <span id="statusLine">Not signed in</span></div>
+
+        <!-- ✅ NEW: private stats -->
+        <div class="badge">Subscribers: <span id="subCount">—</span></div>
+        <div class="badge">Readers (Book1): <span id="readerCountAdmin">—</span></div>
       </div>
 
       <div class="small" style="margin-top:10px;">
         Step: sign in → copy UID → paste UID into Firestore Rules (admin-only publishing).
-      </div>
-
-      <!-- ✅ NEW: PRIVATE STATS -->
-      <hr>
-      <h2>Private Stats</h2>
-      <div class="row">
-        <div class="badge">Subscribers: <span class="mono" id="subCount">—</span></div>
-        <div class="badge">Total Readers (Public): <span class="mono" id="adminReaderCount">—</span></div>
-      </div>
-      <div class="small" style="margin-top:8px;">
-        Subscribers are private (only admin can read). Readers is a public counter and also shown on the Library page.
       </div>
     </div>
 
@@ -371,8 +364,8 @@ Use **bold** for bold."></textarea>
       <div class="card">
         <h1>Announcements</h1>
         <div class="small">
-          Post a message that will show at the <strong>top of the Library page</strong> automatically.
-          If Start/End are empty → it shows immediately and never expires.
+          Announcements show at the top of the Library page automatically until they expire.
+          If Start/End are empty, it’s active immediately / never expires.
         </div>
 
         <div class="row2" style="margin-top:10px;">
@@ -386,27 +379,38 @@ Use **bold** for bold."></textarea>
           </div>
         </div>
 
-        <!-- ✅ NEW: Expiry / schedule -->
+        <!-- ✅ NEW: scheduling -->
         <div class="row2" style="margin-top:10px;">
           <div>
             <label>Start (optional)</label>
             <input id="announceStart" type="datetime-local" />
           </div>
           <div>
-            <label>End (optional)</label>
+            <label>End/Expire (optional)</label>
             <input id="announceEnd" type="datetime-local" />
           </div>
         </div>
 
         <div class="row" style="margin-top:12px;">
           <button class="btn primary" id="publishAnnounce">📣 Publish Announcement</button>
+          <button class="btn" id="refreshAnnounce">🔄 Refresh</button>
           <div class="small" id="announceMsg"></div>
         </div>
 
-        <hr>
-        <div class="small">
-          It will stay visible until the end time (if set). After it expires it disappears automatically.
+        <div class="preview" id="announceList" style="margin-top:10px;">—</div>
+      </div>
+
+      <!-- ✅ NEW: Subscribers (PRIVATE) -->
+      <div class="card">
+        <h1>Subscribers (Private)</h1>
+        <div class="small">Only you (admin) can see subscriber list + count.</div>
+
+        <div class="row" style="margin-top:10px;">
+          <button class="btn" id="refreshSubs">🔄 Refresh Subscribers</button>
+          <div class="small" id="subsMsg"></div>
         </div>
+
+        <div class="preview" id="subsList" style="margin-top:10px;">—</div>
       </div>
 
     </div>
@@ -460,13 +464,12 @@ Use **bold** for bold."></textarea>
       deleteDoc, doc,
       getDoc,
       Timestamp,
-      getCountFromServer
+      limit
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // ====== CONFIG ======
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
-    // Theme (local first)
+    // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
@@ -508,9 +511,9 @@ Use **bold** for bold."></textarea>
     const lockScreen = document.getElementById("lockScreen");
     const adminApp = document.getElementById("adminApp");
 
-    // ✅ NEW: private stats refs
+    // NEW stats refs
     const subCountEl = document.getElementById("subCount");
-    const adminReaderCountEl = document.getElementById("adminReaderCount");
+    const readerCountAdmin = document.getElementById("readerCountAdmin");
 
     let UID = null;
 
@@ -522,29 +525,6 @@ Use **bold** for bold."></textarea>
       }else{
         adminApp.classList.remove("show");
         lockScreen.classList.add("show");
-      }
-    }
-
-    // ✅ NEW: load private subscriber count (admin-only)
-    async function loadSubscriberCount(){
-      if(!UID || UID !== ADMIN_UID){ subCountEl.textContent = "—"; return; }
-      try{
-        const snap = await getCountFromServer(collection(db, "subscribers"));
-        subCountEl.textContent = String(snap.data().count || 0);
-      }catch{
-        subCountEl.textContent = "—";
-      }
-    }
-
-    // ✅ NEW: load public reader count (same as library)
-    async function loadReaderCount(bookId="book1"){
-      try{
-        const snap = await getDoc(doc(db, "stats", bookId));
-        const d = snap.exists() ? snap.data() : {};
-        const n = Number(d.totalReaders || 0);
-        adminReaderCountEl.textContent = n.toLocaleString();
-      }catch{
-        adminReaderCountEl.textContent = "—";
       }
     }
 
@@ -567,7 +547,6 @@ Use **bold** for bold."></textarea>
     }
 
     function inlineBold(text){
-      // **bold** -> <strong>bold</strong>
       return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     }
 
@@ -583,13 +562,13 @@ Use **bold** for bold."></textarea>
         const raw = para.join(" ").replace(/\s+/g," ").trim();
         para = [];
         if(!raw) return;
-        const withBold = inlineBold(escapeHtml(raw)).replaceAll("&lt;strong&gt;","<strong>").replaceAll("&lt;/strong&gt;","</strong>");
-        // dropcap only for first paragraph in this chapter block
+        const withBold = inlineBold(escapeHtml(raw))
+          .replaceAll("&lt;strong&gt;","<strong>")
+          .replaceAll("&lt;/strong&gt;","</strong>");
         const cls = blocks.some(b=>b.startsWith("<p")) ? "" : " class=\"dropcap\"";
         blocks.push(`<p${cls}>${withBold}</p>`);
       }
 
-      // header
       blocks.push(
         `<section class="chapter-title">\n  <h3>${safeTitle}</h3>\n  <h4>${safeSub}</h4>\n</section>\n`
       );
@@ -663,63 +642,6 @@ Use **bold** for bold."></textarea>
       }
     };
 
-    // ====== Announcements (with expiry) ======
-    const announceTitle = document.getElementById("announceTitle");
-    const announceBody = document.getElementById("announceBody");
-    const announceMsg = document.getElementById("announceMsg");
-
-    // ✅ NEW: start/end inputs
-    const announceStart = document.getElementById("announceStart");
-    const announceEnd = document.getElementById("announceEnd");
-
-    function dtLocalToTimestamp(val){
-      // val like "2026-02-15T13:45"
-      if(!val) return null;
-      const ms = Date.parse(val);
-      if(!Number.isFinite(ms)) return null;
-      return Timestamp.fromMillis(ms);
-    }
-
-    document.getElementById("publishAnnounce").onclick = async ()=>{
-      announceMsg.textContent = "";
-      if(!UID){ alert("Sign in first."); return; }
-      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
-
-      const t = (announceTitle.value || "").trim();
-      const b = (announceBody.value || "").trim();
-      if(!t || !b){
-        alert("Please fill Title and Body.");
-        return;
-      }
-
-      // ✅ NEW: optional schedule
-      const startAt = dtLocalToTimestamp((announceStart.value || "").trim());
-      const endAt   = dtLocalToTimestamp((announceEnd.value || "").trim());
-
-      if(startAt && endAt && endAt.toMillis() < startAt.toMillis()){
-        alert("End time must be after Start time.");
-        return;
-      }
-
-      try{
-        const payload = {
-          title: t,
-          body: b,
-          createdAt: serverTimestamp(),
-          createdBy: UID
-        };
-        if(startAt) payload.startAt = startAt;
-        if(endAt) payload.endAt = endAt;
-
-        await addDoc(collection(db, "announcements"), payload);
-        announceMsg.textContent = "Published!";
-        // optional clear
-        // announceStart.value = ""; announceEnd.value = "";
-      }catch(e){
-        alert("Denied or error: " + e.message);
-      }
-    };
-
     // ====== Manage chapters (list + delete) ======
     const chaptersList = document.getElementById("chaptersList");
     const refreshChapters = document.getElementById("refreshChapters");
@@ -782,10 +704,169 @@ Use **bold** for bold."></textarea>
     }
 
     refreshChapters.addEventListener("click", renderChapters);
-    bookIdEl.addEventListener("change", async ()=>{
-      await renderChapters();
-      await loadReaderCount(bookIdEl.value.trim() || "book1");
-    });
+    bookIdEl.addEventListener("change", renderChapters);
+
+    // ====== Announcements (with start/end) ======
+    const announceTitle = document.getElementById("announceTitle");
+    const announceBody = document.getElementById("announceBody");
+    const announceStart = document.getElementById("announceStart");
+    const announceEnd = document.getElementById("announceEnd");
+    const announceMsg = document.getElementById("announceMsg");
+    const announceList = document.getElementById("announceList");
+
+    function parseDTLocal(v){
+      // v like "2026-02-15T13:30"
+      if(!v) return null;
+      const d = new Date(v);
+      if(isNaN(d.getTime())) return null;
+      return d;
+    }
+
+    document.getElementById("publishAnnounce").onclick = async ()=>{
+      announceMsg.textContent = "";
+      if(!UID){ alert("Sign in first."); return; }
+      if(UID !== ADMIN_UID){ alert("Access denied."); return; }
+
+      const t = (announceTitle.value || "").trim();
+      const b = (announceBody.value || "").trim();
+      if(!t || !b){
+        alert("Please fill Title and Body.");
+        return;
+      }
+
+      const startDate = parseDTLocal(announceStart.value);
+      const endDate = parseDTLocal(announceEnd.value);
+
+      if(startDate && endDate && endDate.getTime() < startDate.getTime()){
+        alert("End/Expire must be after Start.");
+        return;
+      }
+
+      try{
+        await addDoc(collection(db, "announcements"), {
+          title: t,
+          body: b,
+          startAt: startDate ? Timestamp.fromDate(startDate) : null,
+          endAt: endDate ? Timestamp.fromDate(endDate) : null,
+          createdAt: serverTimestamp(),
+          createdBy: UID
+        });
+        announceMsg.textContent = "Published!";
+        await renderAnnouncementsAdmin();
+      }catch(e){
+        alert("Denied or error: " + e.message);
+      }
+    };
+
+    async function renderAnnouncementsAdmin(){
+      announceList.textContent = "Loading…";
+      try{
+        const qy = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(15));
+        const snap = await getDocs(qy);
+        if(snap.empty){
+          announceList.textContent = "No announcements yet.";
+          return;
+        }
+
+        const now = Date.now();
+        const rows = [];
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          const startMs = d.startAt?.toMillis ? d.startAt.toMillis() : null;
+          const endMs   = d.endAt?.toMillis ? d.endAt.toMillis() : null;
+          const okStart = (startMs == null) ? true : (now >= startMs);
+          const okEnd   = (endMs == null) ? true : (now <= endMs);
+          const badge = (okStart && okEnd) ? "LIVE" : "ARCHIVED";
+
+          rows.push(`
+            <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--stroke);">
+              <div style="min-width:0">
+                <div style="font-weight:950">${escapeHtml(d.title || "Announcement")} <span class="small">(${badge})</span></div>
+                <div class="small">${escapeHtml(d.body || "")}</div>
+                <div class="small mono">docId: ${s.id}</div>
+              </div>
+              <button class="btn danger" data-del-ann="${s.id}">🗑 Delete</button>
+            </div>
+          `);
+        });
+
+        announceList.innerHTML = rows.join("");
+        announceList.querySelectorAll("[data-del-ann]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            if(UID !== ADMIN_UID) return;
+            const id = btn.getAttribute("data-del-ann");
+            if(!confirm("Delete this announcement?")) return;
+            try{
+              await deleteDoc(doc(db,"announcements",id));
+              await renderAnnouncementsAdmin();
+            }catch(e){
+              alert("Denied or error: " + e.message);
+            }
+          });
+        });
+
+      }catch(e){
+        announceList.textContent = "Error: " + e.message;
+      }
+    }
+
+    document.getElementById("refreshAnnounce").onclick = renderAnnouncementsAdmin;
+
+    // ====== Subscribers (Private) ======
+    const subsList = document.getElementById("subsList");
+    const subsMsg = document.getElementById("subsMsg");
+    document.getElementById("refreshSubs").onclick = renderSubscribers;
+
+    async function renderSubscribers(){
+      subsMsg.textContent = "";
+      subsList.textContent = "Loading…";
+      if(UID !== ADMIN_UID){
+        subsList.textContent = "Access denied.";
+        return;
+      }
+
+      try{
+        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(200));
+        const snap = await getDocs(qy);
+
+        const count = snap.size || 0;
+        subCountEl.textContent = String(count);
+
+        if(snap.empty){
+          subsList.textContent = "No subscribers yet.";
+          return;
+        }
+
+        const rows = [];
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          rows.push(`
+            <div style="padding:10px 0;border-bottom:1px solid var(--stroke);">
+              <div style="font-weight:950">${escapeHtml(d.email || d.phone || "Subscriber")}</div>
+              <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "")}</span></div>
+              <div class="small">book: ${escapeHtml(d.bookId || "")}</div>
+              <div class="small">emailOpt: ${d.notificationEmail ? "yes":"no"} | smsOpt: ${d.notificationSMS ? "yes":"no"}</div>
+              <div class="small mono">docId: ${s.id}</div>
+            </div>
+          `);
+        });
+
+        subsList.innerHTML = rows.join("");
+      }catch(e){
+        subsList.textContent = "Error: " + e.message;
+      }
+    }
+
+    // ====== Readers count (Book1) ======
+    async function loadReaderCountAdmin(){
+      try{
+        const snap = await getDoc(doc(db,"stats","book1"));
+        const d = snap.exists() ? snap.data() : {};
+        readerCountAdmin.textContent = String(Number(d.totalReaders || 0)).toLocaleString();
+      }catch{
+        readerCountAdmin.textContent = "—";
+      }
+    }
 
     // ====== Auth ======
     onAuthStateChanged(auth, async (user)=>{
@@ -800,13 +881,16 @@ Use **bold** for bold."></textarea>
       applyGate();
 
       if(user && UID === ADMIN_UID){
-        await renderChapters();
-        await loadSubscriberCount();
-        await loadReaderCount(bookIdEl.value.trim() || "book1");
+        renderChapters();
+        renderAnnouncementsAdmin();
+        renderSubscribers();
+        loadReaderCountAdmin();
       }else{
         chaptersList.textContent = "—";
+        announceList.textContent = "—";
+        subsList.textContent = "—";
         subCountEl.textContent = "—";
-        adminReaderCountEl.textContent = "—";
+        readerCountAdmin.textContent = "—";
       }
     });
 
