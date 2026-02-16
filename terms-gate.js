@@ -16,7 +16,8 @@ export function wireTermsGate({
   modalId = "termsModal",
   checkboxId = "agreeTerms",
   btnId = "acceptTermsBtn",
-  msgId = "termsMsg"
+  msgId = "termsMsg",
+  allowEscClose = false // keep false if you want it strictly mandatory
 } = {}) {
   const modal = document.getElementById(modalId);
   const box = document.getElementById(checkboxId);
@@ -25,43 +26,64 @@ export function wireTermsGate({
 
   if (!modal || !btn || !box) return;
 
-  const show = ()=>{ modal.classList.add("show"); document.body.style.overflow="hidden"; };
-  const hide = ()=>{ modal.classList.remove("show"); document.body.style.overflow=""; };
+  // ✅ prevent duplicate wiring
+  if (btn.dataset.wired === "1") return;
+  btn.dataset.wired = "1";
 
-  const localAccepted = ()=> localStorage.getItem(TERMS_KEY) === "yes";
-  const setLocalAccepted = ()=> localStorage.setItem(TERMS_KEY, "yes");
+  const show = () => {
+    modal.classList.add("show");
+    document.body.style.overflow = "hidden";
+    box.checked = false;
+    if (msg) msg.textContent = "";
+  };
 
-  async function cloudAccepted(uid){
-    if(!uid) return false;
-    try{
-      const u = await getDoc(doc(db,"users",uid));
-      if(!u.exists()) return false;
+  const hide = () => {
+    modal.classList.remove("show");
+    document.body.style.overflow = "";
+    if (msg) msg.textContent = "";
+  };
+
+  const localAccepted = () => localStorage.getItem(TERMS_KEY) === "yes";
+  const setLocalAccepted = () => localStorage.setItem(TERMS_KEY, "yes");
+
+  async function cloudAccepted(uid) {
+    if (!uid) return false;
+    try {
+      const u = await getDoc(doc(db, "users", uid));
+      if (!u.exists()) return false;
       const d = u.data() || {};
       return d.termsAccepted === true && d.termsVersion === TERMS_VERSION;
-    }catch{
+    } catch {
       return false;
     }
   }
 
-  async function setCloudAccepted(uid){
-    if(!uid) return;
-    try{
-      await setDoc(doc(db,"users",uid), {
-        termsAccepted: true,
-        termsVersion: TERMS_VERSION,
-        termsAcceptedAt: serverTimestamp()
-      }, { merge:true });
-    }catch{}
+  async function setCloudAccepted(uid) {
+    if (!uid) return;
+    try {
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
+          termsAcceptedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+    } catch {}
   }
 
-  async function run(uid){
-    // device already accepted
-    if(localAccepted()){ hide(); return; }
+  async function run(uid) {
+    // ✅ device already accepted
+    if (localAccepted()) {
+      hide();
+      return;
+    }
 
-    // signed-in accepted in cloud
-    if(uid){
+    // ✅ if signed-in accepted in cloud, sync local
+    if (uid) {
       const ok = await cloudAccepted(uid);
-      if(ok){
+      if (ok) {
         setLocalAccepted();
         hide();
         return;
@@ -72,20 +94,30 @@ export function wireTermsGate({
     show();
   }
 
-  btn.addEventListener("click", async ()=>{
-    if(msg) msg.textContent = "";
-    if(!box.checked){
-      if(msg) msg.textContent = "Please check the box first.";
+  btn.addEventListener("click", async () => {
+    if (msg) msg.textContent = "";
+    if (!box.checked) {
+      if (msg) msg.textContent = "Please check the box first.";
       return;
     }
     setLocalAccepted();
     const uid = auth.currentUser?.uid || null;
-    if(uid) await setCloudAccepted(uid);
+    if (uid) await setCloudAccepted(uid);
     hide();
   });
 
-  // run after auth resolves (so signed-in users don’t get nagged)
-  onAuthStateChanged(auth, (user)=>{
+  // ✅ show immediately for guests (prevents “flash” delay)
+  run(auth.currentUser?.uid || null);
+
+  // ✅ then run again after auth resolves (so signed-in users don’t get nagged)
+  onAuthStateChanged(auth, (user) => {
     run(user?.uid || null);
   });
+
+  // optional ESC close (I left OFF by default)
+  if (allowEscClose) {
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hide();
+    });
+  }
 }
