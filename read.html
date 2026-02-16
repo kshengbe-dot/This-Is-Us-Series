@@ -381,7 +381,7 @@
       background: rgba(124,92,255,.16);
     }
 
-    /* ===== COMMUNITY MODAL (ADDED) ===== */
+    /* ===== COMMUNITY MODAL ===== */
     .xBtn{
       cursor:pointer;
       padding:8px 10px;
@@ -521,12 +521,16 @@
 
   <div class="measureHost" id="measureHost"></div>
 
-  <!-- COMMUNITY MODAL (ADDED) -->
+  <!-- COMMUNITY MODAL -->
   <div class="modal" id="communityModal" aria-hidden="true">
     <div class="modalCard">
       <div class="modalHead">
         <h3>Community</h3>
         <div class="xBtn" id="communityClose">✕</div>
+      </div>
+
+      <div class="miniNote" id="communityAuthHint" style="margin:0 6px 6px;">
+        Loading…
       </div>
 
       <div class="tabs">
@@ -623,7 +627,6 @@
         <div></div>
       </div>
 
-      <!-- Same terms text you already use (kept consistent) -->
       <div class="termsBox" id="termsText">
         <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
         <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
@@ -694,13 +697,9 @@
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // ✅ shared terms gate (so it remembers everywhere)
     import { wireTermsGate } from "./terms-gate.js";
-
-    // ✅ stats bump so Readers count grows
     import { bumpReaderCountOnce } from "./public-feed.js";
 
-    // ✅ community module (comments, ratings, achievements, guidelines)
     import {
       renderComments,
       setupCommentForm,
@@ -763,24 +762,23 @@
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
-    // ---- Firebase (optional sync) ----
+    // ---- Firebase ----
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let UID = null;
 
-    // ✅ Enforce terms on reader page too (same keys as index)
+    // ✅ Enforce terms on reader page too
     wireTermsGate();
 
-    // ✅ Bump readers once per device per book
-    bumpReaderCountOnce({ bookId });
+    // ✅ Count readers when they START reading (including guests)
+    try { await bumpReaderCountOnce({ bookId }); } catch {}
 
     // ---- Progress keys ----
     const progressKeyLocal = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
 
-    // cloud doc for progress: users/{uid}/progress/{bookId}
     function progressDocRef(uid){
       return doc(db, "users", uid, "progress", bookId);
     }
@@ -814,6 +812,14 @@
 
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
+
+      // Community hint
+      const hint = document.getElementById("communityAuthHint");
+      if(hint){
+        hint.textContent = UID
+          ? "Signed in — you can post comments and rate."
+          : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
+      }
 
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
@@ -857,7 +863,6 @@
       BOOK_HTML = await res.text();
     }
 
-    // load Firestore-published chapters and append to BOOK_HTML
     async function loadChaptersFromCloud(){
       if(bookId !== "book1") return "";
 
@@ -1058,7 +1063,7 @@
       await saveCloudProgress();
     }
 
-    // ---- Achievements tracker (ADDED) ----
+    // ---- Achievements ----
     let __lastAchIndex = -999;
 
     function render(){
@@ -1090,7 +1095,6 @@
 
       saveProgressAll();
 
-      // ✅ achievements (only when index changes)
       if(__lastAchIndex !== i){
         __lastAchIndex = i;
         trackAchievements({ bookId, pageIndex: i, totalPages: PAGES.length }).catch(()=>{});
@@ -1194,7 +1198,7 @@
       render();
     }
 
-    // ===== COMMUNITY MODAL WIRING (ADDED) =====
+    // ===== COMMUNITY MODAL WIRING =====
     const communityModal = document.getElementById("communityModal");
     const communityBtn = document.getElementById("communityBtn");
     const communityClose = document.getElementById("communityClose");
@@ -1211,12 +1215,11 @@
       communityModal.setAttribute("aria-hidden","false");
       document.body.style.overflow = "hidden";
 
-      // load panels
       renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
       renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
       renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
       document.getElementById("guideMount").innerHTML = guidelinesHTML();
-      // load my rating
+
       loadMyRating({ bookId }).then(r=>{
         const sel = document.getElementById("myRatingSel");
         if(sel) sel.value = String(r || 0);
@@ -1239,7 +1242,6 @@
         panels[k].classList.toggle("show", k === id);
       });
 
-      // refresh content when switching
       if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
       if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
       if(id === "achTab") renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
