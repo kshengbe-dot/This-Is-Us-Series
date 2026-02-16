@@ -317,6 +317,8 @@
       padding:16px;
     }
     .modal.show{display:flex}
+
+    /* ✅ FIX: make modal content scrollable (mobile + desktop) */
     .modalCard{
       width:min(860px, 96vw);
       border:1px solid var(--stroke);
@@ -324,13 +326,25 @@
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
+
+      max-height: calc(100vh - 32px - var(--safeTop) - var(--safeBot));
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
+
     .modalHead{
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 6px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: inherit;
+      backdrop-filter: blur(10px);
     }
     .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
+
     .termsBox{
       border:1px solid var(--stroke);
       border-radius:18px;
@@ -457,7 +471,7 @@
       <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
     </div>
 
-    <!-- ✅ NEW: MOBILE COMMUNITY -->
+    <!-- ✅ MOBILE COMMUNITY -->
     <div style="display:flex;gap:8px;align-items:center;">
       <div class="mBtn" id="mCommunity">💬</div>
       <div class="mBtn" id="mTheme">Theme</div>
@@ -517,7 +531,7 @@
 
   <!-- COMMUNITY MODAL -->
   <div class="modal" id="communityModal" aria-hidden="true">
-    <div class="modalCard">
+    <div class="modalCard" id="communityCard">
       <div class="modalHead">
         <h3>Community</h3>
         <div class="xBtn" id="communityClose">✕</div>
@@ -1146,6 +1160,18 @@
     document.addEventListener("keydown",(e)=>{
       if(e.key==="ArrowRight") next();
       if(e.key==="ArrowLeft") prev();
+      if(e.key==="Escape"){
+        const cm = document.getElementById("communityModal");
+        const tm = document.getElementById("termsModal");
+        if(cm?.classList.contains("show")){
+          cm.classList.remove("show");
+          cm.setAttribute("aria-hidden","true");
+          document.body.style.overflow = "";
+        }
+        if(tm?.classList.contains("show")){
+          // terms modal is mandatory gate; do nothing on ESC
+        }
+      }
     });
 
     document.getElementById("bookTap").addEventListener("click",(e)=>{
@@ -1183,6 +1209,7 @@
 
     // COMMUNITY MODAL WIRING
     const communityModal = document.getElementById("communityModal");
+    const communityCard  = document.getElementById("communityCard");
     const communityBtn = document.getElementById("communityBtn");
     const communityClose = document.getElementById("communityClose");
     const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
@@ -1197,6 +1224,9 @@
       communityModal.classList.add("show");
       communityModal.setAttribute("aria-hidden","false");
       document.body.style.overflow = "hidden";
+
+      // ✅ ensure modal starts at top on open
+      if(communityCard) communityCard.scrollTop = 0;
 
       renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
       renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
@@ -1219,12 +1249,15 @@
     communityClose.addEventListener("click", closeCommunity);
     communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
 
-    // ✅ NEW: MOBILE COMMUNITY CLICK
+    // MOBILE COMMUNITY CLICK
     document.getElementById("mCommunity").addEventListener("click", openCommunity);
 
     function setTab(id){
       tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
       Object.keys(panels).forEach(k=> panels[k].classList.toggle("show", k === id));
+
+      // ✅ keep header visible; scroll inside modal content
+      if(communityCard) communityCard.scrollTop = 0;
 
       if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
       if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
