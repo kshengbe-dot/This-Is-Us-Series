@@ -175,7 +175,7 @@
       border-radius:16px;
       padding:12px;
       overflow:auto;
-      max-height:360px;
+      max-height:420px;
     }
     [data-theme="light"] .preview{ background: rgba(2,6,23,.04); }
     .hintLine{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
@@ -195,7 +195,6 @@
       background: rgba(255,100,100,.08);
     }
 
-    /* Auth Modal */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -225,7 +224,6 @@
       background: rgba(255,255,255,.06);
     }
 
-    /* Private gate */
     .locked{ display:none; }
     .locked.show{ display:block; }
     .lockScreen{
@@ -276,21 +274,49 @@
         <div class="badge">UID: <span class="mono" id="uidLine">—</span></div>
         <div class="badge">Status: <span id="statusLine">Not signed in</span></div>
 
-        <!-- ✅ NEW: private stats -->
+        <div class="badge">Readers Total: <span id="readerTotalAdmin">—</span></div>
+        <div class="badge">Signed-in: <span id="readerSignedAdmin">—</span></div>
+        <div class="badge">Guests: <span id="readerGuestAdmin">—</span></div>
+
         <div class="badge">Subscribers: <span id="subCount">—</span></div>
-        <div class="badge">Readers (Book1): <span id="readerCountAdmin">—</span></div>
       </div>
 
       <div class="small" style="margin-top:10px;">
-        Step: sign in → copy UID → paste UID into Firestore Rules (admin-only publishing).
+        Step: sign in → your UID must match ADMIN UID in rules.
+      </div>
+
+      <hr>
+
+      <h2>Backfill (Count Past Readers)</h2>
+      <div class="small">
+        You cannot automatically count old visitors who will never return. Use this to set a baseline number.
+        Example: if you already had ~200 readers before stats existed, set Total = 200.
+      </div>
+
+      <div class="row3" style="margin-top:10px;">
+        <div>
+          <label>Total baseline</label>
+          <input id="baseTotal" type="number" min="0" placeholder="200">
+        </div>
+        <div>
+          <label>Signed-in baseline</label>
+          <input id="baseSigned" type="number" min="0" placeholder="40">
+        </div>
+        <div>
+          <label>Guest baseline</label>
+          <input id="baseGuest" type="number" min="0" placeholder="160">
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn primary" id="applyBaseline">✅ Apply baseline</button>
+        <div class="small" id="baseMsg"></div>
       </div>
     </div>
 
     <div class="lockScreen" id="lockScreen">
       <h1>Access denied</h1>
-      <div class="small">
-        This dashboard is private. Please sign in with the admin account.
-      </div>
+      <div class="small">This dashboard is private. Please sign in with the admin account.</div>
       <div class="row" style="margin-top:12px;">
         <button class="btn primary" id="openAuth2">Sign in</button>
       </div>
@@ -318,12 +344,12 @@
 
         <div class="row2" style="margin-top:10px;">
           <div>
-            <label>Chapter Title (e.g., Chapter Seven)</label>
-            <input id="chapterTitle" placeholder="Chapter Ninety-Nine" />
+            <label>Chapter Title</label>
+            <input id="chapterTitle" placeholder="Chapter Seven" />
           </div>
           <div>
-            <label>Chapter Subtitle (e.g., Storm Lines)</label>
-            <input id="chapterSubtitle" placeholder="Test Drop" />
+            <label>Chapter Subtitle</label>
+            <input id="chapterSubtitle" placeholder="Storm Lines" />
           </div>
         </div>
 
@@ -353,8 +379,8 @@ Use **bold** for bold."></textarea>
         <div class="preview mono" id="htmlPreview">—</div>
 
         <hr>
-        <h2>Manage Chapters (delete mistakes)</h2>
-        <div class="small">This lists published chapters from Firestore. Delete removes it immediately.</div>
+        <h2>Manage Chapters</h2>
+        <div class="small">Delete removes it immediately.</div>
         <div class="row" style="margin-top:10px;">
           <button class="btn" id="refreshChapters">🔄 Refresh List</button>
         </div>
@@ -379,7 +405,6 @@ Use **bold** for bold."></textarea>
           </div>
         </div>
 
-        <!-- ✅ NEW: scheduling -->
         <div class="row2" style="margin-top:10px;">
           <div>
             <label>Start (optional)</label>
@@ -400,7 +425,6 @@ Use **bold** for bold."></textarea>
         <div class="preview" id="announceList" style="margin-top:10px;">—</div>
       </div>
 
-      <!-- ✅ NEW: Subscribers (PRIVATE) -->
       <div class="card">
         <h1>Subscribers (Private)</h1>
         <div class="small">Only you (admin) can see subscriber list + count.</div>
@@ -467,6 +491,12 @@ Use **bold** for bold."></textarea>
       limit
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+    import {
+      renderReaderSplitAdmin,
+      adminSetReaderBaseline
+    } from "./public-feed.js";
+
+    // ✅ YOUR ADMIN UID
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
     // Theme
@@ -511,9 +541,12 @@ Use **bold** for bold."></textarea>
     const lockScreen = document.getElementById("lockScreen");
     const adminApp = document.getElementById("adminApp");
 
-    // NEW stats refs
+    // Stats refs
     const subCountEl = document.getElementById("subCount");
-    const readerCountAdmin = document.getElementById("readerCountAdmin");
+    const baseTotal = document.getElementById("baseTotal");
+    const baseSigned = document.getElementById("baseSigned");
+    const baseGuest = document.getElementById("baseGuest");
+    const baseMsg = document.getElementById("baseMsg");
 
     let UID = null;
 
@@ -528,15 +561,7 @@ Use **bold** for bold."></textarea>
       }
     }
 
-    // ====== Formatter ======
-    const bookIdEl = document.getElementById("bookId");
-    const chapterNumberEl = document.getElementById("chapterNumber");
-    const chapterTitleEl = document.getElementById("chapterTitle");
-    const chapterSubtitleEl = document.getElementById("chapterSubtitle");
-    const chapterTextEl = document.getElementById("chapterText");
-    const htmlPreview = document.getElementById("htmlPreview");
-    const publishMsg = document.getElementById("publishMsg");
-
+    // ===== Helpers =====
     function escapeHtml(str){
       return String(str)
         .replaceAll("&","&amp;")
@@ -590,6 +615,15 @@ Use **bold** for bold."></textarea>
 
       return blocks.join("\n\n");
     }
+
+    // ====== Formatter ======
+    const bookIdEl = document.getElementById("bookId");
+    const chapterNumberEl = document.getElementById("chapterNumber");
+    const chapterTitleEl = document.getElementById("chapterTitle");
+    const chapterSubtitleEl = document.getElementById("chapterSubtitle");
+    const chapterTextEl = document.getElementById("chapterText");
+    const htmlPreview = document.getElementById("htmlPreview");
+    const publishMsg = document.getElementById("publishMsg");
 
     document.getElementById("formatBtn").onclick = ()=>{
       const html = formatChapterToHTML({
@@ -651,8 +685,8 @@ Use **bold** for bold."></textarea>
       chaptersList.textContent = "Loading…";
 
       try{
-        const q = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","asc"));
-        const snap = await getDocs(q);
+        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","asc"));
+        const snap = await getDocs(qy);
 
         if(snap.empty){
           chaptersList.textContent = "No chapters published yet.";
@@ -715,7 +749,6 @@ Use **bold** for bold."></textarea>
     const announceList = document.getElementById("announceList");
 
     function parseDTLocal(v){
-      // v like "2026-02-15T13:30"
       if(!v) return null;
       const d = new Date(v);
       if(isNaN(d.getTime())) return null;
@@ -846,7 +879,6 @@ Use **bold** for bold."></textarea>
               <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "")}</span></div>
               <div class="small">book: ${escapeHtml(d.bookId || "")}</div>
               <div class="small">emailOpt: ${d.notificationEmail ? "yes":"no"} | smsOpt: ${d.notificationSMS ? "yes":"no"}</div>
-              <div class="small mono">docId: ${s.id}</div>
             </div>
           `);
         });
@@ -857,16 +889,23 @@ Use **bold** for bold."></textarea>
       }
     }
 
-    // ====== Readers count (Book1) ======
-    async function loadReaderCountAdmin(){
+    // ====== Baseline/backfill ======
+    document.getElementById("applyBaseline").onclick = async ()=>{
+      baseMsg.textContent = "";
+      if(UID !== ADMIN_UID){ baseMsg.textContent = "Access denied."; return; }
+
+      const total = Number(baseTotal.value || 0);
+      const signed = Number(baseSigned.value || 0);
+      const guest = Number(baseGuest.value || 0);
+
       try{
-        const snap = await getDoc(doc(db,"stats","book1"));
-        const d = snap.exists() ? snap.data() : {};
-        readerCountAdmin.textContent = String(Number(d.totalReaders || 0)).toLocaleString();
-      }catch{
-        readerCountAdmin.textContent = "—";
+        await adminSetReaderBaseline({ bookId:"book1", total, signed, guest });
+        baseMsg.textContent = "Baseline saved ✅";
+        await renderReaderSplitAdmin({ bookId:"book1" });
+      }catch(e){
+        baseMsg.textContent = e?.message || String(e);
       }
-    }
+    };
 
     // ====== Auth ======
     onAuthStateChanged(auth, async (user)=>{
@@ -884,13 +923,12 @@ Use **bold** for bold."></textarea>
         renderChapters();
         renderAnnouncementsAdmin();
         renderSubscribers();
-        loadReaderCountAdmin();
+        renderReaderSplitAdmin({ bookId:"book1" });
       }else{
         chaptersList.textContent = "—";
         announceList.textContent = "—";
         subsList.textContent = "—";
         subCountEl.textContent = "—";
-        readerCountAdmin.textContent = "—";
       }
     });
 
