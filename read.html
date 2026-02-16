@@ -678,12 +678,16 @@
 
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
     import {
       getFirestore, doc, getDoc, setDoc, serverTimestamp,
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+    // ✅ shared terms gate (no duplicate code inside this page)
+    import { wireTermsGate } from "./terms-gate.js";
+    wireTermsGate();
 
     // ✅ reader stats
     import { bumpReaderCountOnce } from "./public-feed.js";
@@ -750,105 +754,19 @@
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
-    // ---- Firebase ----
-    const app = initializeApp(firebaseConfig);
+    // ---- Firebase (✅ safe init) ----
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let UID = null;
 
     // ==========================
-    // ✅ TERMS GATE (fixed)
-    // - stored in localStorage
-    // - also stored on users/{uid} when signed-in
-    // ==========================
-    const TERMS_VERSION = "v1";
-    const TERMS_KEY = `tiu_terms_${TERMS_VERSION}`;
-
-    const termsModal = document.getElementById("termsModal");
-    const agreeTerms = document.getElementById("agreeTerms");
-    const acceptTermsBtn = document.getElementById("acceptTermsBtn");
-    const termsMsg = document.getElementById("termsMsg");
-
-    function showTerms(){
-      termsModal.classList.add("show");
-      document.body.style.overflow = "hidden";
-    }
-    function hideTerms(){
-      termsModal.classList.remove("show");
-      document.body.style.overflow = "";
-    }
-    function localTermsAccepted(){
-      return localStorage.getItem(TERMS_KEY) === "yes";
-    }
-    function setLocalTermsAccepted(){
-      localStorage.setItem(TERMS_KEY, "yes");
-    }
-
-    async function cloudTermsAccepted(uid){
-      if(!uid) return false;
-      try{
-        const u = await getDoc(doc(db,"users",uid));
-        if(!u.exists()) return false;
-        const d = u.data() || {};
-        return d.termsAccepted === true && d.termsVersion === TERMS_VERSION;
-      }catch{
-        return false;
-      }
-    }
-
-    async function setCloudTermsAccepted(uid){
-      if(!uid) return;
-      try{
-        await setDoc(doc(db,"users",uid), {
-          termsAccepted: true,
-          termsVersion: TERMS_VERSION,
-          termsAcceptedAt: serverTimestamp()
-        }, { merge:true });
-      }catch{}
-    }
-
-    async function runTermsGate(){
-      // already accepted on this device
-      if(localTermsAccepted()){
-        hideTerms();
-        return;
-      }
-
-      // if signed in and already accepted in cloud, sync it locally
-      if(UID){
-        const ok = await cloudTermsAccepted(UID);
-        if(ok){
-          setLocalTermsAccepted();
-          hideTerms();
-          return;
-        }
-      }
-
-      // otherwise force show
-      showTerms();
-    }
-
-    acceptTermsBtn.addEventListener("click", async ()=>{
-      termsMsg.textContent = "";
-      if(!agreeTerms.checked){
-        termsMsg.textContent = "Please check the box first.";
-        return;
-      }
-      setLocalTermsAccepted();
-      if(UID) await setCloudTermsAccepted(UID);
-      hideTerms();
-    });
-
-    // ==========================
-    // ✅ READER COUNT (fixed split)
-    // - run AFTER auth resolves so signed-in is counted correctly
+    // ✅ READER COUNT
     // ==========================
     const COUNT_KEY = `tiu_counted:${bookId}`;
     async function bumpReaderAfterAuth(){
-      // prevent double counting on same device for same book
       if(localStorage.getItem(COUNT_KEY) === "yes") return;
       try{
-        // pass uid so your public-feed.js can split guest vs signed-in
         await bumpReaderCountOnce({ bookId, uid: UID || null });
         localStorage.setItem(COUNT_KEY, "yes");
       }catch{}
@@ -920,8 +838,7 @@
         syncText.textContent = "Guest";
       }
 
-      // ✅ run the fixed gates AFTER we know auth state
-      await runTermsGate();
+      // ✅ count after auth resolves
       await bumpReaderAfterAuth();
 
       if(UID){
