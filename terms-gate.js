@@ -25,18 +25,16 @@ export function wireTermsGate({
 
   if (!modal || !btn || !box) return;
 
-  // ✅ prevent duplicate wiring if file imported twice
+  // ✅ prevent double wiring if imported twice
   if (btn.dataset.wired === "1") return;
   btn.dataset.wired = "1";
 
   const show = () => {
     modal.classList.add("show");
     document.body.style.overflow = "hidden";
-    // reset checkbox each time so it’s intentional
     box.checked = false;
     if (msg) msg.textContent = "";
   };
-
   const hide = () => {
     modal.classList.remove("show");
     document.body.style.overflow = "";
@@ -100,17 +98,16 @@ export function wireTermsGate({
       if (msg) msg.textContent = "Please check the box first.";
       return;
     }
-
     setLocalAccepted();
     const uid = auth.currentUser?.uid || null;
     if (uid) await setCloudAccepted(uid);
     hide();
   });
 
-  // ✅ run immediately (helps guest mode)
+  // ✅ run immediately (guest)
   run(auth.currentUser?.uid || null);
 
-  // run again after auth resolves
+  // run after auth resolves (so signed-in users don’t get nagged)
   onAuthStateChanged(auth, (user) => {
     run(user?.uid || null);
   });
