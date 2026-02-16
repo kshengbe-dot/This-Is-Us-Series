@@ -380,6 +380,82 @@
       border-color: rgba(124,92,255,.55);
       background: rgba(124,92,255,.16);
     }
+
+    /* ===== COMMUNITY MODAL (ADDED) ===== */
+    .xBtn{
+      cursor:pointer;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      font-family: ui-sans-serif, system-ui;
+      user-select:none;
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      padding: 6px 6px 0;
+    }
+    .tabBtn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      padding:8px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font: 900 12px ui-sans-serif,system-ui;
+      letter-spacing:.04em;
+      user-select:none;
+    }
+    .tabBtn.active{
+      color: var(--ink);
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.16);
+    }
+    .tabPanel{
+      display:none;
+      padding: 10px 6px 4px;
+      font-family: ui-sans-serif, system-ui;
+    }
+    .tabPanel.show{ display:block; }
+
+    .fieldLabel{
+      font: 800 12px ui-sans-serif,system-ui;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: var(--muted);
+      margin: 10px 0 6px;
+    }
+    .inp, .sel, .txt{
+      width:100%;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:14px;
+      color: var(--ink);
+      outline:none;
+      font: 600 14px ui-sans-serif,system-ui;
+    }
+    .txt{ min-height: 110px; resize: vertical; line-height:1.5; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width:520px){
+      .grid2{ grid-template-columns: 1fr; }
+    }
+
+    .miniNote{
+      color: var(--muted);
+      font: 600 12px ui-sans-serif,system-ui;
+      line-height:1.45;
+      opacity:.92;
+      margin-top:8px;
+    }
+    .hrSoft{
+      border:0;
+      border-top:1px solid var(--stroke);
+      margin: 10px 0;
+      opacity:.9;
+    }
   </style>
 </head>
 
@@ -401,6 +477,7 @@
       <div class="chip">Book: <strong id="bookTitle">book</strong></div>
       <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
       <div class="chip" id="themeBtn">Theme</div>
+      <div class="chip" id="communityBtn">💬 <strong>Community</strong></div>
       <div class="chip" id="syncChip"><span id="syncDot">●</span> <strong id="syncText">Guest</strong></div>
     </div>
     <div class="row">
@@ -443,6 +520,100 @@
   </div>
 
   <div class="measureHost" id="measureHost"></div>
+
+  <!-- COMMUNITY MODAL (ADDED) -->
+  <div class="modal" id="communityModal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Community</h3>
+        <div class="xBtn" id="communityClose">✕</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tabBtn active" data-tab="commentsTab">Comments</button>
+        <button class="tabBtn" data-tab="ratingTab">Rating</button>
+        <button class="tabBtn" data-tab="achTab">Achievements</button>
+        <button class="tabBtn" data-tab="guideTab">Guidelines</button>
+      </div>
+
+      <div class="tabPanel show" id="commentsTab">
+        <div class="miniNote">Leave a comment for this book. (Rating inside comments is optional.)</div>
+
+        <form id="commentForm" style="margin-top:10px;">
+          <div class="grid2">
+            <div>
+              <div class="fieldLabel">Name</div>
+              <input class="inp" id="cName" placeholder="Reader" />
+            </div>
+            <div>
+              <div class="fieldLabel">Rating (optional)</div>
+              <select class="sel" id="cRating">
+                <option value="0">No rating</option>
+                <option value="1">★ 1</option>
+                <option value="2">★ 2</option>
+                <option value="3">★ 3</option>
+                <option value="4">★ 4</option>
+                <option value="5">★ 5</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="fieldLabel">Comment</div>
+            <textarea class="txt" id="cText" placeholder="Write your comment…"></textarea>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+            <button class="btn2 primary" type="submit">Post Comment</button>
+            <div class="note" id="cMsg"></div>
+          </div>
+        </form>
+
+        <hr class="hrSoft">
+
+        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);font-size:12px;">
+          Latest comments
+        </div>
+        <div id="commentsList" style="margin-top:10px;">Loading…</div>
+      </div>
+
+      <div class="tabPanel" id="ratingTab">
+        <div class="miniNote">Signed-in users can rate once (you can update it anytime).</div>
+
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;min-width:180px;">
+            <div style="font-weight:950">Average</div>
+            <div id="ratingSummary" style="margin-top:6px;opacity:.9;">Loading…</div>
+          </div>
+
+          <div style="border:1px solid var(--stroke);background:rgba(255,255,255,.06);border-radius:16px;padding:10px 12px;">
+            <div class="fieldLabel" style="margin:0 0 6px;">Your rating</div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <select class="sel" id="myRatingSel" style="width:auto;min-width:170px;">
+                <option value="0">Select…</option>
+                <option value="1">★ 1</option>
+                <option value="2">★ 2</option>
+                <option value="3">★ 3</option>
+                <option value="4">★ 4</option>
+                <option value="5">★ 5</option>
+              </select>
+              <button class="btn2 primary" id="saveMyRating" type="button">Save</button>
+            </div>
+            <div class="note" id="ratingMsg" style="margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabPanel" id="achTab">
+        <div class="miniNote">Achievements unlock as you read. Guests can see popups, but sign in to save them.</div>
+        <div id="achList" style="margin-top:10px;">Loading…</div>
+      </div>
+
+      <div class="tabPanel" id="guideTab">
+        <div id="guideMount" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- TERMS MODAL (MANDATORY) -->
   <div class="modal" id="termsModal">
@@ -523,11 +694,23 @@
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // ✅ NEW: shared terms gate (so it remembers everywhere)
+    // ✅ shared terms gate (so it remembers everywhere)
     import { wireTermsGate } from "./terms-gate.js";
 
-    // ✅ NEW: stats bump so Readers count grows
+    // ✅ stats bump so Readers count grows
     import { bumpReaderCountOnce } from "./public-feed.js";
+
+    // ✅ community module (comments, ratings, achievements, guidelines)
+    import {
+      renderComments,
+      setupCommentForm,
+      submitRating,
+      loadMyRating,
+      renderRatingSummary,
+      trackAchievements,
+      renderMyAchievements,
+      guidelinesHTML
+    } from "./reader-community.js";
 
     // ---- Books mapping ----
     const BOOK_FILES = {
@@ -875,6 +1058,9 @@
       await saveCloudProgress();
     }
 
+    // ---- Achievements tracker (ADDED) ----
+    let __lastAchIndex = -999;
+
     function render(){
       if(PAGES.length === 0){
         if(isMobile()){
@@ -903,6 +1089,12 @@
       }
 
       saveProgressAll();
+
+      // ✅ achievements (only when index changes)
+      if(__lastAchIndex !== i){
+        __lastAchIndex = i;
+        trackAchievements({ bookId, pageIndex: i, totalPages: PAGES.length }).catch(()=>{});
+      }
     }
 
     function animateFlip(nextIndex){
@@ -1001,6 +1193,91 @@
       PAGES = paginate(BOOK_HTML);
       render();
     }
+
+    // ===== COMMUNITY MODAL WIRING (ADDED) =====
+    const communityModal = document.getElementById("communityModal");
+    const communityBtn = document.getElementById("communityBtn");
+    const communityClose = document.getElementById("communityClose");
+    const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
+    const panels = {
+      commentsTab: document.getElementById("commentsTab"),
+      ratingTab: document.getElementById("ratingTab"),
+      achTab: document.getElementById("achTab"),
+      guideTab: document.getElementById("guideTab")
+    };
+
+    function openCommunity(){
+      communityModal.classList.add("show");
+      communityModal.setAttribute("aria-hidden","false");
+      document.body.style.overflow = "hidden";
+
+      // load panels
+      renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
+      renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
+      renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
+      document.getElementById("guideMount").innerHTML = guidelinesHTML();
+      // load my rating
+      loadMyRating({ bookId }).then(r=>{
+        const sel = document.getElementById("myRatingSel");
+        if(sel) sel.value = String(r || 0);
+      }).catch(()=>{});
+    }
+
+    function closeCommunity(){
+      communityModal.classList.remove("show");
+      communityModal.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
+    }
+
+    communityBtn.addEventListener("click", openCommunity);
+    communityClose.addEventListener("click", closeCommunity);
+    communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
+
+    function setTab(id){
+      tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
+      Object.keys(panels).forEach(k=>{
+        panels[k].classList.toggle("show", k === id);
+      });
+
+      // refresh content when switching
+      if(id === "commentsTab") renderComments({ bookId, mountId:"commentsList", max: 50 }).catch(()=>{});
+      if(id === "ratingTab") renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
+      if(id === "achTab") renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
+      if(id === "guideTab") document.getElementById("guideMount").innerHTML = guidelinesHTML();
+    }
+
+    tabBtns.forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-tab");
+        setTab(id);
+      });
+    });
+
+    // comment form hookup
+    setupCommentForm({
+      bookId,
+      formId:"commentForm",
+      nameId:"cName",
+      textId:"cText",
+      ratingId:"cRating",
+      msgId:"cMsg",
+      afterPostReload:true
+    });
+
+    // rating submit hookup
+    document.getElementById("saveMyRating").addEventListener("click", async ()=>{
+      const msg = document.getElementById("ratingMsg");
+      if(msg) msg.textContent = "";
+      const sel = document.getElementById("myRatingSel");
+      const r = Number(sel?.value || 0);
+      try{
+        await submitRating({ bookId, rating: r });
+        if(msg) msg.textContent = "Saved ✅";
+        await renderRatingSummary({ bookId, mountId:"ratingSummary" });
+      }catch(e){
+        if(msg) msg.textContent = (e?.message || "Please sign in to rate.");
+      }
+    });
 
     (async ()=>{
       try{
