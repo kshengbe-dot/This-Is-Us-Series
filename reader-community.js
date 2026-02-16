@@ -1,4 +1,4 @@
-// reader-community.js (DROP-IN REPLACEMENT)
+// reader-community.js (FULL FILE — UPDATED, KEEPING YOUR FEATURES)
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {
@@ -78,7 +78,6 @@ function canEdit(d){
   if(editableUntil && now > editableUntil) return false;
 
   if(isAdmin()) return true;
-
   if(UID && d.uid && d.uid === UID) return true;
 
   const tok = getGuestToken();
@@ -100,6 +99,26 @@ function starLine(n){
   return "";
 }
 
+// --------- LOCAL ENG SNAPSHOT HELPERS ----------
+function readLocalEng(bookId){
+  try{ return JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}"); }
+  catch{ return {}; }
+}
+function writeLocalEng(bookId, obj){
+  try{ localStorage.setItem(`eng:${bookId}`, JSON.stringify(obj || {})); }catch{}
+}
+function bumpLocalField(bookId, key, by){
+  const eng = readLocalEng(bookId);
+  eng[key] = Math.max(0, Number(eng[key] || 0) + Number(by || 0));
+  eng.lastAt = Date.now();
+  writeLocalEng(bookId, eng);
+}
+function bumpLocalReactionNet(bookId, kind, delta){
+  // Keeps a simple "net" of loves/likes the user has active (best-effort local)
+  if(kind === "like") bumpLocalField(bookId, "reactLikeNet", delta);
+  if(kind === "love") bumpLocalField(bookId, "reactLoveNet", delta);
+}
+
 // --------- REACTIONS (COUNTS + TOGGLE) ----------
 async function toggleReaction({ bookId, commentId, kind }){
   if(!UID){ toast("Sign in to react."); return; }
@@ -107,6 +126,10 @@ async function toggleReaction({ bookId, commentId, kind }){
 
   const cRef = commentDoc(bookId, commentId);
   const rRef = reactDoc(bookId, commentId, UID);
+
+  // We’ll capture net deltas so Achievements can track “love” properly (local only).
+  let deltaLike = 0;
+  let deltaLove = 0;
 
   try{
     await runTransaction(db, async (tx)=>{
@@ -122,29 +145,43 @@ async function toggleReaction({ bookId, commentId, kind }){
       let nextLike = likeCount;
       let nextLove = loveCount;
 
+      // reset deltas each run
+      deltaLike = 0;
+      deltaLove = 0;
+
       // If same kind -> remove reaction (toggle off)
       if(prevKind === kind){
         tx.delete(rRef);
-        if(kind === "like") nextLike = Math.max(0, nextLike - 1);
-        if(kind === "love") nextLove = Math.max(0, nextLove - 1);
+        if(kind === "like"){ nextLike = Math.max(0, nextLike - 1); deltaLike = -1; }
+        if(kind === "love"){ nextLove = Math.max(0, nextLove - 1); deltaLove = -1; }
       }else{
         // switching kinds or adding new
         tx.set(rRef, { uid: UID, kind, updatedAt: serverTimestamp() }, { merge:true });
 
-        // remove previous
-        if(prevKind === "like") nextLike = Math.max(0, nextLike - 1);
-        if(prevKind === "love") nextLove = Math.max(0, nextLove - 1);
+        // remove previous (if any)
+        if(prevKind === "like"){ nextLike = Math.max(0, nextLike - 1); deltaLike = -1; }
+        if(prevKind === "love"){ nextLove = Math.max(0, nextLove - 1); deltaLove = -1; }
 
         // add new
-        if(kind === "like") nextLike += 1;
-        if(kind === "love") nextLove += 1;
+        if(kind === "like"){ nextLike += 1; deltaLike += 1; }
+        if(kind === "love"){ nextLove += 1; deltaLove += 1; }
       }
 
-      tx.update(cRef, { reactLikeCount: nextLike, reactLoveCount: nextLove, reactedAt: serverTimestamp() });
+      tx.update(cRef, {
+        reactLikeCount: nextLike,
+        reactLoveCount: nextLove,
+        reactedAt: serverTimestamp()
+      });
     });
 
-    toast(kind === "like" ? "👍 Updated" : "❤️ Updated");
+    // Local snapshots:
+    // 1) Count the action as engagement
     trackEngagement({ bookId, event: "react" }).catch(()=>{});
+    // 2) Maintain net state counts (best-effort local)
+    if(deltaLike) bumpLocalReactionNet(bookId, "like", deltaLike);
+    if(deltaLove) bumpLocalReactionNet(bookId, "love", deltaLove);
+
+    toast(kind === "like" ? "👍 Updated" : "❤️ Updated");
   }catch{
     toast("Could not react.");
   }
@@ -571,7 +608,8 @@ export async function renderCommentPreview({ bookId="book1", mountId="commentPre
     snap.forEach(s=>{
       const d = s.data() || {};
       const who = escapeHtml(d.name || (d.isAdmin ? "Admin" : "Reader"));
-      const txt = escapeHtml((d.text || "").slice(0, 140)) + ((d.text||"").length > 140 ? "…" : "");
+      const raw = String(d.text || "");
+      const txt = escapeHtml(raw.slice(0, 140)) + (raw.length > 140 ? "…" : "");
       const like = Number(d.reactLikeCount || 0);
       const love = Number(d.reactLoveCount || 0);
 
@@ -598,11 +636,12 @@ function engagementRef(uid, bookId){
 }
 
 async function trackEngagement({ bookId="book1", event="read" } = {}){
+  // local snapshot (works for guests too)
   const key = `eng:${bookId}`;
-  const local = JSON.parse(localStorage.getItem(key) || "{}");
+  const local = readLocalEng(bookId);
   local[event] = (local[event] || 0) + 1;
   local.lastAt = Date.now();
-  localStorage.setItem(key, JSON.stringify(local));
+  writeLocalEng(bookId, local);
 
   if(!UID) return;
 
@@ -702,11 +741,14 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
 
   const pct = totalPages > 0 ? Math.floor(((pageIndex+1)/totalPages)*100) : 0;
 
-  const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
+  const eng = readLocalEng(bookId);
   const commentsMade = Number(eng.comment || 0);
   const repliesMade  = Number(eng.reply || 0);
   const reactsMade   = Number(eng.react || 0);
   const rated        = Number(eng.rate || 0);
+
+  // NEW: use local net love state, not “any react”
+  const loveNet = Number(eng.reactLoveNet || 0);
 
   const rules = [
     // pages
@@ -774,7 +816,7 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
 
     // fun
     ["mood_vibes", ()=> reactsMade >= 1 && pageIndex >= 5],
-    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveCountLocal(bookId) >= 1)],
+    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveNet >= 1)],
     ["sharp_eye", ()=> commentsMade >= 1 && pct >= 20],
     ["storm_chaser", ()=> pct >= 33 && isNight],
     ["quiet_support", ()=> repliesMade >= 1 && reactsMade >= 1],
@@ -818,13 +860,6 @@ export async function trackAchievements({ bookId="book1", pageIndex=0, totalPage
   }
 }
 
-// helper for one “fun” achievement
-function loveCountLocal(bookId){
-  // approximate using engagement, you can expand later
-  const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
-  return Number(eng.react || 0);
-}
-
 export async function renderMyAchievements({ bookId="book1", mountId="achList" } = {}){
   const mount = document.getElementById(mountId);
   if(!mount) return;
@@ -844,7 +879,7 @@ export async function renderMyAchievements({ bookId="book1", mountId="achList" }
       return;
     }
 
-    // newest first if you want (optional)
+    // newest first
     const list = [...arr].slice().reverse();
 
     mount.innerHTML = list.map(id=>`
