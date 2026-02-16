@@ -65,7 +65,6 @@ export function wireTermsGate({
         return;
       }
     }
-
     show();
   }
 
