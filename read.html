@@ -1,4 +1,3 @@
-<!-- read.html (FULL CODE — with mobile Community button added) -->
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -250,7 +249,7 @@
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
-        max-width: 52vw;
+        max-width: 44vw;
       }
       .mTitle .t2{
         font-family: ui-sans-serif, system-ui;
@@ -458,8 +457,8 @@
       <div class="t2"><span id="mPageLabel">1</span> / <span id="mPageTotal">…</span></div>
     </div>
 
-    <!-- ✅ Mobile community button added (no other changes) -->
-    <div style="display:flex; gap:8px; align-items:center;">
+    <!-- ✅ NEW: MOBILE COMMUNITY -->
+    <div style="display:flex;gap:8px;align-items:center;">
       <div class="mBtn" id="mCommunity">💬</div>
       <div class="mBtn" id="mTheme">Theme</div>
     </div>
@@ -629,43 +628,33 @@
         <p><strong>1) Acceptance</strong><br>
           By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
         </p>
-
         <p><strong>2) Eligibility</strong><br>
           You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
         </p>
-
         <p><strong>3) Content & Reader Experience</strong><br>
           The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
         </p>
-
         <p><strong>4) Accounts</strong><br>
           Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
         </p>
-
         <p><strong>5) User Submissions</strong><br>
           If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
         </p>
-
         <p><strong>6) Notifications (Optional)</strong><br>
           If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
         </p>
-
         <p><strong>7) Privacy</strong><br>
           The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
         </p>
-
         <p><strong>8) Availability & Changes</strong><br>
           The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
         </p>
-
         <p><strong>9) Disclaimer</strong><br>
           The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
         </p>
-
         <p><strong>10) Limitation of Liability</strong><br>
           To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
         </p>
-
         <p><strong>11) Contact</strong><br>
           For questions, removal requests, or opt-out requests, contact the site owner.
         </p>
@@ -677,7 +666,7 @@
       </div>
 
       <div style="display:grid; gap:10px; padding-top:10px">
-        <button class="btn2 primary" id="acceptTermsBtn">Accept & Continue</button>
+        <button class="btn2 primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
         <div class="note" id="termsMsg"></div>
       </div>
     </div>
@@ -692,14 +681,11 @@
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-    // ✅ shared terms gate (no duplicate code inside this page)
     import { wireTermsGate } from "./terms-gate.js";
     wireTermsGate();
 
-    // ✅ reader stats
     import { bumpReaderCountOnce } from "./public-feed.js";
 
-    // ✅ community module
     import {
       renderComments,
       setupCommentForm,
@@ -711,7 +697,6 @@
       guidelinesHTML
     } from "./reader-community.js";
 
-    // ---- Books mapping ----
     const BOOK_FILES = {
       book1: "./books/book1.html",
       coming: "./books/coming-soon.html"
@@ -726,16 +711,16 @@
 
     const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
-    // ---- Theme ----
+    // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    // ---- Navigation ----
-    function goLibrary(){ location.href = "./"; }
+    // Navigation
+    function goLibrary(){ location.href = "index.html"; }
     document.getElementById("backBtn").addEventListener("click", goLibrary);
     document.getElementById("mBack").addEventListener("click", goLibrary);
 
-    // ---- DOM refs ----
+    // DOM refs
     const pageL = document.getElementById("pageL");
     const pageS = document.getElementById("pageS");
 
@@ -761,15 +746,13 @@
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
-    // ---- Firebase (✅ safe init) ----
+    // Firebase (safe init)
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let UID = null;
 
-    // ==========================
-    // ✅ READER COUNT
-    // ==========================
+    // Reader count
     const COUNT_KEY = `tiu_counted:${bookId}`;
     async function bumpReaderAfterAuth(){
       if(localStorage.getItem(COUNT_KEY) === "yes") return;
@@ -779,7 +762,6 @@
       }catch{}
     }
 
-    // ---- Progress keys ----
     const progressKeyLocal = `progress:${bookId}`;
     let i = parseInt(localStorage.getItem(progressKeyLocal) || "0", 10);
     if (isNaN(i) || i < 0) i = 0;
@@ -818,7 +800,6 @@
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
 
-      // community hint
       const hint = document.getElementById("communityAuthHint");
       if(hint){
         hint.textContent = UID
@@ -826,7 +807,6 @@
           : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
       }
 
-      // sync chip
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
         syncText.textContent = "Synced";
@@ -845,7 +825,6 @@
         syncText.textContent = "Guest";
       }
 
-      // ✅ count after auth resolves
       await bumpReaderAfterAuth();
 
       if(UID){
@@ -854,7 +833,6 @@
       }
     });
 
-    // Theme toggle
     function toggleTheme(){
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
       document.documentElement.dataset.theme = next;
@@ -865,7 +843,7 @@
     document.getElementById("themeBtn").addEventListener("click", toggleTheme);
     document.getElementById("mTheme").addEventListener("click", toggleTheme);
 
-    // ---- Load book HTML ----
+    // Load book HTML
     let BOOK_HTML = "<p class='muted'>Loading…</p>";
     let PAGES = [];
 
@@ -1072,7 +1050,7 @@
       await saveCloudProgress();
     }
 
-    // ---- Achievements ----
+    // Achievements
     let __lastAchIndex = -999;
 
     function render(){
@@ -1203,7 +1181,7 @@
       render();
     }
 
-    // ===== COMMUNITY MODAL WIRING =====
+    // COMMUNITY MODAL WIRING
     const communityModal = document.getElementById("communityModal");
     const communityBtn = document.getElementById("communityBtn");
     const communityClose = document.getElementById("communityClose");
@@ -1238,13 +1216,11 @@
     }
 
     communityBtn.addEventListener("click", openCommunity);
-
-    // ✅ mobile community button wiring
-    const mCommunity = document.getElementById("mCommunity");
-    if(mCommunity) mCommunity.addEventListener("click", openCommunity);
-
     communityClose.addEventListener("click", closeCommunity);
     communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
+
+    // ✅ NEW: MOBILE COMMUNITY CLICK
+    document.getElementById("mCommunity").addEventListener("click", openCommunity);
 
     function setTab(id){
       tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
