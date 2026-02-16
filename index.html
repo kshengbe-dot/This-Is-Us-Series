@@ -1,845 +1,1012 @@
-<!doctype html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>THIS IS US — Library</title>
 
-  <style>
-    :root{
-      --bg:#0B1020;
-      --card:#0F1731;
-      --ink:#EAF0FF;
-      --muted:#9FB0D6;
-      --stroke:rgba(255,255,255,.12);
-      --shadow: 0 28px 90px rgba(0,0,0,.55);
-      --glow: rgba(124,92,255,.45);
-      --accent:#7c5cff;
-      --accent2: rgba(0,255,198,.18);
-      --glass: rgba(0,0,0,.30);
-      --safeTop: env(safe-area-inset-top);
-      --safeBot: env(safe-area-inset-bottom);
-    }
-    [data-theme="light"]{
-      --bg:#F7F8FB;
-      --card:#FFFFFF;
-      --ink:#0F172A;
-      --muted:#475569;
-      --stroke:rgba(2,6,23,.10);
-      --shadow: 0 18px 60px rgba(2,6,23,.10);
-      --glow: rgba(124,92,255,.18);
-      --accent:#7c5cff;
-      --accent2: rgba(2,6,23,.04);
-      --glass: rgba(255,255,255,.78);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      color:var(--ink);
-      background:
-        radial-gradient(1100px 800px at 22% 10%, var(--glow), transparent 60%),
-        radial-gradient(900px 700px at 80% 20%, var(--accent2), transparent 55%),
-        var(--bg);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    a{color:inherit;text-decoration:none}
+// reader-community.js (FULL FILE — UPDATED: real profile avatars per user)
+import { firebaseConfig } from "./firebase-config.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {
+  getFirestore,
+  collection, addDoc, serverTimestamp,
+  getDocs, query, orderBy, limit,
+  doc, setDoc, getDoc, updateDoc, deleteDoc,
+  Timestamp,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-    .top{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(14px);
-      background: var(--glass);
-      border-bottom:1px solid var(--stroke);
-    }
-    .nav{
-      max-width:1100px; margin:0 auto;
-      padding: calc(10px + var(--safeTop)) 16px 10px;
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px;
-    }
-    .brand{
-      display:flex; flex-direction:column; gap:2px;
-      letter-spacing:.14em; text-transform:uppercase;
-      font-weight:950;
-      min-width:0;
-    }
-    .brand small{
-      color:var(--muted);
-      font-weight:800;
-      letter-spacing:.08em;
-      text-transform:none;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:46vw;
-    }
-    .right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      max-width:66vw;
-      overflow:auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom:2px;
-    }
-    .right::-webkit-scrollbar{height:0}
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-    .pill{
-      border:1px solid var(--stroke);
+export const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
+
+let UID = null;
+onAuthStateChanged(auth, (user) => {
+  UID = user ? user.uid : null;
+});
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function toast(text){
+  const t = document.createElement("div");
+  t.textContent = text;
+  t.style.cssText = `
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    padding:10px 12px; border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.55);
+    color: white; font: 800 12px ui-sans-serif,system-ui;
+    z-index:9999; backdrop-filter: blur(10px);
+  `;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity="0"; t.style.transition="opacity .35s ease"; }, 1600);
+  setTimeout(()=> t.remove(), 2100);
+}
+
+function isAdmin(){
+  return !!UID && UID === ADMIN_UID;
+}
+
+function getGuestToken(){
+  const k = "guestCommentToken";
+  let v = localStorage.getItem(k);
+  if(v && v.length >= 16) return v;
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  v = Array.from(arr).map(b=>b.toString(16).padStart(2,"0")).join("");
+  localStorage.setItem(k, v);
+  return v;
+}
+
+// ---------- PROFILE CACHE (for avatars) ----------
+const profileCache = new Map(); // uid -> { photoURL, name }
+const profileInFlight = new Map(); // uid -> Promise
+
+function userDoc(uid){ return doc(db, "users", uid); }
+
+async function getProfile(uid){
+  if(!uid) return { photoURL:null, name:null };
+  if(profileCache.has(uid)) return profileCache.get(uid);
+
+  if(profileInFlight.has(uid)) return await profileInFlight.get(uid);
+
+  const p = (async ()=>{
+    try{
+      const snap = await getDoc(userDoc(uid));
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      const out = {
+        photoURL: (typeof d.photoURL === "string" && d.photoURL.trim()) ? d.photoURL.trim() : null,
+        name: (typeof d.displayName === "string" && d.displayName.trim()) ? d.displayName.trim() : null
+      };
+      profileCache.set(uid, out);
+      return out;
+    }catch{
+      const out = { photoURL:null, name:null };
+      profileCache.set(uid, out);
+      return out;
+    }finally{
+      profileInFlight.delete(uid);
+    }
+  })();
+
+  profileInFlight.set(uid, p);
+  return await p;
+}
+
+function avatarHTML(photoURL){
+  const url = (typeof photoURL === "string" && photoURL.trim()) ? photoURL.trim() : "";
+  if(!url){
+    return `
+      <div style="
+        width:36px;height:36px;border-radius:50%;
+        border:1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.06);
+        display:flex;align-items:center;justify-content:center;
+        font-weight:950; opacity:.9;
+        flex:none;
+      ">👤</div>
+    `;
+  }
+  return `
+    <div style="
+      width:36px;height:36px;border-radius:50%;
+      border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
-      color:var(--muted);
-      padding:9px 12px;
-      border-radius:999px;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
-      display:inline-flex; align-items:center; gap:8px;
-      transition: transform .15s ease, background .15s ease;
-      white-space:nowrap;
-      flex:0 0 auto;
-    }
-    .pill:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .pill strong{color:var(--ink)}
-    .dot{font-size:12px; opacity:.9}
-
-    .wrap{max-width:1100px; margin:0 auto; padding:18px 16px 70px;}
-    .hero{
-      display:grid;
-      grid-template-columns: 1.25fr .75fr;
-      gap:16px;
-      margin-top:16px;
-    }
-    .card{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      position:relative;
-      overflow:hidden;
-    }
-    .heroMain{ padding:18px 18px 16px; min-height: 260px; }
-    .heroMain:before{
-      content:"";
-      position:absolute; inset:-1px;
-      background:
-        radial-gradient(700px 320px at 25% 0%, rgba(124,92,255,.22), transparent 65%),
-        radial-gradient(520px 320px at 90% 20%, rgba(0,255,198,.10), transparent 65%);
-      pointer-events:none;
-    }
-    h1{
-      margin:0 0 10px;
-      font-size:44px;
-      line-height:1.02;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      font-weight:950;
-      position:relative;
-    }
-    .subtitle{
-      margin:0;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.55;
-      max-width:65ch;
-      position:relative;
-    }
-    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; position:relative}
-    .btn{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      color:var(--ink);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      transition: transform .15s ease, background .15s ease;
-    }
-    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    .btn.primary{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.16);
-    }
-    .heroSide{ padding:16px; min-height:260px; display:grid; gap:10px; }
-    .stat{
-      border:1px solid var(--stroke);
-      border-radius:16px;
-      padding:12px;
-      background: rgba(0,0,0,.10);
-    }
-    [data-theme="light"] .stat{background: rgba(2,6,23,.04)}
-    .stat .k{color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase}
-    .stat .v{font-weight:950; font-size:16px; margin-top:4px}
-
-    .sectionTitle{
-      margin:26px 0 12px;
-      display:flex; align-items:end; justify-content:space-between; gap:12px;
-    }
-    .sectionTitle h2{
-      margin:0;
-      font-size:18px;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
-
-    .shelf{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap:14px;
-    }
-    .bookCard{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      overflow:hidden;
-      position:relative;
-      transform-style:preserve-3d;
-      transition: transform .18s ease, border-color .18s ease, background .18s ease;
-      cursor:pointer;
-      min-height: 340px;
-      animation: pop .45s ease both;
-    }
-    @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
-    .bookCard:hover{
-      transform: translateY(-4px) rotateX(3deg) rotateY(-4deg);
-      border-color: rgba(124,92,255,.35);
-      background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
-    }
-    .cover{
-      height: 230px;
-      background: rgba(0,0,0,.18);
-      border-bottom:1px solid var(--stroke);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
-    }
-    .cover img{
-      width:100%; height:100%;
-      object-fit:cover;
-      transform: scale(1.02);
-      transition: transform .22s ease;
-      display:block;
-    }
-    .bookCard:hover .cover img{ transform: scale(1.06); }
-    .meta{ padding:12px 12px 14px; }
-    .meta .name{ font-weight:950; margin:0; font-size:16px; }
-    .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
-
-    .badge{
-      position:absolute; top:12px; left:12px;
-      padding:7px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:950;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.25);
-      backdrop-filter: blur(10px);
-    }
-    .badge.live{ border-color: rgba(0,255,198,.35); }
-    .badge.soon{ border-color: rgba(255,198,0,.35); }
-
-    .lockedOverlay{
-      position:absolute; inset:0;
-      background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.42));
-      display:flex; align-items:center; justify-content:center;
-      opacity:0; transition: opacity .18s ease;
-    }
-    .bookCard.locked:hover .lockedOverlay{ opacity:1; }
-    .lockedOverlay .inner{
-      border:1px solid var(--stroke);
-      background: rgba(15,20,40,.80);
-      padding:12px 14px;
-      border-radius:16px;
-      text-align:center;
-      max-width: 220px;
-    }
-    .lockedOverlay .inner p{margin:6px 0 0; color:var(--muted); font-size:12px}
-
-    /* Auth/Terms/News modal */
-    .modal{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.60);
-      z-index:1000;
-      padding:16px;
-    }
-    .modal.show{display:flex}
-    .modalCard{
-      width:min(860px, 96vw);
-      border:1px solid var(--stroke);
-      background: rgba(15,20,40,.96);
-      border-radius:22px;
-      box-shadow: var(--shadow);
-      padding:14px;
-    }
-    [data-theme="light"] .modalCard{ background: rgba(255,255,255,.96); }
-    .modalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:6px 6px 10px;
-    }
-    .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em}
-    .x{
-      cursor:pointer; padding:8px 10px; border-radius:12px;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-    }
-    .grid{ display:grid; gap:10px; padding:6px; }
-    label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-    input{
-      width:100%;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
-      padding:10px 12px;
-      border-radius:14px;
-      color:var(--ink);
-      outline:none;
-      font-size:14px;
-    }
-    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-    .note{color:var(--muted); font-size:12px; line-height:1.45}
-    .mini{
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;
-      margin-top:14px; position:relative;
-    }
-    .avatar{
-      width:44px; height:44px; border-radius:50%;
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.08);
       overflow:hidden;
       flex:none;
-    }
-    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
-    .profileLine{display:flex; align-items:center; gap:10px;}
-    .who{font-weight:950}
-    .small{color:var(--muted); font-size:12px}
-
-    .termsBox{
-      border:1px solid var(--stroke);
-      border-radius:18px;
-      padding:12px;
-      background: rgba(255,255,255,.06);
-      max-height: 56vh;
-      overflow:auto;
-    }
-    .checkRow{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 6px 0;
-    }
-    .checkRow input{ width:auto; margin-top:3px; }
-
-    /* ===== Comment Preview ===== */
-    .previewWrap{ margin-top:16px; }
-    .previewTitle{
-      margin:26px 0 12px;
-      display:flex; align-items:end; justify-content:space-between; gap:12px;
-    }
-    .previewTitle h2{
-      margin:0;
-      font-size:18px;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
-    .previewGrid{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap:12px;
-    }
-    @media (max-width:520px){ .previewGrid{ grid-template-columns: 1fr; } }
-    .previewCard{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      border-radius:18px;
-      padding:12px;
-    }
-    .previewName{ font-weight:950; }
-    .previewText{
-      margin-top:6px;
-      color:var(--muted);
-      line-height:1.5;
-      font-size:13px;
-    }
-    .previewMeta{
-      margin-top:10px;
-      display:flex; justify-content:space-between; gap:10px; align-items:center;
-      font-size:12px; color:var(--muted);
-    }
-
-    @media (max-width:980px){
-      .hero{grid-template-columns:1fr}
-      .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
-      h1{font-size:38px}
-    }
-    @media (max-width:520px){
-      .shelf{grid-template-columns:1fr}
-      h1{font-size:34px}
-      .right{max-width:72vw;}
-      .row2{grid-template-columns:1fr}
-    }
-  </style>
-</head>
-
-<body>
-  <div class="top">
-    <div class="nav">
-      <div class="brand">
-        THIS IS US
-        <small>Series Library</small>
-      </div>
-      <div class="right">
-        <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
-        <div class="pill" id="openNewsBtn">📣 <strong>Announcements</strong></div>
-        <div class="pill" id="openSubBtn">🔔 <strong>Subscribe</strong></div>
-        <div class="pill" id="settingsBtn">⚙️ <strong>Settings</strong></div>
-        <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
-        <div class="pill" id="statusPill">
-          <span class="dot">●</span>
-          <strong id="statusText">Guest</strong>
-        </div>
-      </div>
+    ">
+      <img src="${escapeHtml(url)}" alt="Profile" style="width:100%;height:100%;object-fit:cover;display:block">
     </div>
-  </div>
+  `;
+}
 
-  <div class="wrap">
-    <div class="hero">
-      <div class="card heroMain">
-        <h1>THIS IS US</h1>
-        <p class="subtitle">
-          A premium novel-reader: filled pages, smooth flip animation, saved progress, light/dark mode,
-          and optional Firebase sync so your pages follow you across devices.
-        </p>
-        <div class="ctaRow">
-          <a class="btn primary" href="read.html?book=book1">▶ Start Book I</a>
-          <a class="btn" href="read.html?book=coming">👀 Coming Soon Preview</a>
-          <button class="btn" id="openAuth">✨ Sign in to Sync</button>
-        </div>
+// ---------- DATA REFS ----------
+function commentsCol(bookId){ return collection(db, "books", bookId, "comments"); }
+function commentDoc(bookId, id){ return doc(db, "books", bookId, "comments", id); }
+function repliesCol(bookId, commentId){ return collection(db, "books", bookId, "comments", commentId, "replies"); }
+function replyDoc(bookId, commentId, replyId){ return doc(db, "books", bookId, "comments", commentId, "replies", replyId); }
+function ratingsDoc(bookId, uid){ return doc(db, "books", bookId, "ratings", uid); }
+function achDoc(bookId, uid){ return doc(db, "users", uid, "achievements", bookId); }
+function reactDoc(bookId, commentId, uid){ return doc(db, "books", bookId, "comments", commentId, "reactions", uid); }
 
-        <div class="mini">
-          <div class="profileLine">
-            <div class="avatar" id="avatarBox"></div>
-            <div>
-              <div class="who" id="whoLine">Guest Reader</div>
-              <div class="small" id="emailLine">Progress saved locally</div>
-            </div>
-          </div>
-          <div class="small" id="syncHint">Sign in to save to cloud</div>
-        </div>
-      </div>
+// ---------- EDIT WINDOW ----------
+function canEdit(d){
+  const now = Date.now();
+  const editableUntil = d.editableUntil?.toMillis ? d.editableUntil.toMillis() : 0;
+  if(editableUntil && now > editableUntil) return false;
 
-      <div class="card heroSide">
-        <div class="stat"><div class="k">Readers</div><div class="v"><span id="readerCount">—</span> Total</div></div>
-        <div class="stat"><div class="k">Theme</div><div class="v">Light / Dark</div></div>
-        <div class="stat"><div class="k">Cloud</div><div class="v">Optional Firebase Sync</div></div>
-      </div>
-    </div>
+  if(isAdmin()) return true;
+  if(UID && d.uid && d.uid === UID) return true;
 
-    <!-- ✅ ALWAYS VISIBLE ANNOUNCEMENTS SECTION (NO CLICK REQUIRED) -->
-    <div id="announceBanner"></div>
+  const tok = getGuestToken();
+  if(!UID && d.token && d.token === tok) return true;
 
-    <!-- ✅ NEW: COMMENT PREVIEW -->
-    <div id="commentPreview"></div>
+  return false;
+}
 
-    <div class="sectionTitle">
-      <h2>Library</h2>
-      <div class="pill">Tap a book → Read</div>
-    </div>
+function timeLeftMinutes(d){
+  const until = d.editableUntil?.toMillis ? d.editableUntil.toMillis() : 0;
+  const ms = until - Date.now();
+  if(ms <= 0) return 0;
+  return Math.ceil(ms / 60000);
+}
 
-    <div class="shelf">
-      <a class="bookCard" href="read.html?book=book1" aria-label="Book 1">
-        <div class="badge live">Live</div>
-        <div class="cover">
-          <img src="assets/cover-book1.png" alt="Book 1 Cover" onerror="this.style.display='none'">
-        </div>
-        <div class="meta">
-          <p class="name">Book I — Where We Began</p>
-          <p class="desc">Mukeh arrives. Francess is the standard. Awareness begins.</p>
-        </div>
-      </a>
+function starLine(n){
+  const r = Number(n || 0);
+  if(r >= 1 && r <= 5) return "★".repeat(r);
+  return "";
+}
 
-      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 2">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
-            Next Book
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book II — Coming Soon</p>
-          <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
-        </div>
-        <div class="lockedOverlay">
-          <div class="inner">
-            <strong>Preview</strong>
-            <p>Tap to open the Coming Soon page.</p>
-          </div>
-        </div>
-      </a>
+// ---------- LOCAL LOVE COUNTER (for achievements flavor) ----------
+function bumpLocalLoveNet(delta){
+  const k = "reactLoveNet";
+  const v = Number(localStorage.getItem(k) || 0);
+  const next = Math.max(0, v + delta);
+  localStorage.setItem(k, String(next));
+}
+function loveCountLocal(){
+  return Number(localStorage.getItem("reactLoveNet") || 0);
+}
 
-      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 3">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
-            Next Book
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book III — Coming Soon</p>
-          <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
-        </div>
-        <div class="lockedOverlay">
-          <div class="inner">
-            <strong>Preview</strong>
-            <p>Tap to open the Coming Soon page.</p>
-          </div>
-        </div>
-      </a>
+// --------- REACTIONS (COUNTS + TOGGLE) ----------
+async function toggleReaction({ bookId, commentId, kind }){
+  if(!UID){ toast("Sign in to react."); return; }
+  if(kind !== "like" && kind !== "love") return;
 
-      <a class="bookCard locked" href="read.html?book=coming" aria-label="Coming Soon Book 4">
-        <div class="badge soon">Coming Soon</div>
-        <div class="cover">
-          <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;letter-spacing:.14em;text-transform:uppercase;">
-            Next Book
-          </div>
-        </div>
-        <div class="meta">
-          <p class="name">Book IV — Coming Soon</p>
-          <p class="desc">The past returns. The narrative changes. The costs rise.</p>
-        </div>
-        <div class="lockedOverlay">
-          <div class="inner">
-            <strong>Preview</strong>
-            <p>Tap to open the Coming Soon page.</p>
-          </div>
-        </div>
-      </a>
-    </div>
-  </div>
+  const cRef = commentDoc(bookId, commentId);
+  const rRef = reactDoc(bookId, commentId, UID);
 
-  <!-- AUTH MODAL -->
-  <div class="modal" id="modal">
-    <div class="modalCard" style="width:min(560px, 96vw);">
-      <div class="modalHead">
-        <h3>Account</h3>
-        <div class="x" id="close">✕</div>
-      </div>
+  let loveDelta = 0;
 
-      <div class="grid">
-        <div class="row2">
-          <div>
-            <label>Email</label>
-            <input id="email" type="email" placeholder="Email">
-          </div>
-          <div>
-            <label>Password</label>
-            <input id="password" type="password" placeholder="Password">
-          </div>
-        </div>
+  try{
+    await runTransaction(db, async (tx)=>{
+      const [cSnap, rSnap] = await Promise.all([tx.get(cRef), tx.get(rRef)]);
+      if(!cSnap.exists()) throw new Error("Missing comment");
 
-        <div class="row2">
-          <button class="btn primary" id="loginBtn">Sign In</button>
-          <button class="btn" id="signupBtn">Create Account</button>
-        </div>
+      const c = cSnap.data() || {};
+      const likeCount = Number(c.reactLikeCount || 0);
+      const loveCount = Number(c.reactLoveCount || 0);
 
-        <button class="btn" id="logoutBtn" style="display:none;">Sign Out</button>
+      const prevKind = rSnap.exists() ? (rSnap.data()?.kind || null) : null;
 
-        <p class="note">
-          Reading works without login. Sign in only if you want cloud sync across devices.
-        </p>
-      </div>
-    </div>
-  </div>
+      let nextLike = likeCount;
+      let nextLove = loveCount;
 
-  <!-- NEWS/SUBSCRIBE MODAL (kept) -->
-  <div class="modal" id="newsModal">
-    <div class="modalCard">
-      <div class="modalHead">
-        <h3>Updates</h3>
-        <div class="x" id="newsClose">✕</div>
-      </div>
-
-      <div class="grid">
-        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Announcements</div>
-        <div id="announcementsMount">Loading…</div>
-
-        <hr style="border:0;border-top:1px solid var(--stroke);margin:10px 0;">
-
-        <div style="font-weight:950; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Subscribe</div>
-
-        <form id="subscribeForm" class="grid">
-          <div class="row2">
-            <input id="subEmail" type="email" placeholder="Email (required if Email is checked)">
-            <input id="subPhone" type="tel" placeholder="Phone (required if SMS is checked)">
-          </div>
-
-          <div class="row2">
-            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
-              <input type="checkbox" id="optEmail"> Email notifications
-            </label>
-            <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-weight:900;color:var(--ink)">
-              <input type="checkbox" id="optSMS"> SMS notifications
-            </label>
-          </div>
-
-          <button class="btn primary" type="submit">Subscribe</button>
-          <div class="note" style="margin-top:-2px">
-            SMS may be subject to carrier rates. You can opt out anytime by contacting the site owner.
-          </div>
-          <div class="note" id="subMsg"></div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- TERMS MODAL (MANDATORY) -->
-  <div class="modal" id="termsModal">
-    <div class="modalCard">
-      <div class="modalHead">
-        <h3>Terms & Conditions</h3>
-        <div></div>
-      </div>
-
-      <div class="termsBox" id="termsText">
-        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THIS IS US — Terms</div>
-        <p class="note" style="margin-top:10px">
-          Last updated: February 15, 2026
-        </p>
-
-        <p><strong>1) Acceptance</strong><br>
-          By accessing or using THIS IS US (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
-        </p>
-
-        <p><strong>2) Eligibility</strong><br>
-          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction, use the Site only with a parent/guardian’s consent.
-        </p>
-
-        <p><strong>3) Content & Reader Experience</strong><br>
-          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
-        </p>
-
-        <p><strong>4) Accounts</strong><br>
-          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
-        </p>
-
-        <p><strong>5) User Submissions</strong><br>
-          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
-        </p>
-
-        <p><strong>6) Notifications (Optional)</strong><br>
-          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements. SMS messages may be subject to carrier rates and fees. You can opt out by updating your preferences or contacting the owner.
-        </p>
-
-        <p><strong>7) Privacy</strong><br>
-          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
-        </p>
-
-        <p><strong>8) Availability & Changes</strong><br>
-          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
-        </p>
-
-        <p><strong>9) Disclaimer</strong><br>
-          The Site is provided “as is” without warranties of any kind. The owner does not guarantee uninterrupted access or that the Site will be error-free.
-        </p>
-
-        <p><strong>10) Limitation of Liability</strong><br>
-          To the maximum extent permitted by law, the owner will not be liable for indirect, incidental, special, or consequential damages arising from your use of the Site.
-        </p>
-
-        <p><strong>11) Contact</strong><br>
-          For questions, removal requests, or opt-out requests, contact the site owner.
-        </p>
-      </div>
-
-      <div class="checkRow">
-        <input type="checkbox" id="agreeTerms">
-        <div class="note">
-          I have read and agree to the Terms & Conditions.
-        </div>
-      </div>
-
-      <div class="grid" style="padding-top:10px">
-        <button class="btn primary" id="acceptTermsBtn">Accept & Continue</button>
-        <div class="note" id="termsMsg"></div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { firebaseConfig } from "./firebase-config.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-    import {
-      getAuth, onAuthStateChanged,
-      signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
-    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-    import {
-      getFirestore, doc, setDoc, getDoc, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-    import {
-      renderAnnouncementSection,
-      renderAnnouncementsList,
-      setupSubscribeForm,
-      renderReaderCount
-    } from "./public-feed.js";
-
-    import { renderCommentPreview } from "./reader-community.js";
-
-    // ✅ NEW: shared terms gate
-    import { wireTermsGate } from "./terms-gate.js";
-
-    // Theme (local first)
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
-
-    // Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    document.getElementById("themeBtn").onclick = async ()=>{
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      if(window.__UID){
-        try{
-          await setDoc(doc(db,"users",window.__UID), { theme: next, updatedAt: serverTimestamp() }, { merge:true });
-        }catch{}
-      }
-    };
-
-    document.getElementById("settingsBtn").onclick = ()=> location.href = "settings.html";
-
-    // ===== AUTH MODAL =====
-    const modal = document.getElementById("modal");
-    const openAuth = document.getElementById("openAuth");
-    const authBtn  = document.getElementById("authBtn");
-    const close = document.getElementById("close");
-    function openModal(){ modal.classList.add("show"); }
-    function closeModal(){ modal.classList.remove("show"); }
-    openAuth.onclick = openModal;
-    authBtn.onclick  = openModal;
-    close.onclick = closeModal;
-    modal.addEventListener("click",(e)=>{ if(e.target === modal) closeModal(); });
-
-    // ===== NEWS MODAL =====
-    const newsModal = document.getElementById("newsModal");
-    const newsClose = document.getElementById("newsClose");
-    document.getElementById("openNewsBtn").onclick = ()=>{
-      newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 });
-    };
-    document.getElementById("openSubBtn").onclick = ()=>{
-      newsModal.classList.add("show");
-      renderAnnouncementsList({ mountId:"announcementsMount", max: 8 });
-    };
-    newsClose.onclick = ()=> newsModal.classList.remove("show");
-    newsModal.addEventListener("click",(e)=>{ if(e.target === newsModal) newsModal.classList.remove("show"); });
-
-    // Subscribe form (requires sign-in)
-    setupSubscribeForm({ bookId:"book1" });
-
-    // ===== PROFILE UI =====
-    const statusText = document.getElementById("statusText");
-    const authText = document.getElementById("authText");
-    const whoLine = document.getElementById("whoLine");
-    const emailLine = document.getElementById("emailLine");
-    const syncHint = document.getElementById("syncHint");
-    const avatarBox = document.getElementById("avatarBox");
-
-    const email = document.getElementById("email");
-    const password = document.getElementById("password");
-    const loginBtn = document.getElementById("loginBtn");
-    const signupBtn = document.getElementById("signupBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    function setAvatar(url){
-      avatarBox.innerHTML = url
-        ? `<img src="${url}" alt="Profile">`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:950;">👤</div>`;
-    }
-
-    async function loadProfile(uid){
-      try{
-        const ref = doc(db, "users", uid);
-        const snap = await getDoc(ref);
-        const data = snap.exists() ? snap.data() : {};
-        if(data.theme && (data.theme==="dark" || data.theme==="light")){
-          document.documentElement.dataset.theme = data.theme;
-          localStorage.setItem("theme", data.theme);
-        }
-        setAvatar(data.photoURL || "");
-      }catch{
-        setAvatar("");
-      }
-    }
-
-    // ✅ TERMS GATE
-    wireTermsGate();
-
-    // ===== AUTH STATE =====
-    onAuthStateChanged(auth, async (user)=>{
-      window.__UID = user ? user.uid : null;
-
-      if(user){
-        statusText.textContent = "Synced";
-        authText.textContent = "Account";
-        logoutBtn.style.display = "inline-flex";
-        whoLine.textContent = "Signed in";
-        emailLine.textContent = user.email || "User";
-        syncHint.textContent = "Cloud sync is ON";
-
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email || "",
-          updatedAt: serverTimestamp()
-        }, { merge:true });
-
-        await loadProfile(user.uid);
+      // If same kind -> remove reaction (toggle off)
+      if(prevKind === kind){
+        tx.delete(rRef);
+        if(kind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(kind === "love") { nextLove = Math.max(0, nextLove - 1); loveDelta = -1; }
       }else{
-        statusText.textContent = "Guest";
-        authText.textContent = "Sign in";
-        logoutBtn.style.display = "none";
-        whoLine.textContent = "Guest Reader";
-        emailLine.textContent = "Progress saved locally";
-        syncHint.textContent = "Sign in to save to cloud";
-        setAvatar("");
+        // switching kinds or adding new
+        tx.set(rRef, { uid: UID, kind, updatedAt: serverTimestamp() }, { merge:true });
+
+        // remove previous
+        if(prevKind === "like") nextLike = Math.max(0, nextLike - 1);
+        if(prevKind === "love") { nextLove = Math.max(0, nextLove - 1); loveDelta = -1; }
+
+        // add new
+        if(kind === "like") nextLike += 1;
+        if(kind === "love") { nextLove += 1; loveDelta += 1; }
       }
+
+      tx.update(cRef, { reactLikeCount: nextLike, reactLoveCount: nextLove, reactedAt: serverTimestamp() });
     });
 
-    loginBtn.onclick = async ()=>{
-      try{
-        await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
-        closeModal();
-      }catch(e){ alert(e.message); }
-    };
+    if(loveDelta !== 0) bumpLocalLoveNet(loveDelta);
 
-    signupBtn.onclick = async ()=>{
-      try{
-        const cred = await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
-        await setDoc(doc(db, "users", cred.user.uid), {
-          email: email.value.trim(),
-          createdAt: serverTimestamp(),
-          theme: localStorage.getItem("theme") || "dark"
-        }, { merge:true });
-        closeModal();
-      }catch(e){ alert(e.message); }
-    };
+    toast(kind === "like" ? "👍 Updated" : "❤️ Updated");
+    trackEngagement({ bookId, event: "react" }).catch(()=>{});
+  }catch{
+    toast("Could not react.");
+  }
+}
 
-    logoutBtn.onclick = async ()=>{
-      await signOut(auth);
-      closeModal();
-    };
+// --------- REPLIES RENDER ----------
+async function renderReplies({ bookId, commentId }){
+  try{
+    const qy = query(repliesCol(bookId, commentId), orderBy("createdAt","asc"), limit(60));
+    const snap = await getDocs(qy);
+    if(snap.empty) return "";
 
-    // ✅ PUBLIC FEEDS
-    renderAnnouncementSection({ mountId:"announceBanner", max: 10 });
-    renderReaderCount({ bookId:"book1", mountId:"readerCount" });
+    // preload profiles for signed-in replies
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
 
-    // ✅ COMMENT PREVIEW
-    renderCommentPreview({ bookId:"book1", mountId:"commentPreview", max: 4 });
-  </script>
-</body>
-</html>
+    const out = [];
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      const isA = !!d.isAdmin;
+      const editOk = canEdit(d);
+      const mins = timeLeftMinutes(d);
+
+      const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
+      const txt = escapeHtml(d.text || "");
+
+      // avatar priority: snapshot on doc -> profile cache -> default
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
+      out.push(`
+        <div style="margin-top:10px;margin-left:14px;padding-left:12px;border-left:2px solid rgba(255,255,255,.10)">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="min-width:0">
+                <div style="font-weight:950;opacity:${isA?1:.95};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                  ${isA ? "🛡️ " : ""}${who}
+                </div>
+              </div>
+            </div>
+            <div style="opacity:.72;font-size:12px">${editOk && mins ? `editable ${mins}m` : ""}</div>
+          </div>
+
+          <div style="opacity:.92;margin-top:6px;line-height:1.55">${txt}</div>
+
+          ${editOk ? `
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button
+                data-edit-reply="1"
+                data-comment="${commentId}"
+                data-reply="${s.id}"
+                style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+              >Edit</button>
+
+              <button
+                data-del-reply="1"
+                data-comment="${commentId}"
+                data-reply="${s.id}"
+                style="border:1px solid rgba(255,120,120,.25);background:rgba(255,120,120,.08);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+              >Delete</button>
+            </div>
+          `:``}
+        </div>
+      `);
+    });
+
+    return out.join("");
+  }catch{
+    return "";
+  }
+}
+
+// --------- COMMENTS RENDER ----------
+export async function renderComments({ bookId="book1", mountId="commentsList", max=30 } = {}){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+  mount.innerHTML = `<div style="opacity:.75">Loading comments…</div>`;
+
+  try{
+    const qy = query(commentsCol(bookId), orderBy("createdAt","desc"), limit(max));
+    const snap = await getDocs(qy);
+
+    if(snap.empty){
+      mount.innerHTML = `<div style="opacity:.75">No comments yet. Be the first.</div>`;
+      return;
+    }
+
+    // Preload profiles for signed-in commenters
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
+
+    const rows = [];
+    for (const s of snap.docs){
+      const d = s.data() || {};
+      const isA = !!d.isAdmin;
+
+      const name = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
+      const text = escapeHtml(d.text || "");
+      const rating = starLine(d.rating);
+      const mins = timeLeftMinutes(d);
+      const editOk = canEdit(d);
+
+      const likeCount = Number(d.reactLikeCount || 0);
+      const loveCount = Number(d.reactLoveCount || 0);
+
+      // avatar priority: snapshot on doc -> profile cache -> default
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
+      const replyHtml = await renderReplies({ bookId, commentId: s.id });
+
+      rows.push(`
+        <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="min-width:0">
+                <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                  ${isA ? "🛡️ " : ""}${name}
+                </div>
+              </div>
+            </div>
+            <div style="opacity:.85">${rating}</div>
+          </div>
+
+          <div style="opacity:.92;margin-top:8px;line-height:1.6">${text}</div>
+
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button
+              data-reply="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >Reply</button>
+
+            <button
+              data-react="like"
+              data-comment="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >👍 Like <span style="opacity:.8">(${likeCount})</span></button>
+
+            <button
+              data-react="love"
+              data-comment="${s.id}"
+              style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer"
+            >❤️ Love <span style="opacity:.8">(${loveCount})</span></button>
+
+            <span style="opacity:.72;font-size:12px;margin-left:auto">${editOk && mins ? `editable ${mins}m` : ""}</span>
+          </div>
+
+          ${editOk ? `
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button data-edit="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Edit</button>
+              <button data-del="${s.id}" style="border:1px solid rgba(255,120,120,.25);background:rgba(255,120,120,.08);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Delete</button>
+            </div>
+          `:``}
+
+          <div data-replybox="${s.id}" style="display:none;margin-top:10px">
+            <div style="font:900 12px ui-sans-serif,system-ui;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Reply</div>
+            <textarea data-replytext="${s.id}" style="width:100%;margin-top:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:inherit;border-radius:14px;padding:10px 12px;font:600 14px ui-sans-serif,system-ui;min-height:90px;resize:vertical"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <button data-replysend="${s.id}" style="border:1px solid rgba(124,92,255,.55);background:rgba(124,92,255,.16);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Send</button>
+              <button data-replycancel="${s.id}" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;font:900 12px ui-sans-serif,system-ui;cursor:pointer">Cancel</button>
+              <span data-replymsg="${s.id}" style="opacity:.75;font:700 12px ui-sans-serif,system-ui"></span>
+            </div>
+          </div>
+
+          ${replyHtml ? `<div style="margin-top:8px">${replyHtml}</div>` : ``}
+        </div>
+      `);
+    }
+
+    mount.innerHTML = rows.join("");
+
+    // Reply open/close
+    mount.querySelectorAll("[data-reply]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-reply");
+        const box = mount.querySelector(`[data-replybox="${id}"]`);
+        if(box) box.style.display = (box.style.display === "none" ? "block" : "none");
+      });
+    });
+
+    mount.querySelectorAll("[data-replycancel]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-replycancel");
+        const box = mount.querySelector(`[data-replybox="${id}"]`);
+        if(box) box.style.display = "none";
+      });
+    });
+
+    // Reply send (stores photoURL snapshot if possible)
+    mount.querySelectorAll("[data-replysend]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const id = btn.getAttribute("data-replysend");
+        const txt = mount.querySelector(`[data-replytext="${id}"]`);
+        const msg = mount.querySelector(`[data-replymsg="${id}"]`);
+        if(msg) msg.textContent = "";
+        const text = (txt?.value || "").trim();
+        if(!text){
+          if(msg) msg.textContent = "Write a reply first.";
+          return;
+        }
+
+        // snapshot avatar
+        let photoURL = null;
+        if(UID){
+          const p = await getProfile(UID);
+          photoURL = p.photoURL || (auth.currentUser?.photoURL || null);
+        }
+
+        try{
+          const editableUntil = Timestamp.fromMillis(Date.now() + 60*60*1000);
+          await addDoc(repliesCol(bookId, id), {
+            uid: UID || null,
+            token: UID ? null : getGuestToken(),
+            isAdmin: isAdmin(),
+            name: isAdmin() ? "Admin" : "Reader",
+            text,
+            photoURL: photoURL || null,
+            createdAt: serverTimestamp(),
+            editableUntil
+          });
+          if(txt) txt.value = "";
+          if(msg) msg.textContent = "Sent ✅";
+          await renderComments({ bookId, mountId, max });
+          trackEngagement({ bookId, event: "reply" }).catch(()=>{});
+        }catch(e){
+          if(msg) msg.textContent = "Denied: " + (e?.message || String(e));
+        }
+      });
+    });
+
+    // Comment edit
+    mount.querySelectorAll("[data-edit]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const id = btn.getAttribute("data-edit");
+        const snap = await getDoc(commentDoc(bookId, id));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d)){ alert("Edit window ended (1 hour)."); return; }
+        const next = prompt("Edit your comment:", d.text || "");
+        if(next == null) return;
+        const val = next.trim();
+        if(!val){ alert("Cannot set empty."); return; }
+        try{
+          await updateDoc(commentDoc(bookId, id), { text: val, editedAt: serverTimestamp() });
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
+      });
+    });
+
+    // Comment delete
+    mount.querySelectorAll("[data-del]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const id = btn.getAttribute("data-del");
+        const snap = await getDoc(commentDoc(bookId, id));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d) && !isAdmin()){ alert("You can’t delete this anymore."); return; }
+        if(!confirm("Delete this comment?")) return;
+        try{
+          await deleteDoc(commentDoc(bookId, id));
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
+      });
+    });
+
+    // Reply edit
+    mount.querySelectorAll("[data-edit-reply]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const commentId = btn.getAttribute("data-comment");
+        const replyId = btn.getAttribute("data-reply");
+        if(!commentId || !replyId) return;
+
+        const snap = await getDoc(replyDoc(bookId, commentId, replyId));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d)){ alert("Edit window ended (1 hour)."); return; }
+
+        const next = prompt("Edit your reply:", d.text || "");
+        if(next == null) return;
+        const val = next.trim();
+        if(!val){ alert("Cannot set empty."); return; }
+
+        try{
+          await updateDoc(replyDoc(bookId, commentId, replyId), { text: val, editedAt: serverTimestamp() });
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
+      });
+    });
+
+    // Reply delete
+    mount.querySelectorAll("[data-del-reply]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const commentId = btn.getAttribute("data-comment");
+        const replyId = btn.getAttribute("data-reply");
+        if(!commentId || !replyId) return;
+
+        const snap = await getDoc(replyDoc(bookId, commentId, replyId));
+        if(!snap.exists()) return;
+        const d = snap.data() || {};
+        if(!canEdit(d) && !isAdmin()){ alert("You can’t delete this anymore."); return; }
+        if(!confirm("Delete this reply?")) return;
+
+        try{
+          await deleteDoc(replyDoc(bookId, commentId, replyId));
+          await renderComments({ bookId, mountId, max });
+        }catch(e){
+          alert("Denied: " + (e?.message || String(e)));
+        }
+      });
+    });
+
+    // Reactions toggle (with counts)
+    mount.querySelectorAll("[data-react]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const kind = btn.getAttribute("data-react");
+        const commentId = btn.getAttribute("data-comment");
+        if(!commentId) return;
+        await toggleReaction({ bookId, commentId, kind });
+        await renderComments({ bookId, mountId, max }); // refresh counts
+      });
+    });
+
+  }catch(e){
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load comments: ${escapeHtml(e?.message || String(e))}</div>`;
+  }
+}
+
+// ---------- COMMENT FORM ----------
+export function setupCommentForm({
+  bookId="book1",
+  formId="commentForm",
+  nameId="cName",
+  textId="cText",
+  ratingId="cRating",
+  msgId="cMsg",
+  afterPostReload=true
+} = {}){
+  const form = document.getElementById(formId);
+  if(!form) return;
+
+  const nameEl = document.getElementById(nameId);
+  const textEl = document.getElementById(textId);
+  const ratingEl = document.getElementById(ratingId);
+  const msgEl = document.getElementById(msgId);
+
+  form.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    if(msgEl) msgEl.textContent = "";
+
+    const name = (nameEl?.value || "").trim() || (isAdmin() ? "Admin" : "Reader");
+    const text = (textEl?.value || "").trim();
+    const rating = Number(ratingEl?.value || 0);
+
+    if(!text){
+      if(msgEl) msgEl.textContent = "Write a comment first.";
+      return;
+    }
+
+    // snapshot avatar for signed-in users
+    let photoURL = null;
+    if(UID){
+      const p = await getProfile(UID);
+      photoURL = p.photoURL || (auth.currentUser?.photoURL || null);
+    }
+
+    try{
+      const editableUntil = Timestamp.fromMillis(Date.now() + 60*60*1000);
+
+      await addDoc(commentsCol(bookId), {
+        uid: UID || null,
+        token: UID ? null : getGuestToken(),
+        isAdmin: isAdmin(),
+        name,
+        text,
+        photoURL: photoURL || null,
+        rating: (rating>=1 && rating<=5) ? rating : null,
+        createdAt: serverTimestamp(),
+        editableUntil,
+
+        // reaction counts stored on comment doc
+        reactLikeCount: 0,
+        reactLoveCount: 0
+      });
+
+      if(msgEl) msgEl.textContent = "Posted ✅";
+      if(textEl) textEl.value = "";
+      if(ratingEl) ratingEl.value = "0";
+
+      if(afterPostReload) await renderComments({ bookId });
+      await trackEngagement({ bookId, event: "comment" });
+    }catch(e2){
+      if(msgEl) msgEl.textContent = "Could not post: " + (e2?.message || String(e2));
+    }
+  });
+}
+
+// ---------- RATINGS ----------
+export async function submitRating({ bookId="book1", rating=0 } = {}){
+  if(!UID) throw new Error("Please sign in to rate.");
+  const r = Number(rating || 0);
+  if(!(r>=1 && r<=5)) throw new Error("Rating must be 1–5.");
+
+  await setDoc(ratingsDoc(bookId, UID), {
+    uid: UID,
+    rating: r,
+    updatedAt: serverTimestamp()
+  }, { merge:true });
+
+  await trackEngagement({ bookId, event: "rate" });
+  return true;
+}
+
+export async function loadMyRating({ bookId="book1" } = {}){
+  if(!UID) return 0;
+  try{
+    const snap = await getDoc(ratingsDoc(bookId, UID));
+    const d = snap.exists() ? snap.data() : {};
+    return Number(d.rating || 0);
+  }catch{
+    return 0;
+  }
+}
+
+export async function renderRatingSummary({ bookId="book1", mountId="ratingSummary" } = {}){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+
+  mount.innerHTML = `<div style="opacity:.75">Loading rating…</div>`;
+  try{
+    const qy = query(collection(db,"books",bookId,"ratings"), limit(800));
+    const snap = await getDocs(qy);
+    if(snap.empty){
+      mount.innerHTML = `<div style="opacity:.75">No ratings yet.</div>`;
+      return;
+    }
+    let total=0, count=0;
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      const r = Number(d.rating || 0);
+      if(r>=1 && r<=5){ total += r; count += 1; }
+    });
+    const avg = count ? (total/count) : 0;
+    mount.innerHTML = `
+      <div style="font-weight:950">${avg.toFixed(1)} / 5</div>
+      <div style="opacity:.75;font-size:12px;margin-top:4px">${count} rating(s)</div>
+    `;
+  }catch{
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load rating.</div>`;
+  }
+}
+
+// ---------- COMMENT PREVIEW (LIBRARY WIDGET) ----------
+export async function renderCommentPreview({ bookId="book1", mountId="commentPreview", max=4 } = {}){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+
+  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
+  try{
+    const qy = query(commentsCol(bookId), orderBy("createdAt","desc"), limit(max));
+    const snap = await getDocs(qy);
+    if(snap.empty){
+      mount.innerHTML = `<div style="opacity:.75">No comments yet.</div>`;
+      return;
+    }
+
+    // preload profiles
+    const uids = new Set();
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      if(d.uid) uids.add(d.uid);
+    });
+    await Promise.all([...uids].map(uid=>getProfile(uid)));
+
+    const rows = [];
+    snap.forEach(s=>{
+      const d = s.data() || {};
+      const isA = !!d.isAdmin;
+
+      const cached = d.uid ? (profileCache.get(d.uid) || {}) : {};
+      const photo = d.photoURL || cached.photoURL || null;
+
+      const who = escapeHtml(d.name || (isA ? "Admin" : "Reader"));
+      const raw = String(d.text || "");
+      const txt = escapeHtml(raw.slice(0, 140)) + (raw.length > 140 ? "…" : "");
+      const like = Number(d.reactLikeCount || 0);
+      const love = Number(d.reactLoveCount || 0);
+
+      rows.push(`
+        <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <div style="display:flex;gap:10px;align-items:center;min-width:0">
+              ${avatarHTML(photo)}
+              <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw">
+                ${isA ? "🛡️ " : ""}${who}
+              </div>
+            </div>
+            <div style="opacity:.75;font:900 12px ui-sans-serif,system-ui">👍 ${like} · ❤️ ${love}</div>
+          </div>
+          <div style="opacity:.90;margin-top:8px;line-height:1.55">${txt}</div>
+        </div>
+      `);
+    });
+
+    mount.innerHTML = rows.join("");
+  }catch{
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load preview.</div>`;
+  }
+}
+
+// ---------- ENGAGEMENT ----------
+function engagementRef(uid, bookId){
+  return doc(db, "users", uid, "meta", `engagement_${bookId}`);
+}
+
+async function trackEngagement({ bookId="book1", event="read" } = {}){
+  const key = `eng:${bookId}`;
+  const local = JSON.parse(localStorage.getItem(key) || "{}");
+  local[event] = (local[event] || 0) + 1;
+  local.lastAt = Date.now();
+  localStorage.setItem(key, JSON.stringify(local));
+
+  if(!UID) return;
+
+  try{
+    const snap = await getDoc(engagementRef(UID, bookId));
+    const d = snap.exists() ? (snap.data() || {}) : {};
+    const next = { ...d };
+    next[event] = Number(d[event] || 0) + 1;
+    next.lastAt = serverTimestamp();
+    await setDoc(engagementRef(UID, bookId), next, { merge:true });
+  }catch{}
+}
+
+// ---------- ACHIEVEMENTS ----------
+const ACH = [
+  ["first_page","First Step"],
+  ["page_5","Five Pages Deep"],
+  ["page_10","Ten-Page Lock-in"],
+  ["page_25","Quarter Stack"],
+  ["page_50","Fifty-Page Fighter"],
+  ["page_75","Seventy-Five Strong"],
+  ["page_100","Centurion Reader"],
+
+  ["pct_10","10% In"],
+  ["pct_20","20% In"],
+  ["pct_33","One-Third Done"],
+  ["pct_50","Halfway Hero"],
+  ["pct_66","Two-Thirds Through"],
+  ["pct_75","75% Done"],
+  ["pct_90","90% Pressure"],
+  ["finished","Book Finished"],
+
+  ["night_owl","Night Owl Reader"],
+  ["early_bird","Early Bird Reader"],
+  ["lunch_break","Lunch Break Chapter"],
+  ["weekend_reader","Weekend Reader"],
+
+  ["first_comment","First Comment"],
+  ["comment_3","Comment Trio"],
+  ["comment_5","Chatty (5)"],
+  ["comment_10","Community Voice (10)"],
+  ["first_reply","First Reply"],
+  ["reply_3","Thread Starter (3)"],
+  ["reply_5","Thread Builder (5)"],
+  ["first_react","First Reaction"],
+  ["react_5","Reaction Runner (5)"],
+  ["react_10","Reaction Machine (10)"],
+  ["first_rating","First Rating"],
+
+  ["social_reader","Social Reader"],
+  ["critic","The Critic"],
+  ["superfan","Superfan"],
+  ["closer","The Closer"],
+  ["hype_team","Hype Team"],
+  ["deep_thinker","Deep Thinker"],
+  ["peacekeeper","Peacekeeper"],
+  ["loyal_reader","Loyal Reader"],
+
+  ["mil_1","Bookmark Keeper"],
+  ["mil_2","Turning Pages"],
+  ["mil_3","Locked In"],
+  ["mil_4","Momentum"],
+  ["mil_5","Page Runner"],
+  ["mil_6","Plot Tracker"],
+  ["mil_7","Deep Dive"],
+  ["mil_8","Almost There"],
+  ["mil_9","Final Stretch"],
+  ["mil_10","No Skips"],
+
+  ["mood_vibes","Vibes Only"],
+  ["heart_on_sleeve","Heart on Sleeve"],
+  ["sharp_eye","Sharp Eye"],
+  ["storm_chaser","Storm Chaser"],
+  ["quiet_support","Quiet Support"],
+  ["scene_breaker","Scene Breaker"],
+  ["glow_up","Glow Up"],
+  ["legend","Legend Status"],
+];
+
+const ACH_MAP = Object.fromEntries(ACH);
+
+export async function trackAchievements({ bookId="book1", pageIndex=0, totalPages=1 } = {}){
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay();
+
+  const isNight = hour >= 0 && hour <= 4;
+  const isEarly = hour >= 5 && hour <= 8;
+  const isLunch = hour >= 11 && hour <= 13;
+  const isWeekend = (day === 0 || day === 6);
+
+  const pct = totalPages > 0 ? Math.floor(((pageIndex+1)/totalPages)*100) : 0;
+
+  const eng = JSON.parse(localStorage.getItem(`eng:${bookId}`) || "{}");
+  const commentsMade = Number(eng.comment || 0);
+  const repliesMade  = Number(eng.reply || 0);
+  const reactsMade   = Number(eng.react || 0);
+  const rated        = Number(eng.rate || 0);
+
+  const rules = [
+    ["first_page", ()=> pageIndex >= 0],
+    ["page_5", ()=> pageIndex >= 4],
+    ["page_10", ()=> pageIndex >= 9],
+    ["page_25", ()=> pageIndex >= 24],
+    ["page_50", ()=> pageIndex >= 49],
+    ["page_75", ()=> pageIndex >= 74],
+    ["page_100", ()=> pageIndex >= 99],
+
+    ["pct_10", ()=> pct >= 10],
+    ["pct_20", ()=> pct >= 20],
+    ["pct_33", ()=> pct >= 33],
+    ["pct_50", ()=> pct >= 50],
+    ["pct_66", ()=> pct >= 66],
+    ["pct_75", ()=> pct >= 75],
+    ["pct_90", ()=> pct >= 90],
+    ["finished", ()=> totalPages > 0 && pageIndex >= totalPages - 1],
+
+    ["night_owl", ()=> isNight && pageIndex >= 2],
+    ["early_bird", ()=> isEarly && pageIndex >= 2],
+    ["lunch_break", ()=> isLunch && pageIndex >= 2],
+    ["weekend_reader", ()=> isWeekend && pageIndex >= 2],
+
+    ["first_comment", ()=> commentsMade >= 1],
+    ["comment_3", ()=> commentsMade >= 3],
+    ["comment_5", ()=> commentsMade >= 5],
+    ["comment_10", ()=> commentsMade >= 10],
+
+    ["first_reply", ()=> repliesMade >= 1],
+    ["reply_3", ()=> repliesMade >= 3],
+    ["reply_5", ()=> repliesMade >= 5],
+
+    ["first_react", ()=> reactsMade >= 1],
+    ["react_5", ()=> reactsMade >= 5],
+    ["react_10", ()=> reactsMade >= 10],
+
+    ["first_rating", ()=> rated >= 1],
+
+    ["social_reader", ()=> commentsMade >= 1 && reactsMade >= 1],
+    ["critic", ()=> rated >= 1 && commentsMade >= 1],
+    ["superfan", ()=> pct >= 75 && commentsMade >= 3],
+    ["closer", ()=> pct >= 90 && reactsMade >= 3],
+    ["hype_team", ()=> reactsMade >= 5 && commentsMade >= 1],
+    ["deep_thinker", ()=> commentsMade >= 3 && repliesMade >= 1],
+    ["peacekeeper", ()=> repliesMade >= 3],
+    ["loyal_reader", ()=> pct >= 50 && (isWeekend || isNight || isEarly)],
+
+    ["mil_1", ()=> pageIndex >= 1],
+    ["mil_2", ()=> pageIndex >= 6],
+    ["mil_3", ()=> pageIndex >= 12],
+    ["mil_4", ()=> pageIndex >= 18],
+    ["mil_5", ()=> pageIndex >= 30],
+    ["mil_6", ()=> pageIndex >= 40],
+    ["mil_7", ()=> pageIndex >= 60],
+    ["mil_8", ()=> pct >= 85],
+    ["mil_9", ()=> pct >= 95],
+    ["mil_10", ()=> pct >= 10 && pageIndex >= 10],
+
+    ["mood_vibes", ()=> reactsMade >= 1 && pageIndex >= 5],
+    ["heart_on_sleeve", ()=> (commentsMade >= 1 && loveCountLocal() >= 1)],
+    ["sharp_eye", ()=> commentsMade >= 1 && pct >= 20],
+    ["storm_chaser", ()=> pct >= 33 && isNight],
+    ["quiet_support", ()=> repliesMade >= 1 && reactsMade >= 1],
+    ["scene_breaker", ()=> pageIndex >= 8],
+    ["glow_up", ()=> pct >= 50 && reactsMade >= 3],
+
+    ["legend", ()=> (pct >= 100) && (commentsMade >= 5 || repliesMade >= 5)],
+  ];
+
+  const unlocked = rules.filter(([id,fn])=>{
+    try{ return !!fn(); }catch{ return false; }
+  }).map(([id])=>id);
+
+  if(!unlocked.length) return;
+
+  if(!UID){
+    unlocked.forEach(id=>{
+      const label = ACH_MAP[id] || id;
+      toast(`Achievement: ${label}`);
+    });
+    return;
+  }
+
+  const ref = achDoc(bookId, UID);
+  const snap = await getDoc(ref);
+  const data = snap.exists() ? (snap.data() || {}) : {};
+  const had = new Set(Array.isArray(data.unlocked) ? data.unlocked : []);
+
+  let changed = false;
+  for(const id of unlocked){
+    if(!had.has(id)){
+      had.add(id);
+      changed = true;
+      toast(`Achievement unlocked: ${ACH_MAP[id] || id}`);
+    }
+  }
+
+  if(changed){
+    await setDoc(ref, { unlocked:[...had], updatedAt: serverTimestamp() }, { merge:true });
+  }
+}
+
+export async function renderMyAchievements({ bookId="book1", mountId="achList" } = {}){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+
+  if(!UID){
+    mount.innerHTML = `<div style="opacity:.75">Sign in to save and view achievements.</div>`;
+    return;
+  }
+
+  mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
+  try{
+    const snap = await getDoc(achDoc(bookId, UID));
+    const d = snap.exists() ? snap.data() : {};
+    const arr = Array.isArray(d.unlocked) ? d.unlocked : [];
+    if(!arr.length){
+      mount.innerHTML = `<div style="opacity:.75">No achievements yet. Keep reading.</div>`;
+      return;
+    }
+
+    const list = [...arr].slice().reverse();
+
+    mount.innerHTML = list.map(id=>`
+      <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:14px;padding:10px;margin:8px 0;">
+        <div style="font-weight:950">${escapeHtml(ACH_MAP[id] || id)}</div>
+        <div style="opacity:.75;font-size:12px;margin-top:4px">${escapeHtml(id)}</div>
+      </div>
+    `).join("");
+  }catch{
+    mount.innerHTML = `<div style="color:#ff9b9b">Could not load achievements.</div>`;
+  }
+}
+
+// ---------- GUIDELINES ----------
+export function guidelinesHTML(){
+  return `
+    <div style="line-height:1.6;opacity:.92">
+      <div style="font-weight:950;margin-bottom:6px">Community Guidelines</div>
+      <ul style="margin:0;padding-left:18px">
+        <li>Be respectful. No harassment or hate.</li>
+        <li>No explicit sexual content, threats, or illegal content.</li>
+        <li>No spam or advertising.</li>
+        <li>Keep spoilers marked or vague when possible.</li>
+        <li>Admin may remove content anytime.</li>
+        <li>Comments can be edited for 1 hour.</li>
+      </ul>
+      <div style="opacity:.75;font-size:12px;margin-top:10px">
+        Tip: Sign in to react, rate, and save achievements.
+      </div>
+    </div>
+  `;
+}
