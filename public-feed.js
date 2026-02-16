@@ -1,44 +1,45 @@
-// public-feed.js (FULL FILE — shared public stats + announcements + subscribe helpers)
+// public-feed.js (FULL FILE — COUNTERS + ANNOUNCEMENTS + SUBSCRIBERS)
+// Works with your file structure:
+// - firebase-config.js
+// - index.html (library) can import: renderAnnouncements, submitSubscriber, renderBookStats
+// - read.html imports: bumpReaderCountOnce
+//
+// Firestore layout used (simple + scalable):
+// 1) Reader uniqueness + counts (per book)
+//    books/{bookId}/readers/{readerId}   (readerId = uid OR guestToken)
+//    books/{bookId}/meta/public          { readerCount, lastReaderAt }
+//
+// 2) Announcements (global, optional per-book)
+//    public/announcements/items/{autoId} { title, body, bookId(optional), pinned, createdAt }
+//
+// 3) Subscribers (global)
+//    public/subscribers/items/{autoId}   { email, name, phone, createdAt, source, bookId(optional) }
+//
+// NOTE: You must set Firestore rules to allow reads for announcements/stats,
+// and writes for subscribers + readers (or restrict as you prefer).
+
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {
   getFirestore,
-  collection,
   doc,
-  getDoc,
-  getDocs,
-  addDoc,
   setDoc,
+  getDoc,
+  addDoc,
+  collection,
+  getDocs,
   query,
-  where,
   orderBy,
   limit,
   serverTimestamp,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
+// ---------- init ----------
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-// -----------------------------
-// Refs
-// -----------------------------
-function statsRef(bookId) {
-  // one small doc for totals (cheap + clean)
-  return doc(db, "books", bookId, "meta", "stats");
-}
-function announcementsCol() {
-  return collection(db, "announcements");
-}
-function subscribersCol() {
-  return collection(db, "subscribers");
-}
-
-// -----------------------------
-// Helpers
-// -----------------------------
+// ---------- helpers ----------
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -48,194 +49,136 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function looksLikeEmail(v) {
-  const s = String(v || "").trim();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+function clampStr(s, n = 3000) {
+  const t = String(s ?? "").trim();
+  return t.length > n ? t.slice(0, n) : t;
 }
 
-function fmtDate(ts) {
-  try {
-    if (!ts) return "";
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
+function normalizeEmail(email) {
+  const e = String(email ?? "").trim().toLowerCase();
+  // simple guard (not perfect)
+  if (!e || !e.includes("@") || e.length > 254) return "";
+  return e;
 }
 
-// -----------------------------
-// Public counts (readers, etc.)
-// -----------------------------
-export async function getBookStats({ bookId = "book1" } = {}) {
-  try {
-    const snap = await getDoc(statsRef(bookId));
-    const d = snap.exists() ? (snap.data() || {}) : {};
-    return {
-      readersTotal: Number(d.readersTotal || 0),
-      readsTotal: Number(d.readsTotal || 0),
-      opensTotal: Number(d.opensTotal || 0),
-      updatedAt: d.updatedAt || null
-    };
-  } catch {
-    return { readersTotal: 0, readsTotal: 0, opensTotal: 0, updatedAt: null };
-  }
+function getGuestReaderToken() {
+  const k = "tiu_guest_reader_token";
+  let v = localStorage.getItem(k);
+  if (v && v.length >= 16) return v;
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  v = Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+  localStorage.setItem(k, v);
+  return v;
 }
 
+function readersDoc(bookId, readerId) {
+  return doc(db, "books", bookId, "readers", readerId);
+}
+
+function publicMetaDoc(bookId) {
+  return doc(db, "books", bookId, "meta", "public");
+}
+
+function annCol() {
+  return collection(db, "public", "announcements", "items");
+}
+
+function subCol() {
+  return collection(db, "public", "subscribers", "items");
+}
+
+// ---------- 1) Reader count (unique per user/token) ----------
 /**
- * Call when someone opens a book (library -> read.html).
- * - increments opensTotal
- * - increments readersTotal ONCE per device per book (local key)
+ * bumpReaderCountOnce
+ * Unique count per UID (signed in) or guest token (guest).
+ * Safe to call multiple times; it only increments on first unique.
+ *
+ * @param {Object} p
+ * @param {string} p.bookId
+ * @param {string|null} p.uid
  */
-export async function bumpBookOpen({ bookId = "book1" } = {}) {
-  const onceKey = `tiu:uniqueReader:${bookId}`;
-  const firstTime = localStorage.getItem(onceKey) !== "1";
+export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}) {
+  const readerId = uid || `guest_${getGuestReaderToken()}`;
+  const rRef = readersDoc(bookId, readerId);
+  const mRef = publicMetaDoc(bookId);
 
-  try {
-    await runTransaction(db, async (tx) => {
-      const ref = statsRef(bookId);
-      const snap = await tx.get(ref);
-      const d = snap.exists() ? (snap.data() || {}) : {};
+  await runTransaction(db, async (tx) => {
+    const [rSnap, mSnap] = await Promise.all([tx.get(rRef), tx.get(mRef)]);
 
-      const next = {
-        opensTotal: Number(d.opensTotal || 0) + 1,
-        updatedAt: serverTimestamp()
-      };
+    // already counted (this reader exists)
+    if (rSnap.exists()) return;
 
-      if (firstTime) {
-        next.readersTotal = Number(d.readersTotal || 0) + 1;
-      }
+    const meta = mSnap.exists() ? (mSnap.data() || {}) : {};
+    const current = Number(meta.readerCount || 0);
+    const next = current + 1;
 
-      if (snap.exists()) tx.update(ref, next);
-      else tx.set(ref, { readersTotal: firstTime ? 1 : 0, opensTotal: 1, readsTotal: 0, ...next }, { merge: true });
-    });
-
-    if (firstTime) localStorage.setItem(onceKey, "1");
-    return true;
-  } catch {
-    // still mark local so we don't spam attempts
-    if (firstTime) localStorage.setItem(onceKey, "1");
-    return false;
-  }
-}
-
-/**
- * Optional: call when user flips pages or starts reading.
- * Keeps a total "readsTotal" (NOT unique).
- */
-export async function bumpBookRead({ bookId = "book1", by = 1 } = {}) {
-  const n = Math.max(1, Number(by || 1));
-  try {
-    await runTransaction(db, async (tx) => {
-      const ref = statsRef(bookId);
-      const snap = await tx.get(ref);
-      const d = snap.exists() ? (snap.data() || {}) : {};
-      const nextReads = Number(d.readsTotal || 0) + n;
-
-      if (snap.exists()) {
-        tx.update(ref, { readsTotal: nextReads, updatedAt: serverTimestamp() });
-      } else {
-        tx.set(ref, { readersTotal: 0, opensTotal: 0, readsTotal: nextReads, updatedAt: serverTimestamp() }, { merge: true });
-      }
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// -----------------------------
-// Subscribers
-// -----------------------------
-export async function getSubscribersCount({ max = 2000 } = {}) {
-  try {
-    const snap = await getDocs(query(subscribersCol(), limit(Math.max(1, Number(max || 2000)))));
-    return snap.size;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Subscribe email to Firestore.
- * Dedupes by emailLower.
- */
-export async function subscribeEmail({ email = "", source = "library" } = {}) {
-  const raw = String(email || "").trim();
-  if (!looksLikeEmail(raw)) throw new Error("Enter a valid email.");
-
-  const emailLower = raw.toLowerCase();
-
-  // check for duplicates
-  const existing = await getDocs(query(subscribersCol(), where("emailLower", "==", emailLower), limit(1)));
-  if (!existing.empty) return { ok: true, already: true };
-
-  await addDoc(subscribersCol(), {
-    email: raw,
-    emailLower,
-    source: String(source || "library"),
-    createdAt: serverTimestamp(),
-    uid: auth.currentUser?.uid || null
-  });
-
-  return { ok: true, already: false };
-}
-
-// -----------------------------
-// Announcements
-// -----------------------------
-export async function getLatestAnnouncement() {
-  try {
-    const qy = query(
-      announcementsCol(),
-      where("active", "==", true),
-      orderBy("createdAt", "desc"),
-      limit(1)
+    tx.set(
+      rRef,
+      {
+        readerId,
+        uid: uid || null,
+        kind: uid ? "user" : "guest",
+        createdAt: serverTimestamp()
+      },
+      { merge: true }
     );
-    const snap = await getDocs(qy);
-    if (snap.empty) return null;
 
-    const d = snap.docs[0].data() || {};
-    return {
-      id: snap.docs[0].id,
-      title: String(d.title || "Announcement"),
-      body: String(d.body || ""),
-      createdAt: d.createdAt || null
-    };
+    tx.set(
+      mRef,
+      {
+        readerCount: next,
+        lastReaderAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+  });
+}
+
+/**
+ * renderBookStats
+ * Displays readerCount for a book into a mount element.
+ *
+ * @param {Object} p
+ * @param {string} p.bookId
+ * @param {string} p.mountId
+ * @param {string} p.template  Use "{n}" placeholder
+ */
+export async function renderBookStats({
+  bookId = "book1",
+  mountId = "bookStats",
+  template = "Readers: {n}"
+} = {}) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+
+  mount.textContent = "Loading…";
+
+  try {
+    const snap = await getDoc(publicMetaDoc(bookId));
+    const d = snap.exists() ? (snap.data() || {}) : {};
+    const n = Number(d.readerCount || 0);
+    mount.textContent = template.replace("{n}", String(n));
   } catch {
-    return null;
+    mount.textContent = "—";
   }
 }
 
+// ---------- 2) Announcements ----------
 /**
- * Render 1-line announcement into any element.
- * Safe for library top line.
+ * renderAnnouncements
+ * Renders a clean list of announcements. Supports pinned first.
+ * If bookId is provided, shows:
+ * - pinned + global (no bookId)
+ * - pinned + matching bookId
+ *
+ * Docs should look like:
+ * { title, body, pinned:boolean, bookId(optional), createdAt }
  */
-export async function renderAnnouncementLine({ mountId = "announceLine" } = {}) {
-  const el = document.getElementById(mountId);
-  if (!el) return;
-
-  el.textContent = "Loading announcements…";
-
-  const a = await getLatestAnnouncement();
-  if (!a) {
-    el.textContent = "No announcements right now.";
-    return;
-  }
-
-  const t = (a.title || "").trim();
-  const b = (a.body || "").trim();
-  const date = fmtDate(a.createdAt);
-  const line = b ? `${t}: ${b}` : t;
-
-  el.textContent = date ? `${line} (${date})` : line;
-}
-
-/**
- * Render a clean announcements list (for future use).
- */
-export async function renderAnnouncementsList({
+export async function renderAnnouncements({
   mountId = "announcements",
-  max = 6
+  max = 6,
+  bookId = "" // optional
 } = {}) {
   const mount = document.getElementById(mountId);
   if (!mount) return;
@@ -243,65 +186,102 @@ export async function renderAnnouncementsList({
   mount.innerHTML = `<div style="opacity:.75">Loading…</div>`;
 
   try {
-    const qy = query(
-      announcementsCol(),
-      where("active", "==", true),
-      orderBy("createdAt", "desc"),
-      limit(Math.max(1, Number(max || 6)))
-    );
+    // Firestore can't do "OR" easily without indexes; keep it simple:
+    // fetch latest N and filter client-side.
+    const qy = query(annCol(), orderBy("createdAt", "desc"), limit(Math.max(12, Number(max || 6) * 3)));
     const snap = await getDocs(qy);
 
     if (snap.empty) {
-      mount.innerHTML = `<div style="opacity:.75">No announcements.</div>`;
+      mount.innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
       return;
     }
 
-    const rows = [];
-    snap.forEach((docSnap) => {
-      const d = docSnap.data() || {};
-      const title = escapeHtml(String(d.title || "Announcement"));
-      const body = escapeHtml(String(d.body || ""));
-      const date = fmtDate(d.createdAt);
+    const all = [];
+    snap.forEach((s) => {
+      const d = s.data() || {};
+      const aBookId = typeof d.bookId === "string" ? d.bookId : "";
+      const ok =
+        !bookId ||
+        aBookId === "" || // global
+        aBookId === bookId; // this book
 
-      rows.push(`
-        <div style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:16px;padding:12px;margin:10px 0;">
-          <div style="font-weight:950">${title}</div>
-          ${date ? `<div style="opacity:.70;font-size:12px;margin-top:2px">${escapeHtml(date)}</div>` : ``}
-          ${body ? `<div style="opacity:.92;margin-top:8px;line-height:1.55">${body}</div>` : ``}
-        </div>
-      `);
+      if (!ok) return;
+
+      all.push({
+        id: s.id,
+        pinned: !!d.pinned,
+        title: clampStr(d.title || "Announcement", 120),
+        body: clampStr(d.body || "", 2000),
+        createdAt: d.createdAt || null
+      });
     });
 
-    mount.innerHTML = rows.join("");
-  } catch {
+    if (!all.length) {
+      mount.innerHTML = `<div style="opacity:.75">No announcements yet.</div>`;
+      return;
+    }
+
+    // pinned first, then newest
+    all.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return 0;
+    });
+
+    const list = all.slice(0, Math.max(1, Number(max || 6)));
+
+    mount.innerHTML = list
+      .map((a) => {
+        return `
+          <div style="
+            border:1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.06);
+            border-radius:16px;
+            padding:12px;
+            margin:10px 0;
+          ">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+              <div style="font:950 13px ui-sans-serif,system-ui;letter-spacing:.04em">
+                ${a.pinned ? "📌 " : ""}${escapeHtml(a.title)}
+              </div>
+              <div style="opacity:.65;font:800 12px ui-sans-serif,system-ui">${a.pinned ? "Pinned" : ""}</div>
+            </div>
+            <div style="margin-top:8px;opacity:.92;line-height:1.55;font:600 13px ui-sans-serif,system-ui">
+              ${escapeHtml(a.body).replaceAll("\n", "<br>")}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  } catch (e) {
     mount.innerHTML = `<div style="color:#ff9b9b">Could not load announcements.</div>`;
   }
 }
 
-// -----------------------------
-// Small convenience: render basic counts
-// -----------------------------
-export async function renderCounts({
-  bookId = "book1",
-  readersMountId = "readersTotal",
-  subsMountId = "subsTotal"
+// ---------- 3) Subscribers ----------
+/**
+ * submitSubscriber
+ * Saves a subscriber to Firestore.
+ * You can call this from a form in index.html (library).
+ */
+export async function submitSubscriber({
+  email = "",
+  name = "",
+  phone = "",
+  source = "library",
+  bookId = "" // optional
 } = {}) {
-  const readersEl = document.getElementById(readersMountId);
-  const subsEl = document.getElementById(subsMountId);
+  const e = normalizeEmail(email);
+  if (!e) throw new Error("Enter a valid email.");
 
-  if (readersEl) readersEl.textContent = "— Total";
-  if (subsEl) subsEl.textContent = "— Total";
+  const payload = {
+    email: e,
+    name: clampStr(name, 80) || null,
+    phone: clampStr(phone, 40) || null,
+    source: clampStr(source, 30) || "library",
+    bookId: clampStr(bookId, 30) || null,
+    createdAt: serverTimestamp()
+  };
 
-  const [stats, subs] = await Promise.all([
-    getBookStats({ bookId }),
-    getSubscribersCount({})
-  ]);
-
-  if (readersEl) {
-    const n = Number(stats.readersTotal || 0);
-    readersEl.textContent = n ? `${n} Total` : "— Total";
-  }
-  if (subsEl) {
-    subsEl.textContent = `${Number(subs || 0)} Total`;
-  }
+  await addDoc(subCol(), payload);
+  return true;
 }
