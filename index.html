@@ -290,19 +290,6 @@
       flex-wrap:wrap;
     }
 
-    .previewSlide{
-      position:absolute; inset:14px;
-      opacity:0;
-      transform: translateY(6px);
-      transition: opacity .65s ease, transform .65s ease;
-      pointer-events:none;
-    }
-    .previewSlide.show{ opacity:1; transform:none; pointer-events:auto; }
-    .previewSlide[style*="display: block"]{
-      position:relative; inset:auto;
-      opacity:1; transform:none; pointer-events:auto;
-    }
-
     .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
     .bookCard{
       border:1px solid var(--stroke);
@@ -517,7 +504,7 @@
         <div class="stat">
           <div class="k">Readers</div>
           <div class="v" id="readersTotal">— Total</div>
-          <div class="small" style="margin-top:6px;opacity:.85">Counts every open (guests + signed-in).</div>
+          <div class="small" style="margin-top:6px;opacity:.85">Unique readers.</div>
         </div>
 
         <!-- ✅ Subscriber total is private (admin only). Non-admin sees "Private". -->
@@ -531,7 +518,7 @@
           <div class="k">Subscribe for updates</div>
           <div style="display:grid;gap:8px;margin-top:8px">
             <input id="subEmail" placeholder="Email address" inputmode="email" autocomplete="email" />
-            <button class="btn primary" id="subBtn" style="justify-content:center">Subscribe</button>
+            <button class="btn primary" id="subBtn" style="justify-content:center" type="button">Subscribe</button>
             <div class="note" id="subMsg"></div>
           </div>
         </div>
@@ -550,15 +537,23 @@
     <div class="sectionTitle">
       <h2>Community</h2>
       <div class="tabRow">
-        <button class="tabBtn active" data-tab="tabComments">💬 Comments</button>
-        <button class="tabBtn" data-tab="tabAnnounce">📣 Announcements</button>
+        <button class="tabBtn active" data-tab="tabComments" type="button">💬 Comments</button>
+        <button class="tabBtn" data-tab="tabAnnounce" type="button">📣 Announcements</button>
       </div>
     </div>
 
     <div class="tabShell">
       <div class="tabInner">
         <div class="tabPanel show" id="tabComments">
-          <div id="commentPreview">Loading…</div>
+          <div id="commentPreview">
+            <div style="opacity:.85;line-height:1.6">
+              Want to see what readers are saying?
+              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn primary" id="openCommunityFromTab" type="button">Open Community</button>
+                <button class="btn" id="openBookFromTab" type="button">Open Book I</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="tabPanel" id="tabAnnounce">
@@ -604,7 +599,8 @@
         <button class="favBtn" id="favBtn_coming" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book" data-book="coming3" data-title="THIS IS US Book III Coming Soon">
+      <!-- book3/book4 point to the same placeholder "coming" to avoid broken read mapping -->
+      <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book" data-book="coming" data-title="THIS IS US Book III Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
         <div class="meta">
@@ -614,7 +610,7 @@
         <button class="favBtn" id="favBtn_coming3" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <div class="bookCard" id="book4Card" role="button" aria-label="Coming soon book" data-book="coming4" data-title="Book IV Coming Soon">
+      <div class="bookCard" id="book4Card" role="button" aria-label="Coming soon book" data-book="coming" data-title="Book IV Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
         <div class="meta">
@@ -694,7 +690,7 @@
     </div>
   </div>
 
-  <!-- ✅ TERMS MODAL (NOW ON LIBRARY TOO) -->
+  <!-- ✅ TERMS MODAL (LIBRARY TOO) -->
   <div class="modal" id="termsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -766,7 +762,6 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
     import { wireTermsGate } from "./terms-gate.js";
-    import { renderCommentPreviewCarousel } from "./reader-community.js";
     import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
     // ✅ your admin UID
@@ -818,14 +813,24 @@
 
     // Quick nav
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
+
+    const openAuthQuick = document.getElementById("openAuthQuick");
+    const openSubscribeQuick = document.getElementById("openSubscribeQuick");
+
     document.getElementById("openBook1").addEventListener("click", ()=> openBook("book1"));
     document.getElementById("book1Card").addEventListener("click", ()=> openBook("book1"));
     document.getElementById("book2Card").addEventListener("click", ()=> openBook("coming"));
-    document.getElementById("book3Card").addEventListener("click", ()=> openBook("coming3"));
-    document.getElementById("book4Card").addEventListener("click", ()=> openBook("coming4"));
+    document.getElementById("book3Card").addEventListener("click", ()=> openBook("coming"));
+    document.getElementById("book4Card").addEventListener("click", ()=> openBook("coming"));
+
     document.getElementById("openCommunityQuick").addEventListener("click", ()=>{
       location.href = "read.html?book=book1&open=community";
     });
+
+    document.getElementById("openCommunityFromTab").addEventListener("click", ()=>{
+      location.href = "read.html?book=book1&open=community";
+    });
+    document.getElementById("openBookFromTab").addEventListener("click", ()=> openBook("book1"));
 
     function openBook(bookId){
       trackHistory(bookId).catch(()=>{});
@@ -850,7 +855,6 @@
     const authModal = document.getElementById("authModal");
     const authBtn = document.getElementById("authBtn");
     const authClose = document.getElementById("authClose");
-    const openAuthQuick = document.getElementById("openAuthQuick");
     const goSettings = document.getElementById("goSettings");
 
     function openAuth(){
@@ -871,6 +875,37 @@
     authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuth(); });
     goSettings.addEventListener("click", ()=> location.href = "settings.html");
 
+    // Subscribe popup modal wiring
+    const subModal = document.getElementById("subModal");
+    const subClose = document.getElementById("subClose");
+    const subModalBtn = document.getElementById("subModalBtn");
+    const subModalLater = document.getElementById("subModalLater");
+    const subModalEmail = document.getElementById("subModalEmail");
+    const subModalMsg = document.getElementById("subModalMsg");
+
+    function openSub(){
+      subModal.classList.add("show");
+      subModal.setAttribute("aria-hidden","false");
+      lockScroll();
+      subModalMsg.textContent = "";
+    }
+    function closeSub(){
+      subModal.classList.remove("show");
+      subModal.setAttribute("aria-hidden","true");
+      unlockScroll();
+    }
+
+    openSubscribeQuick.addEventListener("click", openSub);
+    subClose.addEventListener("click", closeSub);
+    subModal.addEventListener("click", (e)=>{ if(e.target === subModal) closeSub(); });
+
+    subModalLater.addEventListener("click", ()=>{
+      const next = Date.now() + 7*24*60*60*1000;
+      localStorage.setItem("subPromptNextAt", String(next));
+      closeSub();
+    });
+
+    // Auth bits
     const authHint = document.getElementById("authHint");
     const authEmail = document.getElementById("authEmail");
     const authPass  = document.getElementById("authPass");
@@ -1016,63 +1051,6 @@
       }
     });
 
-    // Readers total (public)
-    const readersTotal = document.getElementById("readersTotal");
-    async function loadReadersTotal(){
-      try{
-        const snap = await getDoc(doc(db,"stats","book1"));
-        if(snap.exists()){
-          const d = snap.data() || {};
-          const n = Number(d.totalReaders || 0);
-          readersTotal.textContent = `${n.toLocaleString()} Total`;
-          return;
-        }
-      }catch{}
-      readersTotal.textContent = "— Total";
-    }
-
-    async function loadPreview(){
-      await renderCommentPreviewCarousel({
-        bookId: "book1",
-        mountId: "commentPreview",
-        max: 8,
-        intervalMs: 4200
-      });
-    }
-
-    async function loadAnnouncementsTab(){
-      await renderAnnouncements({ mountId:"announceMount", max: 4 });
-    }
-
-    // Subscribe popup modal
-    const subModal = document.getElementById("subModal");
-    const subClose = document.getElementById("subClose");
-    const subModalBtn = document.getElementById("subModalBtn");
-    const subModalLater = document.getElementById("subModalLater");
-    const subModalEmail = document.getElementById("subModalEmail");
-    const subModalMsg = document.getElementById("subModalMsg");
-
-    function openSub(){
-      subModal.classList.add("show");
-      subModal.setAttribute("aria-hidden","false");
-      lockScroll();
-      subModalMsg.textContent = "";
-    }
-    function closeSub(){
-      subModal.classList.remove("show");
-      subModal.setAttribute("aria-hidden","true");
-      unlockScroll();
-    }
-    document.getElementById("openSubscribeQuick").addEventListener("click", openSub);
-    subClose.addEventListener("click", closeSub);
-    subModal.addEventListener("click", (e)=>{ if(e.target === subModal) closeSub(); });
-
-    subModalLater.addEventListener("click", ()=>{
-      const next = Date.now() + 7*24*60*60*1000;
-      localStorage.setItem("subPromptNextAt", String(next));
-      closeSub();
-    });
-
     subModalBtn.addEventListener("click", async ()=>{
       subModalMsg.textContent = "";
       subModalBtn.disabled = true;
@@ -1101,6 +1079,25 @@
       }
     }
 
+    // Readers total (public)
+    const readersTotal = document.getElementById("readersTotal");
+    async function loadReadersTotal(){
+      try{
+        const snap = await getDoc(doc(db,"stats","book1"));
+        if(snap.exists()){
+          const d = snap.data() || {};
+          const n = Number(d.totalReaders || 0);
+          readersTotal.textContent = `${n.toLocaleString()} Total`;
+          return;
+        }
+      }catch{}
+      readersTotal.textContent = "— Total";
+    }
+
+    async function loadAnnouncementsTab(){
+      await renderAnnouncements({ mountId:"announceMount", max: 4 });
+    }
+
     // NEW badge logic
     async function updateNewBadges(){
       const latest = await getLatestChapterNumber("book1");
@@ -1127,8 +1124,8 @@
     const BOOKS = [
       { id:"book1", title:"THIS IS US (Book I) — Where We Began", desc:"Mukeh arrives. Francess is the standard.", cover:"./assets/cover-book1.png", href:"read.html?book=book1" },
       { id:"coming", title:"THIS IS US Book II — Coming Soon", desc:"A new season is loading.", cover:"./assets/back-book1.png", href:"read.html?book=coming" },
-      { id:"coming3", title:"THIS IS US Book III — Coming Soon", desc:"Fault lines. Mirrors.", cover:"./assets/back-book1.png", href:"read.html?book=coming3" },
-      { id:"coming4", title:"Book IV — Coming Soon", desc:"The past returns.", cover:"./assets/back-book1.png", href:"read.html?book=coming4" },
+      { id:"coming3", title:"THIS IS US Book III — Coming Soon", desc:"Fault lines. Mirrors.", cover:"./assets/back-book1.png", href:"read.html?book=coming" },
+      { id:"coming4", title:"Book IV — Coming Soon", desc:"The past returns.", cover:"./assets/back-book1.png", href:"read.html?book=coming" },
     ];
 
     let favoritesMap = {};
@@ -1250,7 +1247,6 @@
 
     // Init
     (async ()=>{
-      await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
       await updateNewBadges().catch(()=>{});
