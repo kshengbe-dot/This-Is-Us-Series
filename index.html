@@ -138,6 +138,8 @@
       align-items:center;
       gap:8px;
       transition: transform .15s ease, background .15s ease;
+      user-select:none;
+      font-family: ui-sans-serif, system-ui;
     }
     .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
@@ -182,7 +184,6 @@
       color:var(--muted);
     }
 
-    /* Search row */
     .searchRow{
       display:flex; gap:10px; align-items:center; flex-wrap:wrap;
       margin: 10px 0 14px;
@@ -199,7 +200,6 @@
       min-width: 220px;
     }
 
-    /* Favorites strip */
     .favStrip{
       display:none;
       border:1px solid var(--stroke);
@@ -239,7 +239,6 @@
     .miniName{ font-weight:950; font-size:12px; line-height:1.2; }
     .miniSub{ color:var(--muted); font-size:11px; margin-top:4px; line-height:1.35; }
 
-    /* Tabs */
     .tabRow{ display:flex; gap:8px; flex-wrap:wrap; }
     .tabBtn{
       border:1px solid var(--stroke);
@@ -291,7 +290,6 @@
       flex-wrap:wrap;
     }
 
-    /* Comment preview carousel classes */
     .previewSlide{
       position:absolute; inset:14px;
       opacity:0;
@@ -305,7 +303,6 @@
       opacity:1; transform:none; pointer-events:auto;
     }
 
-    /* ===== Library shelf ===== */
     .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
     .bookCard{
       border:1px solid var(--stroke);
@@ -359,15 +356,12 @@
     }
     .badge.live{ border-color: rgba(0,255,198,.35); }
     .badge.soon{ border-color: rgba(255,198,0,.35); }
-
-    /* NEW badge */
     .badge.new{
       left:auto; right:12px;
       border-color: rgba(255,130,130,.35);
       background: rgba(255,100,100,.10);
     }
 
-    /* Favorite star button */
     .favBtn{
       position:absolute; bottom:12px; right:12px;
       border:1px solid var(--stroke);
@@ -383,7 +377,6 @@
     [data-theme="light"] .favBtn{ background: rgba(255,255,255,.78); }
     .favBtn.on{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
 
-    /* Modals */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -432,10 +425,27 @@
       font-family: ui-sans-serif, system-ui;
     }
     .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-    .note{color:var(--muted); font-size:12px; line-height:1.45}
+    .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
     .hrSoft{ border:0; border-top:1px solid var(--stroke); margin: 12px 0; opacity:.9; }
 
-    /* Responsive improvements */
+    /* Terms modal bits */
+    .termsBox{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:12px;
+      background: rgba(255,255,255,.06);
+      max-height: 56vh;
+      overflow:auto;
+      font-family: ui-sans-serif, system-ui;
+      color: var(--ink);
+    }
+    .checkRow{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 6px 0;
+      font-family: ui-sans-serif, system-ui;
+    }
+    .checkRow input{ width:auto; margin-top:3px; }
+
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
@@ -445,8 +455,6 @@
       h1{font-size:30px}
       .right{max-width:72vw;}
       .row2{grid-template-columns:1fr}
-
-      /* mobile shelf: compact cards */
       .shelf{grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px;}
       .bookCard{min-height: 240px;}
       .cover{height: 140px;}
@@ -511,9 +519,12 @@
           <div class="v" id="readersTotal">— Total</div>
           <div class="small" style="margin-top:6px;opacity:.85">Counts every open (guests + signed-in).</div>
         </div>
+
+        <!-- ✅ Subscriber total is private (admin only). Non-admin sees "Private". -->
         <div class="stat">
           <div class="k">Subscribers</div>
-          <div class="v" id="subsTotal">— Total</div>
+          <div class="v" id="subsTotal">Private</div>
+          <div class="small" id="subsHint" style="margin-top:6px;opacity:.85">Visible to admin only.</div>
         </div>
 
         <div class="stat">
@@ -683,31 +694,118 @@
     </div>
   </div>
 
+  <!-- ✅ TERMS MODAL (NOW ON LIBRARY TOO) -->
+  <div class="modal" id="termsModal">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Terms & Conditions</h3>
+        <div></div>
+      </div>
+
+      <div class="termsBox" id="termsText">
+        <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THE KOKER ARCHIVES — Terms</div>
+        <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+
+        <p><strong>1) Acceptance</strong><br>
+          By accessing or using THE KOKER ARCHIVES (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
+        </p>
+        <p><strong>2) Eligibility</strong><br>
+          You represent that you are able to form a legally binding agreement. If you are under the age required in your jurisdiction,(13+) use the Site only with a parent/guardian’s consent.
+        </p>
+        <p><strong>3) Content & Reader Experience</strong><br>
+          The story, chapters, artwork, and design are owned by the Site owner and are protected by copyright. You may read for personal use only. You may not copy, repost, or redistribute the content without written permission.
+        </p>
+        <p><strong>4) Accounts</strong><br>
+          Creating an account is optional. You are responsible for keeping your login credentials secure. The owner may suspend accounts that violate these Terms.
+        </p>
+        <p><strong>5) User Submissions</strong><br>
+          If you post comments or feedback, you agree not to post illegal, harmful, abusive, or infringing content. The owner may remove content at any time.
+        </p>
+        <p><strong>6) Notifications (Optional)</strong><br>
+          If you opt in to email and/or SMS notifications, you consent to receive updates about new chapters or announcements.
+        </p>
+        <p><strong>7) Privacy</strong><br>
+          The Site may store basic account data (email), reading progress, and (if you opt in) notification contact details. Subscriber lists are private and visible only to the owner/admin.
+        </p>
+        <p><strong>8) Availability & Changes</strong><br>
+          The Site may change, pause, or stop features at any time. Chapters and features may be updated without notice.
+        </p>
+        <p><strong>9) Disclaimer</strong><br>
+          The Site is provided “as is” without warranties of any kind.
+        </p>
+        <p><strong>10) Limitation of Liability</strong><br>
+          To the maximum extent permitted by law, the owner will not be liable for indirect or consequential damages.
+        </p>
+        <p><strong>11) Contact</strong><br>
+          For questions, removal requests, or opt-out requests, contact the site owner.
+        </p>
+      </div>
+
+      <div class="checkRow">
+        <input type="checkbox" id="agreeTerms">
+        <div class="note">I have read and agree to the Terms & Conditions.</div>
+      </div>
+
+      <div style="display:grid; gap:10px; padding-top:10px">
+        <button class="btn primary" id="acceptTermsBtn" type="button">Accept & Continue</button>
+        <div class="note" id="termsMsg"></div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, doc, getDoc, setDoc, serverTimestamp,
-      query, where, orderBy, limit, getDocs
+      getFirestore, collection, doc, getDoc, setDoc, serverTimestamp,
+      query, limit, getDocs
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged,
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
+    import { wireTermsGate } from "./terms-gate.js";
     import { renderCommentPreviewCarousel } from "./reader-community.js";
     import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
-    // --- Theme ---
+    // ✅ your admin UID
+    const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
+
+    // scroll lock helpers (for modals + terms)
+    let __scrollY = 0;
+    function lockScroll(){
+      __scrollY = window.scrollY || 0;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${__scrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+    }
+    function unlockScroll(){
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, __scrollY);
+    }
+
+    // ✅ Terms enforcement on library too
+    wireTermsGate({ lockScroll, unlockScroll });
+
+    // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    // --- Firebase init (safe) ---
+    // Firebase init (safe)
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // --- Theme btn ---
+    // Theme btn
     const themeBtn = document.getElementById("themeBtn");
     themeBtn.addEventListener("click", async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
@@ -718,7 +816,7 @@
       }
     });
 
-    // --- Quick nav ---
+    // Quick nav
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
     document.getElementById("openBook1").addEventListener("click", ()=> openBook("book1"));
     document.getElementById("book1Card").addEventListener("click", ()=> openBook("book1"));
@@ -730,12 +828,11 @@
     });
 
     function openBook(bookId){
-      // History tracking (signed-in only)
       trackHistory(bookId).catch(()=>{});
       location.href = `read.html?book=${encodeURIComponent(bookId)}`;
     }
 
-    // ===== Tabs wiring =====
+    // Tabs wiring
     const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
     const tabPanels = {
       tabComments: document.getElementById("tabComments"),
@@ -749,7 +846,7 @@
     }
     tabBtns.forEach(btn=> btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab"))) );
 
-    // --- Auth modal wiring ---
+    // Auth modal wiring
     const authModal = document.getElementById("authModal");
     const authBtn = document.getElementById("authBtn");
     const authClose = document.getElementById("authClose");
@@ -759,13 +856,13 @@
     function openAuth(){
       authModal.classList.add("show");
       authModal.setAttribute("aria-hidden","false");
-      document.body.style.overflow = "hidden";
+      lockScroll();
       document.getElementById("authMsg").textContent = "";
     }
     function closeAuth(){
       authModal.classList.remove("show");
       authModal.setAttribute("aria-hidden","true");
-      document.body.style.overflow = "";
+      unlockScroll();
     }
 
     authBtn.addEventListener("click", openAuth);
@@ -810,8 +907,11 @@
         whoSub.textContent = "Progress saved locally • Sign in to save to cloud";
         setAvatar("");
 
-        // guests: favorites strip hidden
         setFavoritesUI(null);
+
+        // subscribers count stays private
+        subsTotal.textContent = "Private";
+        document.getElementById("subsHint").textContent = "Visible to admin only.";
       }else{
         authDot.style.color = "rgba(0,255,198,.9)";
         authText.textContent = "Signed in";
@@ -846,9 +946,17 @@
         }catch{}
 
         await loadFavorites().catch(()=>{});
+
+        // ✅ admin-only subscriber count
+        if(user.uid === ADMIN_UID){
+          await loadSubscribersCount().catch(()=>{});
+          document.getElementById("subsHint").textContent = "Admin view.";
+        }else{
+          subsTotal.textContent = "Private";
+          document.getElementById("subsHint").textContent = "Visible to admin only.";
+        }
       }
 
-      // refresh NEW badges whenever auth changes (because signed-in reads Firestore progress)
       await updateNewBadges().catch(()=>{});
     });
 
@@ -877,19 +985,16 @@
       catch(e){ authMsg.textContent = (e?.message || "Could not sign out."); }
     });
 
-    // --- Subscribers (card form) ---
+    // Subscribers
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
     const subsTotal = document.getElementById("subsTotal");
 
     async function loadSubscribersCount(){
-      try{
-        const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
-        subsTotal.textContent = `${snap.size} Total`;
-      }catch{
-        subsTotal.textContent = "— Total";
-      }
+      // admin-only call
+      const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
+      subsTotal.textContent = `${snap.size} Total`;
     }
 
     subBtn.addEventListener("click", async ()=>{
@@ -901,7 +1006,9 @@
         subMsg.textContent = res.msg;
         if(res.ok){
           subEmail.value = "";
-          await loadSubscribersCount();
+          if(UID && UID === ADMIN_UID){
+            await loadSubscribersCount().catch(()=>{});
+          }
         }
       }finally{
         subBtn.disabled = false;
@@ -909,7 +1016,7 @@
       }
     });
 
-    // --- Readers total ---
+    // Readers total (public)
     const readersTotal = document.getElementById("readersTotal");
     async function loadReadersTotal(){
       try{
@@ -924,7 +1031,6 @@
       readersTotal.textContent = "— Total";
     }
 
-    // --- Comment preview carousel (Book I) ---
     async function loadPreview(){
       await renderCommentPreviewCarousel({
         bookId: "book1",
@@ -934,12 +1040,11 @@
       });
     }
 
-    // --- Announcements tab ---
     async function loadAnnouncementsTab(){
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-    // ===== Subscribe popup modal =====
+    // Subscribe popup modal
     const subModal = document.getElementById("subModal");
     const subClose = document.getElementById("subClose");
     const subModalBtn = document.getElementById("subModalBtn");
@@ -950,20 +1055,19 @@
     function openSub(){
       subModal.classList.add("show");
       subModal.setAttribute("aria-hidden","false");
-      document.body.style.overflow = "hidden";
+      lockScroll();
       subModalMsg.textContent = "";
     }
     function closeSub(){
       subModal.classList.remove("show");
       subModal.setAttribute("aria-hidden","true");
-      document.body.style.overflow = "";
+      unlockScroll();
     }
     document.getElementById("openSubscribeQuick").addEventListener("click", openSub);
     subClose.addEventListener("click", closeSub);
     subModal.addEventListener("click", (e)=>{ if(e.target === subModal) closeSub(); });
 
     subModalLater.addEventListener("click", ()=>{
-      // cooldown (7 days)
       const next = Date.now() + 7*24*60*60*1000;
       localStorage.setItem("subPromptNextAt", String(next));
       closeSub();
@@ -978,9 +1082,11 @@
         subModalMsg.textContent = res.msg;
         if(res.ok){
           subModalEmail.value = "";
-          const next = Date.now() + 60*24*60*60*1000; // don't bother for 60 days after successful sub
+          const next = Date.now() + 60*24*60*60*1000;
           localStorage.setItem("subPromptNextAt", String(next));
-          await loadSubscribersCount();
+          if(UID && UID === ADMIN_UID){
+            await loadSubscribersCount().catch(()=>{});
+          }
         }
       }finally{
         subModalBtn.disabled = false;
@@ -988,18 +1094,15 @@
       }
     });
 
-    // show popup if cooldown passed
     function maybeShowSubscribePopup(){
       const nextAt = Number(localStorage.getItem("subPromptNextAt") || "0") || 0;
       if(Date.now() >= nextAt){
-        // small delay so it feels premium, not aggressive
         setTimeout(()=> openSub(), 700);
       }
     }
 
-    // ===== NEW badge logic =====
+    // NEW badge logic
     async function updateNewBadges(){
-      // Only book1 uses chapters right now; others are coming soon.
       const latest = await getLatestChapterNumber("book1");
       if(latest <= 0){
         document.getElementById("newBadge_book1").style.display = "none";
@@ -1007,7 +1110,6 @@
       }
 
       let seen = 0;
-
       if(UID){
         seen = await getLastSeenChapterSignedIn("book1", UID);
       }else{
@@ -1018,7 +1120,7 @@
       badge.style.display = (latest > seen) ? "block" : "none";
     }
 
-    // ===== Favorites + History (signed-in only) =====
+    // Favorites + History (signed-in only)
     const favStrip = document.getElementById("favStrip");
     const favRow = document.getElementById("favRow");
 
@@ -1029,11 +1131,10 @@
       { id:"coming4", title:"Book IV — Coming Soon", desc:"The past returns.", cover:"./assets/back-book1.png", href:"read.html?book=coming4" },
     ];
 
-    let favoritesMap = {}; // { bookId: true }
+    let favoritesMap = {};
 
     function setFavoritesUI(map){
       favoritesMap = map || {};
-      // toggle star buttons
       BOOKS.forEach(b=>{
         const btn = document.getElementById(`favBtn_${b.id}`);
         if(!btn) return;
@@ -1078,27 +1179,20 @@
 
     async function loadFavorites(){
       if(!UID) return;
-      try{
-        const ref = doc(db, "users", UID, "meta", "library");
-        const snap = await getDoc(ref);
-        const d = snap.exists() ? (snap.data() || {}) : {};
-        setFavoritesUI(d.favorites || {});
-      }catch{
-        setFavoritesUI({});
-      }
+      const ref = doc(db, "users", UID, "meta", "library");
+      const snap = await getDoc(ref);
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      setFavoritesUI(d.favorites || {});
     }
 
     async function toggleFavorite(bookId){
       if(!UID){
-        // signed-in only
         openAuth();
         authMsg.textContent = "Sign in to use Favorites.";
         return;
       }
       const next = { ...favoritesMap };
       next[bookId] = !next[bookId];
-
-      // keep UI snappy
       setFavoritesUI(next);
 
       try{
@@ -1107,32 +1201,25 @@
           updatedAt: serverTimestamp()
         }, { merge:true });
       }catch{
-        // revert on failure
         await loadFavorites().catch(()=>{});
       }
     }
 
     async function trackHistory(bookId){
       if(!UID) return;
-      try{
-        const ref = doc(db, "users", UID, "meta", "library");
-        const snap = await getDoc(ref);
-        const d = snap.exists() ? (snap.data() || {}) : {};
-        const history = Array.isArray(d.history) ? d.history : [];
-        const now = Date.now();
+      const ref = doc(db, "users", UID, "meta", "library");
+      const snap = await getDoc(ref);
+      const d = snap.exists() ? (snap.data() || {}) : {};
+      const history = Array.isArray(d.history) ? d.history : [];
+      const now = Date.now();
 
-        // newest first, remove duplicates of same book at top
-        const filtered = history.filter(h=> (h && h.bookId) ? h.bookId !== bookId : true);
-        filtered.unshift({ bookId, at: now });
-        const trimmed = filtered.slice(0, 30); // cap
+      const filtered = history.filter(h=> (h && h.bookId) ? h.bookId !== bookId : true);
+      filtered.unshift({ bookId, at: now });
+      const trimmed = filtered.slice(0, 30);
 
-        await setDoc(ref, { history: trimmed, updatedAt: serverTimestamp() }, { merge:true });
-      }catch{
-        // ignore
-      }
+      await setDoc(ref, { history: trimmed, updatedAt: serverTimestamp() }, { merge:true });
     }
 
-    // hook favorite buttons
     BOOKS.forEach(b=>{
       const btn = document.getElementById(`favBtn_${b.id}`);
       if(btn){
@@ -1144,7 +1231,7 @@
       }
     });
 
-    // ===== Search filter =====
+    // Search filter
     const shelf = document.getElementById("shelf");
     const searchBooks = document.getElementById("searchBooks");
     const showAllBtn = document.getElementById("showAllBtn");
@@ -1161,15 +1248,12 @@
     searchBooks.addEventListener("input", applySearch);
     showAllBtn.addEventListener("click", ()=>{ searchBooks.value=""; applySearch(); });
 
-    // ===== Init =====
+    // Init
     (async ()=>{
       await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
-      await loadSubscribersCount().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
       await updateNewBadges().catch(()=>{});
-
-      // show subscribe popup (cooldown-based)
       maybeShowSubscribePopup();
     })();
   </script>
