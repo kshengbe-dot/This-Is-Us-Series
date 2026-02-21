@@ -762,6 +762,7 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
     import { wireTermsGate } from "./terms-gate.js";
+    import { renderCommentPreviewCarousel } from "./reader-community.js";
     import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
     // ✅ your admin UID
@@ -1094,6 +1095,16 @@
       readersTotal.textContent = "— Total";
     }
 
+    // ✅ Comment preview carousel (RESTORED)
+    async function loadPreview(){
+      await renderCommentPreviewCarousel({
+        bookId: "book1",
+        mountId: "commentPreview",
+        max: 8,
+        intervalMs: 4200
+      });
+    }
+
     async function loadAnnouncementsTab(){
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
@@ -1247,6 +1258,7 @@
 
     // Init
     (async ()=>{
+      await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
       await updateNewBadges().catch(()=>{});
