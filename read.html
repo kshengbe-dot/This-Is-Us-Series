@@ -299,7 +299,6 @@
       .flip{ width:100%; left:0; }
       .flip.fromRight{ left:0; transform-origin:left; }
       .flip.fromLeft{ left:0; transform-origin:right; }
-
       .inner p{ font-size:16px; line-height:1.82; }
     }
 
@@ -328,7 +327,6 @@
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
-
       max-height: 86vh;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
@@ -438,9 +436,7 @@
     }
     .txt{ min-height: 110px; resize: vertical; line-height:1.5; }
     .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width:520px){
-      .grid2{ grid-template-columns: 1fr; }
-    }
+    @media (max-width:520px){ .grid2{ grid-template-columns: 1fr; } }
 
     .miniNote{
       color: var(--muted);
@@ -691,6 +687,20 @@
       collection, getDocs, query, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
+    import { wireTermsGate } from "./terms-gate.js";
+    import { bumpReaderCountOnce, bumpBookOpenStats } from "./public-feed.js";
+
+    import {
+      renderComments,
+      setupCommentForm,
+      submitRating,
+      loadMyRating,
+      renderRatingSummary,
+      trackAchievements,
+      renderMyAchievements,
+      guidelinesHTML
+    } from "./reader-community.js";
+
     // --- scroll lock helpers (mobile safe) ---
     let __scrollY = 0;
     function lockScroll(){
@@ -712,23 +722,7 @@
       window.scrollTo(0, __scrollY);
     }
 
-    // Terms gate
-    import { wireTermsGate } from "./terms-gate.js";
     wireTermsGate({ lockScroll, unlockScroll });
-
-    // Reader counting
-    import { bumpReaderCountOnce } from "./public-feed.js";
-
-    import {
-      renderComments,
-      setupCommentForm,
-      submitRating,
-      loadMyRating,
-      renderRatingSummary,
-      trackAchievements,
-      renderMyAchievements,
-      guidelinesHTML
-    } from "./reader-community.js";
 
     const BOOK_FILES = {
       book1: "./books/book1.html",
@@ -744,7 +738,6 @@
 
     const deepOpen = params.get("open") || "";
     const deepCommentId = params.get("comment") || "";
-
     const isMobile = ()=> matchMedia("(max-width:720px)").matches;
 
     // Theme
@@ -778,7 +771,6 @@
     const flipBack  = document.getElementById("flipBack");
 
     const measureHost = document.getElementById("measureHost");
-
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
@@ -788,7 +780,17 @@
     const db = getFirestore(app);
     let UID = null;
 
-    // Prevent double counting if guest then later signs in
+    // --- stats: open bump once per page-load ---
+    const openKey = `openBumped:${bookId}`;
+    async function bumpOpenOnce(uidOrNull){
+      if(sessionStorage.getItem(openKey) === "1") return;
+      try{
+        await bumpBookOpenStats(bookId, uidOrNull || null);
+        sessionStorage.setItem(openKey, "1");
+      }catch{}
+    }
+
+    // --- stats: unique reader bump (caller "once") ---
     const countKey = `readerCounted:${bookId}`;
     async function countReaderOnce(uidOrNull){
       if(localStorage.getItem(countKey) === "1") return;
@@ -834,6 +836,17 @@
       }catch{}
     }
 
+    // Theme toggle
+    function toggleTheme(){
+      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("theme", next);
+      saveCloudTheme(next);
+      paginateAndRender(true);
+    }
+    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+    document.getElementById("mTheme").addEventListener("click", toggleTheme);
+
     onAuthStateChanged(auth, async (user)=>{
       UID = user ? user.uid : null;
 
@@ -844,6 +857,7 @@
           : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
       }
 
+      await bumpOpenOnce(UID);
       await countReaderOnce(UID);
 
       if(UID){
@@ -870,16 +884,6 @@
       }
     });
 
-    function toggleTheme(){
-      const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem("theme", next);
-      saveCloudTheme(next);
-      paginateAndRender(true);
-    }
-    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
-    document.getElementById("mTheme").addEventListener("click", toggleTheme);
-
     // Load book HTML
     let BOOK_HTML = "<p class='muted'>Loading…</p>";
     let PAGES = [];
@@ -903,8 +907,9 @@
             parts.push(d.html.trim());
           }
         });
-        if(parts.length === 0) return "";
-        return "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n";
+        return parts.length
+          ? "\n\n<!-- CLOUD_CHAPTERS_START -->\n\n" + parts.join("\n\n") + "\n\n<!-- CLOUD_CHAPTERS_END -->\n"
+          : "";
       }catch{
         return "";
       }
@@ -946,7 +951,6 @@
       return { meas, pageVisible };
     }
 
-    // FIX: measure against full inner height (don’t subtract padding twice)
     function getMaxMeasureHeight(pageEl){
       const h = Math.max(240, pageEl.getBoundingClientRect().height);
       return Math.max(180, Math.floor(h - 2));
@@ -1235,7 +1239,6 @@
       document.getElementById("guideMount").innerHTML = guidelinesHTML();
 
       await renderComments({ bookId, mountId:"commentsList", max: 60 });
-
       renderRatingSummary({ bookId, mountId:"ratingSummary" }).catch(()=>{});
       renderMyAchievements({ bookId, mountId:"achList" }).catch(()=>{});
 
@@ -1246,11 +1249,8 @@
 
       if(scrollToCommentId){
         setTab("commentsTab");
-        // ✅ FIXED extra brace + safe lookup
         const el = document.getElementById(`c_${scrollToCommentId}`);
-        if(el){
-          el.scrollIntoView({ behavior:"smooth", block:"start" });
-        }
+        if(el) el.scrollIntoView({ behavior:"smooth", block:"start" });
       }
     }
 
@@ -1263,7 +1263,6 @@
     communityBtn.addEventListener("click", ()=>openCommunity());
     communityClose.addEventListener("click", closeCommunity);
     communityModal.addEventListener("click",(e)=>{ if(e.target === communityModal) closeCommunity(); });
-
     document.getElementById("mCommunity").addEventListener("click", ()=>openCommunity());
 
     function setTab(id){
@@ -1319,6 +1318,10 @@
         BOOK_HTML = `<p class="muted">${escapeHtml(String(e))}</p>`;
       }
 
+      // bump open immediately for guest too
+      bumpOpenOnce(null).catch(()=>{});
+      countReaderOnce(null).catch(()=>{});
+
       requestAnimationFrame(()=>requestAnimationFrame(()=> paginateAndRender(true)));
 
       let t=null;
@@ -1327,7 +1330,6 @@
         t=setTimeout(()=>paginateAndRender(true), 160);
       });
 
-      // Deep link support:
       if(deepOpen === "community"){
         setTimeout(()=>{
           openCommunity({ scrollToCommentId: deepCommentId || "" }).catch(()=>{});
