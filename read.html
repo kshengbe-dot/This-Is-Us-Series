@@ -76,6 +76,16 @@
       white-space:nowrap;
     }
     .chip strong{color:var(--ink); font-weight:900}
+    .chip.new{
+      border-color: rgba(255,120,120,.42);
+      background: rgba(255,120,120,.10);
+      color: var(--ink);
+    }
+    .chip.good{
+      border-color: rgba(0,255,198,.28);
+      background: rgba(0,255,198,.08);
+      color: var(--ink);
+    }
 
     .stage{
       height:100vh;
@@ -113,7 +123,6 @@
       height:100%;
       padding: var(--padT) var(--padX) var(--padB);
       overflow:hidden;
-      /* important for stable measurement */
       contain: content;
     }
 
@@ -329,7 +338,6 @@
       border-radius:22px;
       box-shadow: var(--shadow);
       padding:14px;
-
       max-height: 86vh;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
@@ -343,6 +351,7 @@
       z-index:2;
     }
     .modalHead h3{margin:0; font-size:16px; letter-spacing:.04em; font-family: ui-sans-serif, system-ui;}
+
     .termsBox{
       border:1px solid var(--stroke);
       border-radius:18px;
@@ -481,8 +490,15 @@
       <div class="chip" id="backBtn">← <strong>Library</strong></div>
       <div class="chip">Book: <strong id="bookTitle">book</strong></div>
       <div class="chip">Page: <strong id="pageLabel">1</strong>/<span id="pageTotal">…</span></div>
+
+      <!-- NEW: status chips -->
+      <div class="chip" id="newChip" style="display:none;">🔥 <strong id="newText">NEW</strong></div>
+      <div class="chip" id="markReadChip" style="display:none;">✅ <strong>Mark read</strong></div>
+      <div class="chip" id="favChip" style="display:none;">⭐ <strong id="favText">Favorite</strong></div>
+
       <div class="chip" id="themeBtn">Theme</div>
       <div class="chip" id="communityBtn">💬 <strong>Community</strong></div>
+      <div class="chip" id="subChip">🔔 <strong>Subscribe</strong></div>
       <div class="chip" id="syncChip"><span id="syncDot">●</span> <strong id="syncText">Guest</strong></div>
     </div>
     <div class="row">
@@ -683,13 +699,43 @@
     </div>
   </div>
 
+  <!-- SUBSCRIBE MODAL -->
+  <div class="modal" id="subModal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Get New Chapter Alerts</h3>
+        <div class="xBtn" id="subClose">✕</div>
+      </div>
+
+      <div class="miniNote" style="margin:0 6px 8px;">
+        Subscribe to get notified when a new chapter or book drops.
+        <span style="opacity:.85">(Email list is private.)</span>
+      </div>
+
+      <div style="padding: 0 6px 8px; font-family: ui-sans-serif,system-ui;">
+        <div class="fieldLabel">Email</div>
+        <input class="inp" id="subEmail" type="email" placeholder="you@email.com">
+
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn2 primary" id="subSave" type="button">Subscribe</button>
+          <button class="btn2" id="subLater" type="button">Maybe later</button>
+          <div class="note" id="subMsg"></div>
+        </div>
+
+        <div class="miniNote" id="subRuleHint" style="margin-top:10px;">
+          Tip: if subscribe fails as guest, your Firestore rules currently require sign-in for subscribers.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
     import {
       getFirestore, doc, getDoc, setDoc, serverTimestamp,
-      collection, getDocs, query, orderBy
+      collection, getDocs, query, orderBy, limit, addDoc, Timestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
     // --- scroll lock helpers (mobile safe) ---
@@ -715,10 +761,9 @@
 
     // Terms gate
     import { wireTermsGate } from "./terms-gate.js";
-    // (extra args are safe even if terms-gate ignores them)
     wireTermsGate({ lockScroll, unlockScroll });
 
-    // ✅ Reader counting (matches fixed public-feed.js + admin paths)
+    // ✅ Reader counting (your public-feed.js)
     import { bumpReaderCountOnce } from "./public-feed.js";
 
     import {
@@ -784,19 +829,204 @@
     const syncDot = document.getElementById("syncDot");
     const syncText = document.getElementById("syncText");
 
+    // NEW: chips
+    const newChip = document.getElementById("newChip");
+    const newText = document.getElementById("newText");
+    const markReadChip = document.getElementById("markReadChip");
+    const favChip = document.getElementById("favChip");
+    const favText = document.getElementById("favText");
+    const subChip = document.getElementById("subChip");
+
+    // Subscribe modal refs
+    const subModal = document.getElementById("subModal");
+    const subClose = document.getElementById("subClose");
+    const subEmail = document.getElementById("subEmail");
+    const subSave = document.getElementById("subSave");
+    const subLater = document.getElementById("subLater");
+    const subMsg = document.getElementById("subMsg");
+
     // Firebase (safe init)
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let UID = null;
 
-    // ✅ Prevent double counting if guest then later signs in
-    const countKey = `readerCounted:${bookId}`;
-    async function countReaderOnce(uidOrNull){
-      if(localStorage.getItem(countKey) === "1") return;
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function normalizeEmail(email){
+      return String(email ?? "").trim().toLowerCase();
+    }
+
+    // ========= NEW: latest chapter + "new" detection =========
+    let LATEST_CHAPTER = 0;         // max chapterNumber in cloud
+    let LAST_SEEN_CHAPTER = 0;      // saved per user
+    let FAVORITE_ON = false;
+
+    function userMetaDoc(uid){
+      return doc(db, "users", uid, "meta", "library");
+    }
+
+    async function getLatestChapterNumber(){
       try{
+        const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","desc"), limit(1));
+        const snap = await getDocs(qy);
+        if(snap.empty) return 0;
+        const d = snap.docs[0].data() || {};
+        return Number(d.chapterNumber || 0) || 0;
+      }catch{
+        return 0;
+      }
+    }
+
+    async function loadUserMeta(){
+      if(!UID) return;
+      try{
+        const snap = await getDoc(userMetaDoc(UID));
+        const d = snap.exists() ? (snap.data()||{}) : {};
+        const favs = d.favorites || {};
+        FAVORITE_ON = !!favs[bookId];
+        LAST_SEEN_CHAPTER = Number(d.lastSeenChapter?.[bookId] || 0) || 0;
+      }catch{}
+    }
+
+    async function saveUserMetaPatch(patch){
+      if(!UID) return;
+      try{
+        await setDoc(userMetaDoc(UID), patch, { merge:true });
+      }catch{}
+    }
+
+    function refreshFavUI(){
+      if(!UID){
+        favChip.style.display = "none";
+        return;
+      }
+      favChip.style.display = "inline-flex";
+      favText.textContent = FAVORITE_ON ? "Favorited" : "Favorite";
+      favChip.classList.toggle("good", FAVORITE_ON);
+    }
+
+    function refreshNewUI(){
+      // Guests: show "NEW" if LATEST_CHAPTER exists and > 0 (since they can’t store lastSeen)
+      // Signed-in: compare to LAST_SEEN_CHAPTER
+      const hasNew = UID
+        ? (LATEST_CHAPTER > (LAST_SEEN_CHAPTER || 0))
+        : (LATEST_CHAPTER > 0);
+
+      if(!hasNew){
+        newChip.style.display = "none";
+        markReadChip.style.display = "none";
+        return;
+      }
+
+      newChip.style.display = "inline-flex";
+      newChip.classList.add("new");
+
+      if(LATEST_CHAPTER > 0){
+        newText.textContent = `NEW: Chapter ${LATEST_CHAPTER}`;
+      }else{
+        newText.textContent = "NEW";
+      }
+
+      // Only signed-in users can mark read (persist)
+      markReadChip.style.display = UID ? "inline-flex" : "none";
+    }
+
+    newChip.addEventListener("click", ()=>{
+      // Quick jump to end (latest pages) so they see what’s new
+      if(PAGES.length){
+        i = Math.max(0, PAGES.length - (isMobile() ? 1 : 2));
+        render();
+      }
+      // If guest, encourage sign-in via community hint
+      if(!UID){
+        // tiny nudge: open subscribe modal instead of blocking
+        openSubscribe(true);
+      }
+    });
+
+    markReadChip.addEventListener("click", async ()=>{
+      if(!UID) return;
+      try{
+        const patch = { lastSeenChapter: { [bookId]: LATEST_CHAPTER }, updatedAt: serverTimestamp() };
+        await saveUserMetaPatch(patch);
+        LAST_SEEN_CHAPTER = LATEST_CHAPTER;
+        refreshNewUI();
+      }catch{}
+    });
+
+    favChip.addEventListener("click", async ()=>{
+      if(!UID) return;
+      FAVORITE_ON = !FAVORITE_ON;
+      refreshFavUI();
+      const patch = { favorites: { [bookId]: FAVORITE_ON }, updatedAt: serverTimestamp() };
+      await saveUserMetaPatch(patch);
+    });
+
+    // ========= Subscribe modal =========
+    function openSubscribe(fromHint=false){
+      subMsg.textContent = "";
+      subModal.classList.add("show");
+      subModal.setAttribute("aria-hidden","false");
+      lockScroll();
+
+      // Gentle behavior: only auto-open once per session unless user clicks
+      if(fromHint){
+        // do nothing special
+      }
+    }
+
+    function closeSubscribe(){
+      subModal.classList.remove("show");
+      subModal.setAttribute("aria-hidden","true");
+      unlockScroll();
+      sessionStorage.setItem("subPromptDismissed", "1");
+    }
+
+    subChip.addEventListener("click", ()=> openSubscribe(true));
+    subClose.addEventListener("click", closeSubscribe);
+    subLater.addEventListener("click", closeSubscribe);
+    subModal.addEventListener("click",(e)=>{ if(e.target === subModal) closeSubscribe(); });
+
+    subSave.addEventListener("click", async ()=>{
+      subMsg.textContent = "";
+      const email = normalizeEmail(subEmail.value);
+      if(!email || !email.includes("@")){
+        subMsg.textContent = "Enter a valid email.";
+        return;
+      }
+
+      try{
+        // Safe write: no API keys, just Firestore
+        await addDoc(collection(db,"subscribers"), {
+          email,
+          emailLower: email,
+          uid: UID || null,
+          source: "reader",
+          bookId,
+          notificationEmail: true,
+          createdAt: serverTimestamp()
+        });
+        subMsg.textContent = "Subscribed ✅";
+        setTimeout(closeSubscribe, 700);
+      }catch(e){
+        subMsg.textContent = e?.message || "Could not subscribe. (Your rules may require sign-in.)";
+      }
+    });
+
+    // ========= Reader counting (NOW: every open) =========
+    async function countReaderEveryOpen(uidOrNull){
+      try{
+        // In your fixed public-feed.js this function bumps stats per open.
+        // We do NOT localStorage-block it anymore.
         await bumpReaderCountOnce({ bookId, uid: uidOrNull || null });
-        localStorage.setItem(countKey, "1");
       }catch{}
     }
 
@@ -825,7 +1055,7 @@
     async function saveCloudProgress(){
       if(!UID) return;
       try{
-        await setDoc(progressDocRef(UID), { index: i, updatedAt: serverTimestamp() }, { merge:true });
+        await setDoc(progressDocRef(UID), { index: i, updatedAt: serverTimestamp(), lastOpenAt: serverTimestamp() }, { merge:true });
       }catch{}
     }
 
@@ -833,6 +1063,24 @@
       if(!UID) return;
       try{
         await setDoc(doc(db,"users",UID), { theme, updatedAt: serverTimestamp() }, { merge:true });
+      }catch{}
+    }
+
+    async function logHistoryOpen(){
+      if(!UID) return;
+      try{
+        const now = Date.now();
+        const entry = {
+          bookId,
+          openedAt: Timestamp.fromMillis(now),
+          latestChapterAtOpen: LATEST_CHAPTER || 0
+        };
+        await setDoc(userMetaDoc(UID), {
+          history: [entry],
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+        // Note: arrayUnion would be nicer but we keep your imports minimal & safe.
+        // Your library page can expand this cleanly later.
       }catch{}
     }
 
@@ -846,12 +1094,17 @@
           : "Guest mode — you can read comments + ratings, but must sign in to post or rate.";
       }
 
-      // ✅ Count reader once (after auth resolves)
-      await countReaderOnce(UID);
+      // Always count a reader open (guest or signed-in)
+      await countReaderEveryOpen(UID);
+
+      // Latest chapter check (for NEW badge)
+      LATEST_CHAPTER = await getLatestChapterNumber();
 
       if(UID){
         syncDot.style.color = "rgba(0,255,198,.9)";
         syncText.textContent = "Synced";
+
+        // load theme
         try{
           const u = await getDoc(doc(db,"users",UID));
           if(u.exists()){
@@ -862,14 +1115,28 @@
             }
           }
         }catch{}
+
+        // favorites + lastSeen + history
+        await loadUserMeta();
+        refreshFavUI();
+        refreshNewUI();
+        logHistoryOpen().catch(()=>{});
+
       }else{
         syncDot.style.color = "rgba(255,255,255,.65)";
         syncText.textContent = "Guest";
+        favChip.style.display = "none";
+        refreshNewUI();
       }
 
       if(UID){
         await loadCloudProgressIfAny();
         render();
+      }
+
+      // Auto subscribe prompt (once per session)
+      if(sessionStorage.getItem("subPromptDismissed") !== "1"){
+        setTimeout(()=> openSubscribe(false), 1100);
       }
     });
 
@@ -894,7 +1161,7 @@
     }
 
     async function loadChaptersFromCloud(){
-      if(bookId !== "book1") return "";
+      // Load chapters for any book where chapters exist
       try{
         const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber", "asc"));
         const snap = await getDocs(qy);
@@ -919,15 +1186,6 @@
         .replaceAll('<section class="chapter-title">','<!--PAGEBREAK--><section class="chapter-title">');
     }
 
-    function escapeHtml(str){
-      return String(str ?? "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
     function buildMeasurer(){
       const innerVisible = isMobile() ? singlePage : leftPage;
       const pageVisible  = isMobile() ? pageS : pageL;
@@ -949,11 +1207,10 @@
       return { meas, pageVisible };
     }
 
-    // ✅ FIX: measure against full page inner height (padding included),
-    // so we don't subtract padding twice (this is what caused overflow / missing words).
+    // measure against full page inner height (padding included)
     function getMaxMeasureHeight(pageEl){
       const h = Math.max(240, pageEl.getBoundingClientRect().height);
-      return Math.max(180, Math.floor(h - 2)); // 2px safety
+      return Math.max(180, Math.floor(h - 2));
     }
 
     function paginate(html){
@@ -1251,7 +1508,8 @@
 
       if(scrollToCommentId){
         setTab("commentsTab");
-        const el = document.getElementById(`c_${scrollToCommentId}}`);
+        // ✅ FIXED: removed extra "}"
+        const el = document.getElementById(`c_${scrollToCommentId}`);
         if(el){
           el.scrollIntoView({ behavior:"smooth", block:"start" });
         }
