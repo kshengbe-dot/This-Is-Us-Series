@@ -290,6 +290,80 @@
       flex-wrap:wrap;
     }
 
+    /* ===========================
+       ✅ Comment Preview Carousel
+       =========================== */
+    .cWrap{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      background: rgba(0,0,0,.10);
+      overflow:hidden;
+      position:relative;
+    }
+    [data-theme="light"] .cWrap{background: rgba(2,6,23,.04)}
+    .cViewport{
+      overflow:hidden;
+      position:relative;
+      touch-action: pan-y;
+    }
+    .cTrack{
+      display:flex;
+      will-change: transform;
+      transition: transform .45s ease;
+    }
+    .cSlide{
+      flex: 0 0 100%;
+      padding:12px;
+    }
+    .cCard{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      background: rgba(255,255,255,.04);
+      padding:12px;
+    }
+    .cTop{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:8px;
+    }
+    .cName{ font-weight:950; }
+    .cMeta{ color:var(--muted); font-size:12px; white-space:nowrap; }
+    .cText{ opacity:.92; line-height:1.6; font-size:13px; }
+    .cActions{
+      margin-top:10px;
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .cNav{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-top:1px solid var(--stroke);
+      background: rgba(255,255,255,.02);
+    }
+    .cNavLeft{ display:flex; gap:8px; align-items:center; }
+    .cIconBtn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      border-radius:12px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-weight:950;
+      user-select:none;
+    }
+    .cDots{ display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; }
+    .cDot{
+      width:7px; height:7px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      opacity:.65;
+    }
+    .cDot.on{
+      opacity:1;
+      border-color: rgba(124,92,255,.55);
+      background: rgba(124,92,255,.25);
+    }
+
     .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
     .bookCard{
       border:1px solid var(--stroke);
@@ -546,8 +620,9 @@
       <div class="tabInner">
         <div class="tabPanel show" id="tabComments">
           <div id="commentPreview">
+            <!-- JS will replace this with a 1-at-a-time carousel -->
             <div style="opacity:.85;line-height:1.6">
-              Want to see what readers are saying?
+              Loading comment preview…
               <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
                 <button class="btn primary" id="openCommunityFromTab" type="button">Open Community</button>
                 <button class="btn" id="openBookFromTab" type="button">Open Book I</button>
@@ -754,7 +829,7 @@
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
     import {
       getFirestore, collection, doc, getDoc, setDoc, serverTimestamp,
-      query, limit, getDocs
+      query, limit, getDocs, orderBy
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged,
@@ -762,7 +837,6 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
     import { wireTermsGate } from "./terms-gate.js";
-    import { renderCommentPreviewCarousel } from "./reader-community.js";
     import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
     // ✅ your admin UID
@@ -800,6 +874,12 @@
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+
+    function escapeHtml(str){
+      return String(str ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
 
     // Theme btn
     const themeBtn = document.getElementById("themeBtn");
@@ -1095,14 +1175,213 @@
       readersTotal.textContent = "— Total";
     }
 
-    // ✅ Comment preview carousel (RESTORED)
+    // ===========================
+    // ✅ Comment Preview Carousel (ONE AT A TIME)
+    // ===========================
+    let __cTimer = null;
+
+    function stopCarousel(){
+      if(__cTimer) clearInterval(__cTimer);
+      __cTimer = null;
+    }
+
+    function startCarousel(nextFn, intervalMs){
+      stopCarousel();
+      __cTimer = setInterval(nextFn, Math.max(1800, Number(intervalMs || 4200)));
+    }
+
+    function fmtWhen(ms){
+      try{
+        const d = new Date(ms);
+        return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
+      }catch{
+        return "";
+      }
+    }
+
+    function tsToMs(ts){
+      if(!ts) return 0;
+      if(typeof ts === "number") return ts;
+      if(ts.toMillis) return ts.toMillis();
+      if(ts.seconds) return Number(ts.seconds) * 1000;
+      return 0;
+    }
+
     async function loadPreview(){
-      await renderCommentPreviewCarousel({
-        bookId: "book1",
-        mountId: "commentPreview",
-        max: 8,
-        intervalMs: 4200
+      const mount = document.getElementById("commentPreview");
+      if(!mount) return;
+
+      mount.innerHTML = `<div style="opacity:.85;line-height:1.6">Loading comment preview…</div>`;
+
+      let items = [];
+      try{
+        const qy = query(
+          collection(db,"books","book1","comments"),
+          orderBy("createdAt","desc"),
+          limit(10)
+        );
+        const snap = await getDocs(qy);
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          const text = String(d.text || "").trim();
+          if(!text) return;
+          items.push({
+            id: s.id,
+            name: String(d.name || "Reader"),
+            text,
+            at: tsToMs(d.createdAt) || Date.now()
+          });
+        });
+      }catch(e){
+        mount.innerHTML = `
+          <div style="opacity:.85;line-height:1.6">
+            Couldn’t load comments right now.
+            <div class="small" style="margin-top:8px;">${escapeHtml(e?.message || "")}</div>
+            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn primary" id="openCommunityFromTab" type="button">Open Community</button>
+              <button class="btn" id="openBookFromTab" type="button">Open Book I</button>
+            </div>
+          </div>
+        `;
+        // re-wire the buttons (because we replaced HTML)
+        mount.querySelector("#openCommunityFromTab")?.addEventListener("click", ()=>{
+          location.href = "read.html?book=book1&open=community";
+        });
+        mount.querySelector("#openBookFromTab")?.addEventListener("click", ()=> openBook("book1"));
+        return;
+      }
+
+      if(!items.length){
+        mount.innerHTML = `
+          <div class="cWrap">
+            <div class="cViewport">
+              <div style="padding:12px;opacity:.9;line-height:1.6">
+                No comments yet — be the first to leave one inside the Reader.
+                <div class="cActions">
+                  <button class="btn primary" id="openCommunityFromTab2" type="button">Open Community</button>
+                  <button class="btn" id="openBookFromTab2" type="button">Open Book I</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        mount.querySelector("#openCommunityFromTab2")?.addEventListener("click", ()=>{
+          location.href = "read.html?book=book1&open=community";
+        });
+        mount.querySelector("#openBookFromTab2")?.addEventListener("click", ()=> openBook("book1"));
+        return;
+      }
+
+      // Build carousel (1 slide visible)
+      const slidesHtml = items.map((it)=>`
+        <div class="cSlide">
+          <div class="cCard">
+            <div class="cTop">
+              <div class="cName">${escapeHtml(it.name)}</div>
+              <div class="cMeta">${escapeHtml(fmtWhen(it.at))}</div>
+            </div>
+            <div class="cText">${escapeHtml(it.text)}</div>
+            <div class="cActions">
+              <button class="btn primary" data-go="community" type="button">Open Community</button>
+              <button class="btn" data-go="book" type="button">Open Book I</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      const dotsHtml = items.map((_,i)=> `<span class="cDot" data-dot="${i}"></span>`).join("");
+
+      mount.innerHTML = `
+        <div class="cWrap">
+          <div class="cViewport" id="cViewport">
+            <div class="cTrack" id="cTrack">${slidesHtml}</div>
+          </div>
+          <div class="cNav">
+            <div class="cNavLeft">
+              <button class="cIconBtn" id="cPrev" type="button">‹</button>
+              <button class="cIconBtn" id="cNext" type="button">›</button>
+            </div>
+            <div class="cDots" id="cDots">${dotsHtml}</div>
+          </div>
+        </div>
+      `;
+
+      const track = document.getElementById("cTrack");
+      const viewport = document.getElementById("cViewport");
+      const dots = Array.from(document.querySelectorAll(".cDot"));
+
+      let idx = 0;
+
+      function apply(){
+        const w = viewport.clientWidth || 1;
+        track.style.transform = `translateX(${-idx * w}px)`;
+        dots.forEach((d,i)=> d.classList.toggle("on", i === idx));
+      }
+
+      function prev(){
+        idx = (idx - 1 + items.length) % items.length;
+        apply();
+      }
+
+      function next(){
+        idx = (idx + 1) % items.length;
+        apply();
+      }
+
+      // Buttons
+      document.getElementById("cPrev")?.addEventListener("click", ()=>{
+        prev(); startCarousel(next, 4200);
       });
+      document.getElementById("cNext")?.addEventListener("click", ()=>{
+        next(); startCarousel(next, 4200);
+      });
+
+      dots.forEach((d)=>{
+        d.addEventListener("click", ()=>{
+          const n = Number(d.getAttribute("data-dot") || "0") || 0;
+          idx = Math.max(0, Math.min(items.length-1, n));
+          apply();
+          startCarousel(next, 4200);
+        });
+      });
+
+      // Actions inside slides
+      mount.querySelectorAll('[data-go="community"]').forEach(btn=>{
+        btn.addEventListener("click", ()=> location.href = "read.html?book=book1&open=community");
+      });
+      mount.querySelectorAll('[data-go="book"]').forEach(btn=>{
+        btn.addEventListener("click", ()=> openBook("book1"));
+      });
+
+      // Resize-safe
+      const ro = new ResizeObserver(()=> apply());
+      ro.observe(viewport);
+
+      // Swipe
+      let sx = 0, dx = 0, dragging = false;
+      viewport.addEventListener("touchstart",(e)=>{
+        if(!e.touches?.length) return;
+        dragging = true;
+        sx = e.touches[0].clientX;
+        dx = 0;
+        stopCarousel();
+      }, { passive:true });
+      viewport.addEventListener("touchmove",(e)=>{
+        if(!dragging || !e.touches?.length) return;
+        dx = e.touches[0].clientX - sx;
+      }, { passive:true });
+      viewport.addEventListener("touchend",()=>{
+        if(!dragging) return;
+        dragging = false;
+        if(Math.abs(dx) > 45){
+          if(dx > 0) prev(); else next();
+        }
+        startCarousel(next, 4200);
+      });
+
+      // Start
+      apply();
+      startCarousel(next, 4200);
     }
 
     async function loadAnnouncementsTab(){
@@ -1169,11 +1448,11 @@
         const b = BOOKS.find(x=> x.id === id);
         if(!b) return "";
         return `
-          <div class="miniCard" role="button" aria-label="Open ${b.title}" data-open="${b.href}">
-            <div class="miniCover"><img src="${b.cover}" alt=""></div>
+          <div class="miniCard" role="button" aria-label="Open ${escapeHtml(b.title)}" data-open="${escapeHtml(b.href)}">
+            <div class="miniCover"><img src="${escapeHtml(b.cover)}" alt=""></div>
             <div class="miniMeta">
-              <div class="miniName">${b.title}</div>
-              <div class="miniSub">${b.desc}</div>
+              <div class="miniName">${escapeHtml(b.title)}</div>
+              <div class="miniSub">${escapeHtml(b.desc)}</div>
             </div>
           </div>
         `;
@@ -1263,6 +1542,11 @@
       await loadReadersTotal().catch(()=>{});
       await updateNewBadges().catch(()=>{});
       maybeShowSubscribePopup();
+
+      // If user switches away and back, keep carousel smooth
+      document.addEventListener("visibilitychange", ()=>{
+        if(document.hidden) stopCarousel();
+      });
     })();
   </script>
 </body>
