@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>THE KOKER — Archives</title>
-  <meta name="description" content=" The Koker Boks — premium novel reader library with sync, community, ratings, and achievements." />
+  <meta name="description" content="The Koker Archives — premium novel reader library with sync, community, ratings, and achievements." />
 
   <style>
     :root{
@@ -38,6 +38,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
     a{color:inherit;text-decoration:none}
+
     .top{
       position:sticky; top:0; z-index:50;
       backdrop-filter: blur(14px);
@@ -181,7 +182,64 @@
       color:var(--muted);
     }
 
-    /* ===== Tabs shell (Comments / Announcements) ===== */
+    /* Search row */
+    .searchRow{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      margin: 10px 0 14px;
+    }
+    .search{
+      flex:1;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius:14px;
+      outline:none;
+      font-weight:800;
+      min-width: 220px;
+    }
+
+    /* Favorites strip */
+    .favStrip{
+      display:none;
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: var(--shadow);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      margin-bottom: 14px;
+    }
+    .favStrip.show{ display:block; }
+    .favHead{
+      padding:12px 14px;
+      border-bottom: 1px solid var(--stroke);
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+    }
+    .favRow{
+      display:flex; gap:12px;
+      padding:12px 14px 14px;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .favRow::-webkit-scrollbar{height:0}
+    .miniCard{
+      flex:0 0 auto;
+      width: 180px;
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      background: rgba(255,255,255,.05);
+      overflow:hidden;
+      cursor:pointer;
+      transition: transform .15s ease;
+    }
+    .miniCard:hover{ transform: translateY(-2px); }
+    .miniCover{ height: 110px; border-bottom:1px solid var(--stroke); background: rgba(0,0,0,.12); }
+    .miniCover img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .miniMeta{ padding:10px; }
+    .miniName{ font-weight:950; font-size:12px; line-height:1.2; }
+    .miniSub{ color:var(--muted); font-size:11px; margin-top:4px; line-height:1.35; }
+
+    /* Tabs */
     .tabRow{ display:flex; gap:8px; flex-wrap:wrap; }
     .tabBtn{
       border:1px solid var(--stroke);
@@ -233,7 +291,7 @@
       flex-wrap:wrap;
     }
 
-    /* Classes used by reader-community.js carousel */
+    /* Comment preview carousel classes */
     .previewSlide{
       position:absolute; inset:14px;
       opacity:0;
@@ -247,6 +305,7 @@
       opacity:1; transform:none; pointer-events:auto;
     }
 
+    /* ===== Library shelf ===== */
     .shelf{ display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; }
     .bookCard{
       border:1px solid var(--stroke);
@@ -258,7 +317,7 @@
       transform-style:preserve-3d;
       transition: transform .18s ease, border-color .18s ease, background .18s ease;
       cursor:pointer;
-      min-height: 340px;
+      min-height: 320px;
       animation: pop .45s ease both;
     }
     @keyframes pop{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
@@ -268,7 +327,7 @@
       background: linear-gradient(180deg, rgba(124,92,255,.12), rgba(255,255,255,.02));
     }
     .cover{
-      height: 230px;
+      height: 210px;
       background: rgba(0,0,0,.18);
       border-bottom:1px solid var(--stroke);
       display:flex;
@@ -286,8 +345,9 @@
     }
     .bookCard:hover .cover img{ transform: scale(1.06); }
     .meta{ padding:12px 12px 14px; }
-    .meta .name{ font-weight:950; margin:0; font-size:16px; }
+    .meta .name{ font-weight:950; margin:0; font-size:15px; line-height:1.2; }
     .meta .desc{ margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
+
     .badge{
       position:absolute; top:12px; left:12px;
       padding:7px 10px; border-radius:999px;
@@ -299,6 +359,29 @@
     }
     .badge.live{ border-color: rgba(0,255,198,.35); }
     .badge.soon{ border-color: rgba(255,198,0,.35); }
+
+    /* NEW badge */
+    .badge.new{
+      left:auto; right:12px;
+      border-color: rgba(255,130,130,.35);
+      background: rgba(255,100,100,.10);
+    }
+
+    /* Favorite star button */
+    .favBtn{
+      position:absolute; bottom:12px; right:12px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--ink);
+      border-radius: 999px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-weight:950;
+      display:flex; align-items:center; gap:6px;
+      backdrop-filter: blur(10px);
+    }
+    [data-theme="light"] .favBtn{ background: rgba(255,255,255,.78); }
+    .favBtn.on{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
 
     /* Modals */
     .modal{
@@ -312,7 +395,7 @@
     }
     .modal.show{display:flex}
     .modalCard{
-      width:min(860px, 96vw);
+      width:min(720px, 96vw);
       border:1px solid var(--stroke);
       background: rgba(15,20,40,.96);
       border-radius:22px;
@@ -337,7 +420,7 @@
       font-family: ui-sans-serif, system-ui;
     }
     label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-    input, select{
+    input{
       width:100%;
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.08);
@@ -352,16 +435,25 @@
     .note{color:var(--muted); font-size:12px; line-height:1.45}
     .hrSoft{ border:0; border-top:1px solid var(--stroke); margin: 12px 0; opacity:.9; }
 
+    /* Responsive improvements */
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
       h1{font-size:38px}
     }
     @media (max-width:520px){
-      .shelf{grid-template-columns:1fr}
-      h1{font-size:34px}
+      h1{font-size:30px}
       .right{max-width:72vw;}
       .row2{grid-template-columns:1fr}
+
+      /* mobile shelf: compact cards */
+      .shelf{grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px;}
+      .bookCard{min-height: 240px;}
+      .cover{height: 140px;}
+      .meta .name{font-size:13px}
+      .meta .desc{font-size:12px}
+      .badge{font-size:11px; padding:6px 8px}
+      .favBtn{padding:7px 9px; font-size:12px}
     }
   </style>
 </head>
@@ -370,7 +462,7 @@
   <div class="top">
     <div class="nav">
       <div class="brand">
-        THE KOKER 
+        THE KOKER
         <small>Archives</small>
       </div>
 
@@ -387,18 +479,19 @@
       <div class="card heroMain">
         <h1>THE KOKER ARCHIVES</h1>
         <p class="subtitle">
-          A premium novel-reader: filled pages, smooth flip animation, saved progress, light/dark mode,
-          and optional Firebase sync so your pages follow you across devices.
+          A premium novel-reader: smooth pages, saved progress, light/dark mode,
+          and Firebase sync so your reading follows you across devices.
         </p>
 
         <div class="ctaRow">
           <div class="btn primary" id="openBook1">📖 Read This is US (Book I)</div>
           <div class="btn" id="openCommunityQuick">💬 Community</div>
           <div class="btn" id="openAuthQuick">👤 Sign in / Sign up</div>
+          <div class="btn" id="openSubscribeQuick">🔔 Subscribe</div>
         </div>
 
         <div class="mini">
-          <div class="profileLine">
+          <div class="profileLine" style="display:flex;gap:10px;align-items:center">
             <div class="avatar" id="heroAvatar">👤</div>
             <div style="min-width:0">
               <div class="who" id="whoLine">Guest Reader</div>
@@ -416,6 +509,7 @@
         <div class="stat">
           <div class="k">Readers</div>
           <div class="v" id="readersTotal">— Total</div>
+          <div class="small" style="margin-top:6px;opacity:.85">Counts every open (guests + signed-in).</div>
         </div>
         <div class="stat">
           <div class="k">Subscribers</div>
@@ -431,6 +525,15 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Favorites (Signed-in only) -->
+    <div class="favStrip" id="favStrip">
+      <div class="favHead">
+        <div style="font-weight:950;letter-spacing:.08em;text-transform:uppercase;font-size:12px;color:var(--muted)">Favorites</div>
+        <div class="small" id="favHint">Your shortcuts</div>
+      </div>
+      <div class="favRow" id="favRow"></div>
     </div>
 
     <div class="sectionTitle">
@@ -454,50 +557,60 @@
 
       <div class="pHint">
         <span id="tabHintLeft">Opens Community inside Reader</span>
-        <span id="tabHintRight">THIS IS US Book I • Where We Began)</span>
+        <span id="tabHintRight">THIS IS US Book I • Where We Began</span>
       </div>
     </div>
 
     <div class="sectionTitle">
       <h2>Library</h2>
-      <div class="small">Live + Coming Soon</div>
+      <div class="small" id="libraryHint">Live + Coming Soon</div>
     </div>
 
-    <div class="shelf">
-      <div class="bookCard" id="book1Card" role="button" aria-label="Open Book I">
+    <div class="searchRow">
+      <input class="search" id="searchBooks" placeholder="Search books… (future-proof for many books)" />
+      <div class="pill" id="showAllBtn">🔎 <strong>Show All</strong></div>
+    </div>
+
+    <div class="shelf" id="shelf">
+      <div class="bookCard" id="book1Card" role="button" aria-label="Open Book I" data-book="book1" data-title="THIS IS US Book I Where We Began">
         <div class="badge live">Live</div>
+        <div class="badge new" id="newBadge_book1" style="display:none">NEW</div>
         <div class="cover"><img src="./assets/cover-book1.png" alt="Book 1 Cover"></div>
         <div class="meta">
           <p class="name">THIS IS US (Book I) — Where We Began</p>
           <p class="desc">Mukeh arrives. Francess is the standard. Awareness begins.</p>
         </div>
+        <button class="favBtn" id="favBtn_book1" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <div class="bookCard" id="book2Card" role="button" aria-label="Coming soon book">
+      <div class="bookCard" id="book2Card" role="button" aria-label="Coming soon book" data-book="coming" data-title="THIS IS US Book II Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
         <div class="meta">
           <p class="name">THIS IS US Book II — Coming Soon</p>
           <p class="desc">A new season is loading. New pressure. New cost. New choices.</p>
         </div>
+        <button class="favBtn" id="favBtn_coming" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book">
+      <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book" data-book="coming3" data-title="THIS IS US Book III Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
         <div class="meta">
           <p class="name">THIS IS US Book III — Coming Soon</p>
           <p class="desc">Some friendships become fault lines. Some love becomes a mirror.</p>
         </div>
+        <button class="favBtn" id="favBtn_coming3" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <div class="bookCard" id="book4Card" role="button" aria-label="Coming soon book">
+      <div class="bookCard" id="book4Card" role="button" aria-label="Coming soon book" data-book="coming4" data-title="Book IV Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
         <div class="meta">
           <p class="name">Book IV — Coming Soon</p>
           <p class="desc">The past returns. The narrative changes. The costs rise.</p>
         </div>
+        <button class="favBtn" id="favBtn_coming4" type="button" title="Favorite">☆ Favorite</button>
       </div>
     </div>
   </div>
@@ -533,11 +646,39 @@
       <hr class="hrSoft">
 
       <div class="note" style="padding:0 6px 6px;">
-        After signing in, you can set your display name + avatar inside <strong>Settings</strong>.
+        After signing in, set your display name + avatar inside <strong>Settings</strong>.
       </div>
 
       <div style="padding:6px;">
         <button class="btn" id="goSettings" type="button">⚙️ Open Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIBE POPUP MODAL -->
+  <div class="modal" id="subModal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Get Updates</h3>
+        <div class="x" id="subClose">✕</div>
+      </div>
+      <div class="note" style="padding:0 6px 10px;">
+        Want a heads-up when a <strong>new chapter</strong> or <strong>new book</strong> drops?
+        Subscribe and you’ll never miss it.
+      </div>
+      <div style="padding:6px;display:grid;gap:10px;">
+        <div>
+          <label>Email</label>
+          <input id="subModalEmail" placeholder="you@example.com" autocomplete="email" />
+          <div class="note" id="subModalMsg" style="margin-top:8px;"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn primary" id="subModalBtn" type="button">🔔 Subscribe</button>
+          <button class="btn" id="subModalLater" type="button">Maybe later</button>
+        </div>
+        <div class="note" style="opacity:.85">
+          If subscribe is set to “sign-in required”, sign in first — then subscribe.
+        </div>
       </div>
     </div>
   </div>
@@ -555,7 +696,7 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
     import { renderCommentPreviewCarousel } from "./reader-community.js";
-    import { renderAnnouncements } from "./public-feed.js";
+    import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
     // --- Theme ---
     const savedTheme = localStorage.getItem("theme") || "dark";
@@ -579,15 +720,20 @@
 
     // --- Quick nav ---
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
-    document.getElementById("openBook1").addEventListener("click", ()=> location.href = "read.html?book=book1");
-    document.getElementById("book1Card").addEventListener("click", ()=> location.href = "read.html?book=book1");
-    const goComing = ()=> location.href = "read.html?book=coming";
-    document.getElementById("book2Card").addEventListener("click", goComing);
-    document.getElementById("book3Card").addEventListener("click", goComing);
-    document.getElementById("book4Card").addEventListener("click", goComing);
+    document.getElementById("openBook1").addEventListener("click", ()=> openBook("book1"));
+    document.getElementById("book1Card").addEventListener("click", ()=> openBook("book1"));
+    document.getElementById("book2Card").addEventListener("click", ()=> openBook("coming"));
+    document.getElementById("book3Card").addEventListener("click", ()=> openBook("coming3"));
+    document.getElementById("book4Card").addEventListener("click", ()=> openBook("coming4"));
     document.getElementById("openCommunityQuick").addEventListener("click", ()=>{
       location.href = "read.html?book=book1&open=community";
     });
+
+    function openBook(bookId){
+      // History tracking (signed-in only)
+      trackHistory(bookId).catch(()=>{});
+      location.href = `read.html?book=${encodeURIComponent(bookId)}`;
+    }
 
     // ===== Tabs wiring =====
     const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
@@ -599,15 +745,9 @@
     function setTab(id){
       tabBtns.forEach(b=> b.classList.toggle("active", b.getAttribute("data-tab") === id));
       Object.keys(tabPanels).forEach(k=> tabPanels[k].classList.toggle("show", k === id));
-      if(id === "tabComments"){
-        tabHintLeft.textContent = "Opens Community inside Reader";
-      }else{
-        tabHintLeft.textContent = "Latest updates from Admin";
-      }
+      tabHintLeft.textContent = (id === "tabComments") ? "Opens Community inside Reader" : "Latest updates from Admin";
     }
-    tabBtns.forEach(btn=>{
-      btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab")));
-    });
+    tabBtns.forEach(btn=> btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab"))) );
 
     // --- Auth modal wiring ---
     const authModal = document.getElementById("authModal");
@@ -632,7 +772,6 @@
     openAuthQuick.addEventListener("click", openAuth);
     authClose.addEventListener("click", closeAuth);
     authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuth(); });
-
     goSettings.addEventListener("click", ()=> location.href = "settings.html");
 
     const authHint = document.getElementById("authHint");
@@ -662,7 +801,7 @@
       if(!user){
         authDot.style.color = "rgba(255,255,255,.65)";
         authText.textContent = "Guest";
-        authHint.textContent = "Guest mode — progress saved locally. Sign in to sync and interact.";
+        authHint.textContent = "Guest mode — progress saved locally. Sign in to sync + favorites + history.";
         btnSignOut.style.display = "none";
         btnSignIn.style.display = "";
         btnSignUp.style.display = "";
@@ -670,42 +809,47 @@
         whoLine.textContent = "Guest Reader";
         whoSub.textContent = "Progress saved locally • Sign in to save to cloud";
         setAvatar("");
-        return;
-      }
 
-      authDot.style.color = "rgba(0,255,198,.9)";
-      authText.textContent = "Signed in";
-      authHint.textContent = "Signed in — your theme and profile can sync across devices.";
-      btnSignOut.style.display = "";
-      btnSignIn.style.display = "none";
-      btnSignUp.style.display = "none";
+        // guests: favorites strip hidden
+        setFavoritesUI(null);
+      }else{
+        authDot.style.color = "rgba(0,255,198,.9)";
+        authText.textContent = "Signed in";
+        authHint.textContent = "Signed in — your theme, favorites, and history can sync.";
+        btnSignOut.style.display = "";
+        btnSignIn.style.display = "none";
+        btnSignUp.style.display = "none";
 
-      try{
-        const snap = await getDoc(doc(db,"users",user.uid));
-        const d = snap.exists() ? (snap.data() || {}) : {};
-        const name = (d.displayName && String(d.displayName).trim()) ? String(d.displayName).trim() : (user.email || "Reader");
-        whoLine.textContent = name;
-        whoSub.textContent = user.email || "Signed in";
-        setAvatar(d.photoURL || "");
+        try{
+          const snap = await getDoc(doc(db,"users",user.uid));
+          const d = snap.exists() ? (snap.data() || {}) : {};
+          const name = (d.displayName && String(d.displayName).trim()) ? String(d.displayName).trim() : (user.email || "Reader");
+          whoLine.textContent = name;
+          whoSub.textContent = user.email || "Signed in";
+          setAvatar(d.photoURL || "");
 
-        if(d.theme === "light" || d.theme === "dark"){
-          document.documentElement.dataset.theme = d.theme;
-          localStorage.setItem("theme", d.theme);
+          if(d.theme === "light" || d.theme === "dark"){
+            document.documentElement.dataset.theme = d.theme;
+            localStorage.setItem("theme", d.theme);
+          }
+        }catch{
+          whoLine.textContent = user.email || "Signed in";
+          whoSub.textContent = "Signed in";
+          setAvatar("");
         }
-      }catch{
-        whoLine.textContent = user.email || "Signed in";
-        whoSub.textContent = "Signed in";
-        setAvatar("");
+
+        try{
+          await setDoc(doc(db,"users",user.uid), {
+            email: user.email || null,
+            updatedAt: serverTimestamp()
+          }, { merge:true });
+        }catch{}
+
+        await loadFavorites().catch(()=>{});
       }
 
-      try{
-        await setDoc(doc(db,"users",user.uid), {
-          email: user.email || null,
-          updatedAt: serverTimestamp()
-        }, { merge:true });
-      }catch{}
-
-      loadSubscribersCount().catch(()=>{});
+      // refresh NEW badges whenever auth changes (because signed-in reads Firestore progress)
+      await updateNewBadges().catch(()=>{});
     });
 
     btnSignIn.addEventListener("click", async ()=>{
@@ -733,16 +877,11 @@
       catch(e){ authMsg.textContent = (e?.message || "Could not sign out."); }
     });
 
-    // --- Subscribers ---
+    // --- Subscribers (card form) ---
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
     const subsTotal = document.getElementById("subsTotal");
-
-    function looksLikeEmail(v){
-      const s = String(v || "").trim();
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-    }
 
     async function loadSubscribersCount(){
       try{
@@ -755,35 +894,22 @@
 
     subBtn.addEventListener("click", async ()=>{
       subMsg.textContent = "";
-      const email = (subEmail.value || "").trim();
-      if(!looksLikeEmail(email)){
-        subMsg.textContent = "Enter a valid email.";
-        return;
-      }
       subBtn.disabled = true;
       subBtn.textContent = "Saving…";
       try{
-        const emailLower = email.toLowerCase();
-        const existing = await getDocs(query(collection(db,"subscribers"), where("emailLower","==", emailLower), limit(1)));
-        if(!existing.empty){
-          subMsg.textContent = "You’re already subscribed ✅";
-        }else{
-          await addDoc(collection(db,"subscribers"), {
-            email, emailLower, source: "library", createdAt: serverTimestamp()
-          });
-          subMsg.textContent = "Subscribed ✅";
+        const res = await submitSubscriber({ email: subEmail.value, source:"library_card" });
+        subMsg.textContent = res.msg;
+        if(res.ok){
           subEmail.value = "";
           await loadSubscribersCount();
         }
-      }catch(e){
-        subMsg.textContent = "Could not subscribe: " + (e?.message || String(e));
       }finally{
         subBtn.disabled = false;
         subBtn.textContent = "Subscribe";
       }
     });
 
-    // --- Readers total (stats/book1.totalReaders) ---
+    // --- Readers total ---
     const readersTotal = document.getElementById("readersTotal");
     async function loadReadersTotal(){
       try{
@@ -813,12 +939,238 @@
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-    // init
+    // ===== Subscribe popup modal =====
+    const subModal = document.getElementById("subModal");
+    const subClose = document.getElementById("subClose");
+    const subModalBtn = document.getElementById("subModalBtn");
+    const subModalLater = document.getElementById("subModalLater");
+    const subModalEmail = document.getElementById("subModalEmail");
+    const subModalMsg = document.getElementById("subModalMsg");
+
+    function openSub(){
+      subModal.classList.add("show");
+      subModal.setAttribute("aria-hidden","false");
+      document.body.style.overflow = "hidden";
+      subModalMsg.textContent = "";
+    }
+    function closeSub(){
+      subModal.classList.remove("show");
+      subModal.setAttribute("aria-hidden","true");
+      document.body.style.overflow = "";
+    }
+    document.getElementById("openSubscribeQuick").addEventListener("click", openSub);
+    subClose.addEventListener("click", closeSub);
+    subModal.addEventListener("click", (e)=>{ if(e.target === subModal) closeSub(); });
+
+    subModalLater.addEventListener("click", ()=>{
+      // cooldown (7 days)
+      const next = Date.now() + 7*24*60*60*1000;
+      localStorage.setItem("subPromptNextAt", String(next));
+      closeSub();
+    });
+
+    subModalBtn.addEventListener("click", async ()=>{
+      subModalMsg.textContent = "";
+      subModalBtn.disabled = true;
+      subModalBtn.textContent = "Saving…";
+      try{
+        const res = await submitSubscriber({ email: subModalEmail.value, source:"library_popup" });
+        subModalMsg.textContent = res.msg;
+        if(res.ok){
+          subModalEmail.value = "";
+          const next = Date.now() + 60*24*60*60*1000; // don't bother for 60 days after successful sub
+          localStorage.setItem("subPromptNextAt", String(next));
+          await loadSubscribersCount();
+        }
+      }finally{
+        subModalBtn.disabled = false;
+        subModalBtn.textContent = "🔔 Subscribe";
+      }
+    });
+
+    // show popup if cooldown passed
+    function maybeShowSubscribePopup(){
+      const nextAt = Number(localStorage.getItem("subPromptNextAt") || "0") || 0;
+      if(Date.now() >= nextAt){
+        // small delay so it feels premium, not aggressive
+        setTimeout(()=> openSub(), 700);
+      }
+    }
+
+    // ===== NEW badge logic =====
+    async function updateNewBadges(){
+      // Only book1 uses chapters right now; others are coming soon.
+      const latest = await getLatestChapterNumber("book1");
+      if(latest <= 0){
+        document.getElementById("newBadge_book1").style.display = "none";
+        return;
+      }
+
+      let seen = 0;
+
+      if(UID){
+        seen = await getLastSeenChapterSignedIn("book1", UID);
+      }else{
+        seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
+      }
+
+      const badge = document.getElementById("newBadge_book1");
+      badge.style.display = (latest > seen) ? "block" : "none";
+    }
+
+    // ===== Favorites + History (signed-in only) =====
+    const favStrip = document.getElementById("favStrip");
+    const favRow = document.getElementById("favRow");
+
+    const BOOKS = [
+      { id:"book1", title:"THIS IS US (Book I) — Where We Began", desc:"Mukeh arrives. Francess is the standard.", cover:"./assets/cover-book1.png", href:"read.html?book=book1" },
+      { id:"coming", title:"THIS IS US Book II — Coming Soon", desc:"A new season is loading.", cover:"./assets/back-book1.png", href:"read.html?book=coming" },
+      { id:"coming3", title:"THIS IS US Book III — Coming Soon", desc:"Fault lines. Mirrors.", cover:"./assets/back-book1.png", href:"read.html?book=coming3" },
+      { id:"coming4", title:"Book IV — Coming Soon", desc:"The past returns.", cover:"./assets/back-book1.png", href:"read.html?book=coming4" },
+    ];
+
+    let favoritesMap = {}; // { bookId: true }
+
+    function setFavoritesUI(map){
+      favoritesMap = map || {};
+      // toggle star buttons
+      BOOKS.forEach(b=>{
+        const btn = document.getElementById(`favBtn_${b.id}`);
+        if(!btn) return;
+        const on = !!favoritesMap[b.id];
+        btn.classList.toggle("on", on);
+        btn.textContent = on ? "★ Favorited" : "☆ Favorite";
+      });
+
+      if(!UID){
+        favStrip.classList.remove("show");
+        favRow.innerHTML = "";
+        return;
+      }
+
+      const favIds = Object.keys(favoritesMap).filter(k=> favoritesMap[k]);
+      if(!favIds.length){
+        favStrip.classList.add("show");
+        favRow.innerHTML = `<div class="small" style="padding:6px 2px;">No favorites yet — tap ☆ on a book to pin it here.</div>`;
+        return;
+      }
+
+      favStrip.classList.add("show");
+      const cards = favIds.map(id=>{
+        const b = BOOKS.find(x=> x.id === id);
+        if(!b) return "";
+        return `
+          <div class="miniCard" role="button" aria-label="Open ${b.title}" data-open="${b.href}">
+            <div class="miniCover"><img src="${b.cover}" alt=""></div>
+            <div class="miniMeta">
+              <div class="miniName">${b.title}</div>
+              <div class="miniSub">${b.desc}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      favRow.innerHTML = cards;
+      favRow.querySelectorAll("[data-open]").forEach(el=>{
+        el.addEventListener("click", ()=> location.href = el.getAttribute("data-open"));
+      });
+    }
+
+    async function loadFavorites(){
+      if(!UID) return;
+      try{
+        const ref = doc(db, "users", UID, "meta", "library");
+        const snap = await getDoc(ref);
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        setFavoritesUI(d.favorites || {});
+      }catch{
+        setFavoritesUI({});
+      }
+    }
+
+    async function toggleFavorite(bookId){
+      if(!UID){
+        // signed-in only
+        openAuth();
+        authMsg.textContent = "Sign in to use Favorites.";
+        return;
+      }
+      const next = { ...favoritesMap };
+      next[bookId] = !next[bookId];
+
+      // keep UI snappy
+      setFavoritesUI(next);
+
+      try{
+        await setDoc(doc(db, "users", UID, "meta", "library"), {
+          favorites: next,
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+      }catch{
+        // revert on failure
+        await loadFavorites().catch(()=>{});
+      }
+    }
+
+    async function trackHistory(bookId){
+      if(!UID) return;
+      try{
+        const ref = doc(db, "users", UID, "meta", "library");
+        const snap = await getDoc(ref);
+        const d = snap.exists() ? (snap.data() || {}) : {};
+        const history = Array.isArray(d.history) ? d.history : [];
+        const now = Date.now();
+
+        // newest first, remove duplicates of same book at top
+        const filtered = history.filter(h=> (h && h.bookId) ? h.bookId !== bookId : true);
+        filtered.unshift({ bookId, at: now });
+        const trimmed = filtered.slice(0, 30); // cap
+
+        await setDoc(ref, { history: trimmed, updatedAt: serverTimestamp() }, { merge:true });
+      }catch{
+        // ignore
+      }
+    }
+
+    // hook favorite buttons
+    BOOKS.forEach(b=>{
+      const btn = document.getElementById(`favBtn_${b.id}`);
+      if(btn){
+        btn.addEventListener("click", (e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(b.id).catch(()=>{});
+        });
+      }
+    });
+
+    // ===== Search filter =====
+    const shelf = document.getElementById("shelf");
+    const searchBooks = document.getElementById("searchBooks");
+    const showAllBtn = document.getElementById("showAllBtn");
+
+    function applySearch(){
+      const q = String(searchBooks.value || "").trim().toLowerCase();
+      const cards = Array.from(shelf.querySelectorAll(".bookCard"));
+      cards.forEach(c=>{
+        const title = String(c.getAttribute("data-title") || "").toLowerCase();
+        const show = !q || title.includes(q);
+        c.style.display = show ? "" : "none";
+      });
+    }
+    searchBooks.addEventListener("input", applySearch);
+    showAllBtn.addEventListener("click", ()=>{ searchBooks.value=""; applySearch(); });
+
+    // ===== Init =====
     (async ()=>{
       await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
       await loadSubscribersCount().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
+      await updateNewBadges().catch(()=>{});
+
+      // show subscribe popup (cooldown-based)
+      maybeShowSubscribePopup();
     })();
   </script>
 </body>
