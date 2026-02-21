@@ -63,6 +63,7 @@
     .grid{display:grid; gap:10px}
     .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
     .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+    .row4{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px;}
     label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
     input, select, textarea{
       width:100%; border:1px solid var(--stroke);
@@ -83,11 +84,21 @@
     .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
     .btn.primary{ border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.16); }
     .btn.danger{ border-color: rgba(255,100,100,.35); background: rgba(255,100,100,.08); }
+    .btn.soft{ border-color: rgba(0,255,198,.25); background: rgba(0,255,198,.08); }
     hr{border:0;border-top:1px solid var(--stroke);margin:14px 0;}
     .preview{border:1px solid var(--stroke);background: rgba(0,0,0,.12);border-radius:16px;padding:12px;overflow:auto;max-height:420px;}
     [data-theme="light"] .preview{background: rgba(2,6,23,.04)}
-    .badge{border:1px solid var(--stroke);background: rgba(0,0,0,.18);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950;letter-spacing:.06em;text-transform:uppercase;}
+    .badge{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      padding:7px 10px;border-radius:999px;
+      font-size:12px;font-weight:950;letter-spacing:.06em;text-transform:uppercase;
+    }
     [data-theme="light"] .badge{background: rgba(2,6,23,.06)}
+    .badge.good{ border-color: rgba(0,255,198,.35); }
+    .badge.warn{ border-color: rgba(255,198,0,.35); }
+    .badge.new{ border-color: rgba(255,120,120,.35); background: rgba(255,120,120,.10); }
+    .mutebox{border:1px solid var(--stroke); border-radius:16px; padding:12px; background: rgba(255,255,255,.03);}
     .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,.60); z-index:100; padding:16px;}
     .modal.show{display:flex}
     .modalCard{width:min(560px, 96vw); border:1px solid var(--stroke); background: rgba(15,20,40,.96); border-radius:22px; box-shadow: var(--shadow); padding:14px;}
@@ -98,14 +109,37 @@
     .locked.show{display:block}
     .lockScreen{display:none;border:1px solid var(--stroke);background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));border-radius:22px;box-shadow: var(--shadow);padding:16px;margin-top:16px;}
     .lockScreen.show{display:block}
-    @media (max-width:980px){ .row3{grid-template-columns:1fr} .row2{grid-template-columns:1fr} .right{max-width:74vw;} }
+    .kpiGrid{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .kpi{
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:12px;
+      background: rgba(0,0,0,.10);
+      min-height: 66px;
+    }
+    [data-theme="light"] .kpi{background: rgba(2,6,23,.04)}
+    .kpi .k{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:900}
+    .kpi .v{font-weight:950;font-size:16px;margin-top:6px}
+    .kpi .s{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.3}
+    @media (max-width:980px){
+      .row3{grid-template-columns:1fr}
+      .row2{grid-template-columns:1fr}
+      .row4{grid-template-columns:1fr}
+      .kpiGrid{grid-template-columns: 1fr 1fr}
+      .right{max-width:74vw;}
+    }
   </style>
 </head>
 <body>
   <div class="top">
     <div class="nav">
       <div class="brand">
-       THE KOKER ARCHIVES 
+        THE KOKER ARCHIVES
         <small>Creator Dashboard (Private)</small>
       </div>
       <div class="right">
@@ -114,6 +148,7 @@
         <div class="pill" id="goSettings">⚙️ <strong>Settings</strong></div>
         <div class="pill" id="themeBtn">🌓 <strong>Theme</strong></div>
         <div class="pill" id="authBtn">🔐 <strong id="authText">Sign in</strong></div>
+        <div class="pill" id="refreshAll">🔄 <strong>Refresh</strong></div>
         <div class="pill"><strong id="statusText">Not signed in</strong></div>
       </div>
     </div>
@@ -122,22 +157,64 @@
   <div class="wrap">
     <div class="card">
       <h1>Dashboard</h1>
-      <div class="small">Not linked anywhere. Publishing is locked to your UID in Firestore rules.</div>
+      <div class="small">Publishing + private reads are locked to your UID in Firestore rules.</div>
+
+      <div class="kpiGrid">
+        <div class="kpi">
+          <div class="k">UID</div>
+          <div class="v mono" id="uidLine">—</div>
+          <div class="s">Must match admin UID</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Auth</div>
+          <div class="v" id="statusLine">Not signed in</div>
+          <div class="s" id="gateLine">Locked</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Readers Total</div>
+          <div class="v" id="rTotal">—</div>
+          <div class="s">Counts every open</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Signed-in</div>
+          <div class="v" id="rSigned">—</div>
+          <div class="s">Total signed-in opens</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Guests</div>
+          <div class="v" id="rGuest">—</div>
+          <div class="s">Total guest opens</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Subscribers</div>
+          <div class="v" id="subCount">—</div>
+          <div class="s">Private list</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Latest (book1)</div>
+          <div class="v" id="latestBook1">—</div>
+          <div class="s">Highest chapter #</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Latest (coming)</div>
+          <div class="v" id="latestComing">—</div>
+          <div class="s">Highest chapter #</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Quick</div>
+          <div class="v">Tools</div>
+          <div class="s">Subscribers + Releases</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Visibility</div>
+          <div class="v">Premium</div>
+          <div class="s">Announcements auto-show</div>
+        </div>
+      </div>
 
       <hr>
 
-      <div class="row">
-        <div class="badge">UID: <span class="mono" id="uidLine">—</span></div>
-        <div class="badge">Status: <span id="statusLine">Not signed in</span></div>
-
-        <div class="badge">Readers Total: <span id="rTotal">—</span></div>
-        <div class="badge">Signed-in: <span id="rSigned">—</span></div>
-        <div class="badge">Guests: <span id="rGuest">—</span></div>
-
-        <div class="badge">Subscribers: <span id="subCount">—</span></div>
-      </div>
-
-      <div class="small" style="margin-top:10px;">
+      <div class="small">
         Step: sign in → your UID must match ADMIN UID in rules.
       </div>
     </div>
@@ -151,6 +228,91 @@
     </div>
 
     <div class="locked" id="adminApp">
+
+      <div class="card">
+        <h1>Release Tools (Premium)</h1>
+        <div class="small">
+          Fast workflow: publish → announce → notify (manual safe). No email API key exposed.
+        </div>
+
+        <div class="row3" style="margin-top:12px;">
+          <div>
+            <label>Book</label>
+            <select id="relBook">
+              <option value="book1">book1</option>
+              <option value="coming">coming</option>
+            </select>
+          </div>
+          <div>
+            <label>Chapter # (optional)</label>
+            <input id="relChapter" type="number" placeholder="7" min="1" />
+          </div>
+          <div>
+            <label>Expires in (days)</label>
+            <input id="relExpireDays" type="number" value="7" min="0" />
+          </div>
+        </div>
+
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Announcement Title</label>
+            <input id="relTitle" placeholder="New chapter is live!" />
+          </div>
+          <div>
+            <label>Announcement Body</label>
+            <input id="relBody" placeholder="Chapter 7 is out. Tap to read." />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn soft" id="relAutoFill">✨ Auto-fill from latest</button>
+          <button class="btn primary" id="relPublishAnnounce">📣 Publish Release Announcement</button>
+          <div class="small" id="relMsg"></div>
+        </div>
+
+        <hr>
+
+        <h2>Manual Email Send (Safe)</h2>
+        <div class="small">
+          This generates: CSV, BCC list, and a copy-paste email template.
+          Use Gmail/Outlook BCC so you don’t expose subscriber emails.
+        </div>
+
+        <div class="row3" style="margin-top:10px;">
+          <div>
+            <label>Subject</label>
+            <input id="mailSubject" placeholder="THE KOKER ARCHIVES — New Chapter" />
+          </div>
+          <div>
+            <label>Link (optional)</label>
+            <input id="mailLink" placeholder="https://your-site/read.html?book=book1" />
+          </div>
+          <div>
+            <label>BCC chunk size</label>
+            <input id="bccChunk" type="number" value="80" min="1" />
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Email Body (template)</label>
+          <textarea id="mailBody" placeholder="Write your email message here…"></textarea>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn" id="copyBcc">📋 Copy BCC</button>
+          <button class="btn" id="copyBccChunk">📋 Copy BCC (chunk)</button>
+          <button class="btn" id="exportCsv">⬇️ Export CSV</button>
+          <button class="btn primary" id="copyEmailTemplate">✉️ Copy Email Template</button>
+          <div class="small" id="mailMsg"></div>
+        </div>
+
+        <div class="mutebox" style="margin-top:12px;">
+          <div class="small">
+            Tip: In Gmail, paste BCC list into <span class="mono">Bcc</span>, keep <span class="mono">To</span> as your own email.
+          </div>
+          <div class="small" id="subToolsNote" style="margin-top:6px;">Subscribers loaded: —</div>
+        </div>
+      </div>
 
       <div class="card">
         <h1>Backfill (Count Past Readers)</h1>
@@ -195,7 +357,9 @@
             <label>Chapter #</label>
             <input id="chapterNumber" type="number" placeholder="99" min="1" />
           </div>
-          <div></div>
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn" id="quickAnnounceFromChapter">📣 Create Announcement from this chapter</button>
+          </div>
         </div>
 
         <div class="row2" style="margin-top:10px;">
@@ -355,7 +519,7 @@ Use **bold** for bold."></textarea>
     import {
       getFirestore,
       collection, addDoc, serverTimestamp,
-      getDocs, query, orderBy, limit,
+      getDocs, query, orderBy, limit, where,
       deleteDoc, doc, getDoc, setDoc,
       Timestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
@@ -385,6 +549,54 @@ Use **bold** for bold."></textarea>
       return String(str ?? "")
         .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
         .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function normalizeEmail(email){
+      return String(email ?? "").trim().toLowerCase();
+    }
+
+    function dedupeEmails(list){
+      const seen = new Set();
+      const out = [];
+      for(const e of list){
+        const x = normalizeEmail(e);
+        if(!x) continue;
+        if(seen.has(x)) continue;
+        seen.add(x);
+        out.push(x);
+      }
+      return out;
+    }
+
+    function downloadFile(filename, content, mime="text/plain"){
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=> URL.revokeObjectURL(url), 1200);
+    }
+
+    async function copyToClipboard(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch{
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      }
     }
 
     // Theme
@@ -425,6 +637,8 @@ Use **bold** for bold."></textarea>
     const authText = document.getElementById("authText");
     const uidLine = document.getElementById("uidLine");
     const statusLine = document.getElementById("statusLine");
+    const gateLine = document.getElementById("gateLine");
+    const refreshAllBtn = document.getElementById("refreshAll");
 
     const email = document.getElementById("email");
     const password = document.getElementById("password");
@@ -441,12 +655,16 @@ Use **bold** for bold."></textarea>
     const rGuest = document.getElementById("rGuest");
     const subCountEl = document.getElementById("subCount");
 
+    const latestBook1 = document.getElementById("latestBook1");
+    const latestComing = document.getElementById("latestComing");
+
     let UID = null;
 
     function applyGate(){
       const ok = (UID && UID === ADMIN_UID);
       lockScreen.classList.toggle("show", !ok);
       adminApp.classList.toggle("show", ok);
+      gateLine.textContent = ok ? "Unlocked" : "Locked";
     }
 
     async function loadStats(){
@@ -459,6 +677,26 @@ Use **bold** for bold."></textarea>
       }catch{
         rTotal.textContent = "—"; rSigned.textContent = "—"; rGuest.textContent = "—";
       }
+    }
+
+    async function loadLatestChapter(bookId){
+      try{
+        const qy = query(collection(db,"books",bookId,"chapters"), orderBy("chapterNumber","desc"), limit(1));
+        const snap = await getDocs(qy);
+        if(snap.empty) return 0;
+        const d = snap.docs[0].data() || {};
+        return Number(d.chapterNumber || 0) || 0;
+      }catch{
+        return 0;
+      }
+    }
+
+    async function refreshKPIs(){
+      await loadStats();
+      const a = await loadLatestChapter("book1");
+      const b = await loadLatestChapter("coming");
+      latestBook1.textContent = a ? ("#" + a) : "—";
+      latestComing.textContent = b ? ("#" + b) : "—";
     }
 
     // Baseline
@@ -483,15 +721,31 @@ Use **bold** for bold."></textarea>
           baselineSetBy: UID
         }, { merge:true });
         baseMsg.textContent = "Saved ✅";
-        await loadStats();
+        await refreshKPIs();
       }catch(e){
         baseMsg.textContent = "Denied: " + (e?.message || String(e));
       }
     };
 
-    // Subscribers
+    // ===== Subscribers cache + tools =====
     const subsList = document.getElementById("subsList");
     const subsMsg = document.getElementById("subsMsg");
+    const subToolsNote = document.getElementById("subToolsNote");
+
+    const mailSubject = document.getElementById("mailSubject");
+    const mailLink = document.getElementById("mailLink");
+    const bccChunk = document.getElementById("bccChunk");
+    const mailBody = document.getElementById("mailBody");
+    const mailMsg = document.getElementById("mailMsg");
+
+    const copyBcc = document.getElementById("copyBcc");
+    const copyBccChunk = document.getElementById("copyBccChunk");
+    const exportCsv = document.getElementById("exportCsv");
+    const copyEmailTemplate = document.getElementById("copyEmailTemplate");
+
+    let SUB_EMAILS = []; // normalized, deduped
+    let SUB_ROWS = [];   // raw docs for csv
+
     document.getElementById("refreshSubs").onclick = renderSubscribers;
 
     async function renderSubscribers(){
@@ -502,32 +756,208 @@ Use **bold** for bold."></textarea>
         return;
       }
       try{
-        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(250));
+        const qy = query(collection(db,"subscribers"), orderBy("createdAt","desc"), limit(500));
         const snap = await getDocs(qy);
+
         subCountEl.textContent = String(snap.size || 0);
+        subToolsNote.textContent = `Subscribers loaded: ${snap.size || 0}`;
 
         if(snap.empty){
           subsList.textContent = "No subscribers yet.";
+          SUB_EMAILS = [];
+          SUB_ROWS = [];
           return;
         }
+
         const rows = [];
+        const emails = [];
         snap.forEach(s=>{
           const d = s.data() || {};
-          rows.push(`
+          rows.push({ id: s.id, ...d });
+          if(d.email) emails.push(d.email);
+          if(d.emailLower) emails.push(d.emailLower);
+        });
+
+        SUB_ROWS = rows;
+        SUB_EMAILS = dedupeEmails(emails);
+
+        const htmlRows = [];
+        snap.forEach(s=>{
+          const d = s.data() || {};
+          htmlRows.push(`
             <div style="padding:10px 0;border-bottom:1px solid var(--stroke);">
               <div style="font-weight:950">${escapeHtml(d.email || d.phone || "Subscriber")}</div>
               <div class="small">uid: <span class="mono">${escapeHtml(d.uid || "")}</span></div>
-              <div class="small">book: ${escapeHtml(d.bookId || "")}</div>
-              <div class="small">emailOpt: ${d.notificationEmail ? "yes":"no"} | smsOpt: ${d.notificationSMS ? "yes":"no"}</div>
+              <div class="small">source: ${escapeHtml(d.source || d.bookId || "")}</div>
               <div class="small mono">docId: ${s.id}</div>
             </div>
           `);
         });
-        subsList.innerHTML = rows.join("");
+        subsList.innerHTML = htmlRows.join("");
       }catch(e){
         subsList.textContent = "Error: " + (e?.message || String(e));
       }
     }
+
+    function buildCsv(){
+      const header = ["email","emailLower","uid","source","createdAt","docId"].join(",");
+      const lines = [header];
+      for(const r of SUB_ROWS){
+        const created = r.createdAt?.toDate ? r.createdAt.toDate().toISOString() : "";
+        const line = [
+          JSON.stringify(r.email || ""),
+          JSON.stringify(r.emailLower || normalizeEmail(r.email || "")),
+          JSON.stringify(r.uid || ""),
+          JSON.stringify(r.source || r.bookId || ""),
+          JSON.stringify(created),
+          JSON.stringify(r.id || "")
+        ].join(",");
+        lines.push(line);
+      }
+      return lines.join("\n");
+    }
+
+    function getBccList(){
+      return SUB_EMAILS.join(", ");
+    }
+
+    function getBccChunk(){
+      const size = Math.max(1, Number(bccChunk.value || 80));
+      return SUB_EMAILS.slice(0, size).join(", ");
+    }
+
+    copyBcc.onclick = async ()=>{
+      mailMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      if(!SUB_EMAILS.length){ toast("No subscribers loaded."); return; }
+      const ok = await copyToClipboard(getBccList());
+      mailMsg.textContent = ok ? "BCC copied ✅" : "Could not copy.";
+      toast(ok ? "BCC copied ✅" : "Copy failed");
+    };
+
+    copyBccChunk.onclick = async ()=>{
+      mailMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      if(!SUB_EMAILS.length){ toast("No subscribers loaded."); return; }
+      const ok = await copyToClipboard(getBccChunk());
+      mailMsg.textContent = ok ? "BCC chunk copied ✅" : "Could not copy.";
+      toast(ok ? "BCC chunk copied ✅" : "Copy failed");
+    };
+
+    exportCsv.onclick = ()=>{
+      mailMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      if(!SUB_ROWS.length){ toast("No subscribers loaded."); return; }
+      const csv = buildCsv();
+      const stamp = new Date().toISOString().slice(0,10);
+      downloadFile(`koker_subscribers_${stamp}.csv`, csv, "text/csv");
+      toast("CSV downloaded ✅");
+    };
+
+    copyEmailTemplate.onclick = async ()=>{
+      mailMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+
+      const subject = (mailSubject.value || "").trim() || "THE KOKER ARCHIVES — Update";
+      const link = (mailLink.value || "").trim();
+      const body = (mailBody.value || "").trim() || "Hello,\n\nA new update is live on THE KOKER ARCHIVES.\n\nTap here to read:\n" + (link || "(paste link here)") + "\n\n— Shengbe Koker";
+
+      const template =
+`SUBJECT:
+${subject}
+
+BODY:
+${body}
+
+TIP:
+Use BCC for subscribers so emails stay private.`;
+
+      const ok = await copyToClipboard(template);
+      mailMsg.textContent = ok ? "Template copied ✅" : "Could not copy.";
+      toast(ok ? "Template copied ✅" : "Copy failed");
+    };
+
+    // ===== Release tools =====
+    const relBook = document.getElementById("relBook");
+    const relChapter = document.getElementById("relChapter");
+    const relExpireDays = document.getElementById("relExpireDays");
+    const relTitle = document.getElementById("relTitle");
+    const relBody = document.getElementById("relBody");
+    const relMsg = document.getElementById("relMsg");
+    const relAutoFill = document.getElementById("relAutoFill");
+    const relPublishAnnounce = document.getElementById("relPublishAnnounce");
+
+    function addDays(msNow, days){
+      return msNow + (days * 24 * 60 * 60 * 1000);
+    }
+
+    relAutoFill.onclick = async ()=>{
+      relMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      const book = relBook.value || "book1";
+      const latest = await loadLatestChapter(book);
+      if(latest){
+        relChapter.value = String(latest);
+        relTitle.value = "New chapter is live!";
+        relBody.value = `Chapter ${latest} is out now. Tap to read.`;
+        toast("Filled from latest ✅");
+      }else{
+        relTitle.value = "New update is live!";
+        relBody.value = `A new update is out now. Tap to read.`;
+        toast("No chapters found — filled general ✅");
+      }
+    };
+
+    relPublishAnnounce.onclick = async ()=>{
+      relMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      const book = relBook.value || "book1";
+      const chap = Number(relChapter.value || 0);
+      const title = (relTitle.value || "").trim();
+      const body = (relBody.value || "").trim();
+      const days = Math.max(0, Number(relExpireDays.value || 0));
+
+      if(!title || !body){ toast("Fill title + body."); return; }
+
+      const now = Date.now();
+      const end = (days > 0) ? Timestamp.fromMillis(addDays(now, days)) : null;
+
+      try{
+        await addDoc(collection(db,"announcements"), {
+          title,
+          body,
+          bookId: book,
+          chapterNumber: Number.isFinite(chap) && chap > 0 ? chap : null,
+          startAt: Timestamp.fromMillis(now),
+          endAt: end,
+          createdAt: serverTimestamp(),
+          createdBy: UID
+        });
+        relMsg.textContent = "Release announcement published ✅";
+        toast("Release published ✅");
+        await renderAnnouncementsAdmin();
+      }catch(e){
+        relMsg.textContent = "Denied: " + (e?.message || String(e));
+        toast("Denied");
+      }
+    };
+
+    // Quick: Create announcement from chapter fields
+    document.getElementById("quickAnnounceFromChapter").onclick = ()=>{
+      const b = (document.getElementById("bookId").value || "book1").trim();
+      const n = Number(document.getElementById("chapterNumber").value || 0);
+      const t = (document.getElementById("chapterTitle").value || "").trim();
+
+      relBook.value = b;
+      relChapter.value = (n && n > 0) ? String(n) : "";
+      relTitle.value = "New chapter is live!";
+      relBody.value = (n && n > 0)
+        ? `Chapter ${n} (${t || "New Chapter"}) is out now. Tap to read.`
+        : `A new chapter is out now. Tap to read.`;
+
+      toast("Release tool filled ✅");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
 
     // ====== Formatter + Publish Chapters ======
     const bookIdEl = document.getElementById("bookId");
@@ -605,7 +1035,17 @@ Use **bold** for bold."></textarea>
         });
         publishMsg.textContent = "Published ✅";
         toast("Published ✅");
+
+        // refresh
         await renderChapters();
+        await refreshKPIs();
+
+        // helpful auto-fill for release tool
+        relBook.value = bookId;
+        relChapter.value = String(chapterNumber);
+        relTitle.value = "New chapter is live!";
+        relBody.value = `Chapter ${chapterNumber} (${title}) is out now. Tap to read.`;
+
       }catch(e){
         toast("Denied: " + (e?.message || String(e)));
       }
@@ -646,6 +1086,7 @@ Use **bold** for bold."></textarea>
               await deleteDoc(doc(db,"books",bookIdNow,"chapters",id));
               toast("Deleted ✅");
               await renderChapters();
+              await refreshKPIs();
             }catch(e){
               toast("Denied: " + (e?.message || String(e)));
             }
@@ -657,7 +1098,7 @@ Use **bold** for bold."></textarea>
       }
     }
     document.getElementById("refreshChapters").onclick = renderChapters;
-    bookIdEl.addEventListener("change", renderChapters);
+    bookIdEl.addEventListener("change", async ()=>{ await renderChapters(); await refreshKPIs(); });
 
     // ====== Announcements ======
     const announceTitle = document.getElementById("announceTitle");
@@ -872,14 +1313,33 @@ Use **bold** for bold."></textarea>
       applyGate();
 
       if(user && UID === ADMIN_UID){
-        await loadStats();
+        await refreshKPIs();
         await renderSubscribers();
         await renderChapters();
         await renderAnnouncementsAdmin();
         await renderCommentsAdmin();
+
+        // default email template
+        if(!mailBody.value.trim()){
+          mailBody.value =
+`Hello,
+
+A new update is live on THE KOKER ARCHIVES.
+
+Tap here to read:
+${mailLink.value.trim() || "(paste link here)"}
+
+Thank you for reading and supporting the story.
+
+— Shengbe Koker`;
+        }
+
       }else{
         rTotal.textContent = "—"; rSigned.textContent = "—"; rGuest.textContent = "—";
         subCountEl.textContent = "—";
+        latestBook1.textContent = "—";
+        latestComing.textContent = "—";
+        subToolsNote.textContent = "Subscribers loaded: —";
       }
     });
 
@@ -907,6 +1367,18 @@ Use **bold** for bold."></textarea>
       await signOut(auth);
       closeModal();
       toast("Signed out");
+    };
+
+    // Refresh button
+    refreshAllBtn.onclick = async ()=>{
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      toast("Refreshing…");
+      await refreshKPIs();
+      await renderSubscribers();
+      await renderChapters();
+      await renderAnnouncementsAdmin();
+      await renderCommentsAdmin();
+      toast("Done ✅");
     };
   </script>
 </body>
