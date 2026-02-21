@@ -229,10 +229,71 @@
 
     <div class="locked" id="adminApp">
 
+      <!-- ✅ NEW BADGE CONTROLLER -->
+      <div class="card">
+        <h1>NEW Badge Controller (Library)</h1>
+        <div class="small">
+          This controls the red <span class="badge new">NEW</span> icon on the Library books.
+          You decide what it says and how long it stays.
+          Stored at <span class="mono">releases/{bookId}</span>.
+        </div>
+
+        <div class="row4" style="margin-top:12px;">
+          <div>
+            <label>Book</label>
+            <select id="nbBook">
+              <option value="book1">book1</option>
+              <option value="coming">coming</option>
+            </select>
+          </div>
+          <div>
+            <label>Type</label>
+            <select id="nbType">
+              <option value="NEW CHAPTER">NEW CHAPTER</option>
+              <option value="NEW BOOK">NEW BOOK</option>
+              <option value="NEW">NEW</option>
+            </select>
+          </div>
+          <div>
+            <label>Chapter # (optional)</label>
+            <input id="nbChapter" type="number" placeholder="7" min="1" />
+          </div>
+          <div>
+            <label>Duration (days)</label>
+            <input id="nbDays" type="number" value="7" min="0" />
+          </div>
+        </div>
+
+        <div class="row2" style="margin-top:10px;">
+          <div>
+            <label>Custom Label (optional)</label>
+            <input id="nbCustom" placeholder="NEW • Chapter 7" />
+            <div class="small">If filled, this overrides Type.</div>
+          </div>
+          <div>
+            <label>Preview</label>
+            <div class="mutebox">
+              <span class="badge new" id="nbPreview">NEW</span>
+              <div class="small" id="nbPreviewSub" style="margin-top:6px;">Will show while active window is valid.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" id="nbSet">✅ Set NEW badge</button>
+          <button class="btn danger" id="nbClear">🧹 Clear NEW badge</button>
+          <button class="btn" id="nbLoad">🔄 Load current</button>
+          <div class="small" id="nbMsg"></div>
+        </div>
+
+        <div class="preview" id="nbState" style="margin-top:12px;">—</div>
+      </div>
+
       <div class="card">
         <h1>Release Tools (Premium)</h1>
         <div class="small">
           Fast workflow: publish → announce → notify (manual safe). No email API key exposed.
+          <br><strong>Note:</strong> “Publish Release Announcement” also sets the Library NEW badge using “Expires in (days)”.
         </div>
 
         <div class="row3" style="margin-top:12px;">
@@ -384,6 +445,22 @@ Write ✦ on its own line for a scene break.
 Use **bold** for bold."></textarea>
         </div>
 
+        <div class="row3" style="margin-top:10px;">
+          <div>
+            <label>Also set NEW badge days</label>
+            <input id="chapterNewDays" type="number" value="7" min="0" />
+            <div class="small">0 = never expires (until you clear it).</div>
+          </div>
+          <div>
+            <label>NEW badge label</label>
+            <input id="chapterNewLabel" placeholder="NEW CHAPTER" value="NEW CHAPTER" />
+            <div class="small">Example: NEW • Chapter 9</div>
+          </div>
+          <div class="row" style="justify-content:flex-end">
+            <span class="badge new" id="chapterNewPreview">NEW CHAPTER</span>
+          </div>
+        </div>
+
         <div class="row" style="margin-top:12px;">
           <button class="btn" id="formatBtn">✨ Format</button>
           <button class="btn primary" id="publishBtn">🚀 Publish</button>
@@ -519,7 +596,7 @@ Use **bold** for bold."></textarea>
     import {
       getFirestore,
       collection, addDoc, serverTimestamp,
-      getDocs, query, orderBy, limit, where,
+      getDocs, query, orderBy, limit,
       deleteDoc, doc, getDoc, setDoc,
       Timestamp
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
@@ -551,9 +628,7 @@ Use **bold** for bold."></textarea>
         .replaceAll('"',"&quot;").replaceAll("'","&#039;");
     }
 
-    function normalizeEmail(email){
-      return String(email ?? "").trim().toLowerCase();
-    }
+    function normalizeEmail(email){ return String(email ?? "").trim().toLowerCase(); }
 
     function dedupeEmails(list){
       const seen = new Set();
@@ -585,7 +660,6 @@ Use **bold** for bold."></textarea>
         await navigator.clipboard.writeText(text);
         return true;
       }catch{
-        // fallback
         const ta = document.createElement("textarea");
         ta.value = text;
         ta.style.position = "fixed";
@@ -727,6 +801,135 @@ Use **bold** for bold."></textarea>
       }
     };
 
+    // =========================
+    // ✅ NEW BADGE CONTROLLER
+    // =========================
+    const nbBook = document.getElementById("nbBook");
+    const nbType = document.getElementById("nbType");
+    const nbChapter = document.getElementById("nbChapter");
+    const nbDays = document.getElementById("nbDays");
+    const nbCustom = document.getElementById("nbCustom");
+    const nbPreview = document.getElementById("nbPreview");
+    const nbPreviewSub = document.getElementById("nbPreviewSub");
+    const nbMsg = document.getElementById("nbMsg");
+    const nbState = document.getElementById("nbState");
+
+    function addDaysMs(nowMs, days){ return nowMs + (days * 24 * 60 * 60 * 1000); }
+
+    function computeBadgeLabel(){
+      const custom = (nbCustom.value || "").trim();
+      if(custom) return custom;
+      const t = (nbType.value || "NEW").trim();
+      const ch = Number(nbChapter.value || 0);
+      if(ch && ch > 0 && t.toUpperCase().includes("CHAPTER")){
+        return `${t} • #${ch}`;
+      }
+      return t || "NEW";
+    }
+
+    function updateBadgePreview(){
+      const label = computeBadgeLabel();
+      nbPreview.textContent = label;
+      const days = Math.max(0, Number(nbDays.value || 0));
+      nbPreviewSub.textContent = (days === 0)
+        ? "Duration: never expires (until you clear it)."
+        : `Duration: ${days} day(s).`;
+    }
+
+    nbType.addEventListener("change", updateBadgePreview);
+    nbChapter.addEventListener("input", updateBadgePreview);
+    nbDays.addEventListener("input", updateBadgePreview);
+    nbCustom.addEventListener("input", updateBadgePreview);
+    nbBook.addEventListener("change", async ()=>{ updateBadgePreview(); await loadBadgeState().catch(()=>{}); });
+
+    async function loadBadgeState(){
+      nbState.textContent = "Loading…";
+      nbMsg.textContent = "";
+      const book = (nbBook.value || "book1").trim();
+      try{
+        const snap = await getDoc(doc(db,"releases",book));
+        if(!snap.exists()){
+          nbState.textContent = "No active release badge doc found.";
+          return;
+        }
+        const d = snap.data() || {};
+        const startMs = d.startAt?.toMillis ? d.startAt.toMillis() : null;
+        const endMs = d.endAt?.toMillis ? d.endAt.toMillis() : null;
+        const now = Date.now();
+        const active = (startMs == null ? true : now >= startMs) && (endMs == null ? true : now <= endMs);
+
+        nbState.innerHTML = `
+          <div class="mono">${escapeHtml(JSON.stringify({
+            label: d.label || null,
+            chapterNumber: d.chapterNumber ?? null,
+            startAt: startMs ? new Date(startMs).toISOString() : null,
+            endAt: endMs ? new Date(endMs).toISOString() : null,
+            active
+          }, null, 2))}</div>
+        `;
+      }catch(e){
+        nbState.textContent = "Error: " + (e?.message || String(e));
+      }
+    }
+
+    document.getElementById("nbLoad").onclick = async ()=>{
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      await loadBadgeState();
+      toast("Loaded ✅");
+    };
+
+    document.getElementById("nbSet").onclick = async ()=>{
+      nbMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+
+      const book = (nbBook.value || "book1").trim();
+      const label = computeBadgeLabel();
+      const chap = Number(nbChapter.value || 0);
+      const days = Math.max(0, Number(nbDays.value || 0));
+      const now = Date.now();
+      const end = (days === 0) ? null : Timestamp.fromMillis(addDaysMs(now, days));
+
+      try{
+        await setDoc(doc(db,"releases",book), {
+          bookId: book,
+          label,
+          chapterNumber: (Number.isFinite(chap) && chap > 0) ? chap : null,
+          startAt: Timestamp.fromMillis(now),
+          endAt: end,
+          createdAt: serverTimestamp(),
+          createdBy: UID
+        }, { merge:true });
+
+        nbMsg.textContent = "NEW badge set ✅";
+        toast("NEW badge set ✅");
+        await loadBadgeState();
+      }catch(e){
+        nbMsg.textContent = "Denied: " + (e?.message || String(e));
+        toast("Denied");
+      }
+    };
+
+    document.getElementById("nbClear").onclick = async ()=>{
+      nbMsg.textContent = "";
+      if(UID !== ADMIN_UID){ toast("Access denied."); return; }
+      const book = (nbBook.value || "book1").trim();
+      try{
+        // safest "clear": set endAt to now - 1ms (no need delete rules)
+        await setDoc(doc(db,"releases",book), {
+          endAt: Timestamp.fromMillis(Date.now() - 1),
+          clearedAt: serverTimestamp(),
+          clearedBy: UID
+        }, { merge:true });
+
+        nbMsg.textContent = "Cleared ✅";
+        toast("Cleared ✅");
+        await loadBadgeState();
+      }catch(e){
+        nbMsg.textContent = "Denied: " + (e?.message || String(e));
+        toast("Denied");
+      }
+    };
+
     // ===== Subscribers cache + tools =====
     const subsList = document.getElementById("subsList");
     const subsMsg = document.getElementById("subsMsg");
@@ -743,8 +946,8 @@ Use **bold** for bold."></textarea>
     const exportCsv = document.getElementById("exportCsv");
     const copyEmailTemplate = document.getElementById("copyEmailTemplate");
 
-    let SUB_EMAILS = []; // normalized, deduped
-    let SUB_ROWS = [];   // raw docs for csv
+    let SUB_EMAILS = [];
+    let SUB_ROWS = [];
 
     document.getElementById("refreshSubs").onclick = renderSubscribers;
 
@@ -817,10 +1020,7 @@ Use **bold** for bold."></textarea>
       return lines.join("\n");
     }
 
-    function getBccList(){
-      return SUB_EMAILS.join(", ");
-    }
-
+    function getBccList(){ return SUB_EMAILS.join(", "); }
     function getBccChunk(){
       const size = Math.max(1, Number(bccChunk.value || 80));
       return SUB_EMAILS.slice(0, size).join(", ");
@@ -887,10 +1087,6 @@ Use BCC for subscribers so emails stay private.`;
     const relAutoFill = document.getElementById("relAutoFill");
     const relPublishAnnounce = document.getElementById("relPublishAnnounce");
 
-    function addDays(msNow, days){
-      return msNow + (days * 24 * 60 * 60 * 1000);
-    }
-
     relAutoFill.onclick = async ()=>{
       relMsg.textContent = "";
       if(UID !== ADMIN_UID){ toast("Access denied."); return; }
@@ -908,6 +1104,21 @@ Use BCC for subscribers so emails stay private.`;
       }
     };
 
+    async function setReleaseBadgeFromReleaseTool({book, chap, days}){
+      const now = Date.now();
+      const end = (days > 0) ? Timestamp.fromMillis(addDaysMs(now, days)) : null;
+      const label = (chap && chap > 0) ? `NEW CHAPTER • #${chap}` : "NEW";
+      await setDoc(doc(db,"releases",book), {
+        bookId: book,
+        label,
+        chapterNumber: (chap && chap > 0) ? chap : null,
+        startAt: Timestamp.fromMillis(now),
+        endAt: end,
+        createdAt: serverTimestamp(),
+        createdBy: UID
+      }, { merge:true });
+    }
+
     relPublishAnnounce.onclick = async ()=>{
       relMsg.textContent = "";
       if(UID !== ADMIN_UID){ toast("Access denied."); return; }
@@ -920,7 +1131,7 @@ Use BCC for subscribers so emails stay private.`;
       if(!title || !body){ toast("Fill title + body."); return; }
 
       const now = Date.now();
-      const end = (days > 0) ? Timestamp.fromMillis(addDays(now, days)) : null;
+      const end = (days > 0) ? Timestamp.fromMillis(addDaysMs(now, days)) : null;
 
       try{
         await addDoc(collection(db,"announcements"), {
@@ -933,9 +1144,14 @@ Use BCC for subscribers so emails stay private.`;
           createdAt: serverTimestamp(),
           createdBy: UID
         });
-        relMsg.textContent = "Release announcement published ✅";
+
+        // ✅ also set the library NEW badge
+        await setReleaseBadgeFromReleaseTool({ book, chap: (chap>0?chap:0), days });
+
+        relMsg.textContent = "Release announcement published ✅ (+ NEW badge set)";
         toast("Release published ✅");
         await renderAnnouncementsAdmin();
+        await loadBadgeState().catch(()=>{});
       }catch(e){
         relMsg.textContent = "Denied: " + (e?.message || String(e));
         toast("Denied");
@@ -967,6 +1183,16 @@ Use BCC for subscribers so emails stay private.`;
     const chapterTextEl = document.getElementById("chapterText");
     const htmlPreview = document.getElementById("htmlPreview");
     const publishMsg = document.getElementById("publishMsg");
+
+    const chapterNewDays = document.getElementById("chapterNewDays");
+    const chapterNewLabel = document.getElementById("chapterNewLabel");
+    const chapterNewPreview = document.getElementById("chapterNewPreview");
+
+    function updateChapterNewPreview(){
+      chapterNewPreview.textContent = (chapterNewLabel.value || "NEW").trim() || "NEW";
+    }
+    chapterNewLabel.addEventListener("input", updateChapterNewPreview);
+    updateChapterNewPreview();
 
     function inlineBold(text){ return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); }
 
@@ -1033,12 +1259,30 @@ Use BCC for subscribers so emails stay private.`;
           chapterNumber, title, subtitle, html,
           createdAt: serverTimestamp(), createdBy: UID
         });
-        publishMsg.textContent = "Published ✅";
+
+        // ✅ also set NEW badge window for library
+        const days = Math.max(0, Number(chapterNewDays.value || 0));
+        const now = Date.now();
+        const end = (days > 0) ? Timestamp.fromMillis(addDaysMs(now, days)) : null;
+        const label = (chapterNewLabel.value || "NEW").trim() || "NEW";
+
+        await setDoc(doc(db,"releases",bookId), {
+          bookId,
+          label,
+          chapterNumber,
+          startAt: Timestamp.fromMillis(now),
+          endAt: end,
+          createdAt: serverTimestamp(),
+          createdBy: UID
+        }, { merge:true });
+
+        publishMsg.textContent = "Published ✅ (+ NEW badge set)";
         toast("Published ✅");
 
         // refresh
         await renderChapters();
         await refreshKPIs();
+        await loadBadgeState().catch(()=>{});
 
         // helpful auto-fill for release tool
         relBook.value = bookId;
@@ -1319,7 +1563,9 @@ Use BCC for subscribers so emails stay private.`;
         await renderAnnouncementsAdmin();
         await renderCommentsAdmin();
 
-        // default email template
+        updateBadgePreview();
+        await loadBadgeState().catch(()=>{});
+
         if(!mailBody.value.trim()){
           mailBody.value =
 `Hello,
@@ -1340,6 +1586,7 @@ Thank you for reading and supporting the story.
         latestBook1.textContent = "—";
         latestComing.textContent = "—";
         subToolsNote.textContent = "Subscribers loaded: —";
+        nbState.textContent = "—";
       }
     });
 
@@ -1378,6 +1625,7 @@ Thank you for reading and supporting the story.
       await renderChapters();
       await renderAnnouncementsAdmin();
       await renderCommentsAdmin();
+      await loadBadgeState().catch(()=>{});
       toast("Done ✅");
     };
   </script>
