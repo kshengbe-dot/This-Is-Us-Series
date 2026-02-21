@@ -1,4 +1,7 @@
-// public-feed.js (FULL FILE — with book-open bump + latest chapter helpers)
+// public-feed.js (FULL FILE — CLEANED + FIXED)
+// - bumpReaderCountOnce(): increments unique readers (caller controls "once")
+// - bumpBookOpenStats(): increments opens per page-load (caller can use sessionStorage)
+// - announcements + subscriber submit
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -14,6 +17,7 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// ---------------- helpers ----------------
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&","&amp;")
@@ -23,7 +27,7 @@ function escapeHtml(str) {
     .replaceAll("'","&#039;");
 }
 
-function clampStr(s, n=240){
+function clampStr(s, n = 240){
   const t = String(s ?? "").trim();
   return t.length > n ? (t.slice(0, n-1) + "…") : t;
 }
@@ -42,23 +46,23 @@ function normalizeEmail(email){
   return String(email ?? "").trim().toLowerCase();
 }
 
-/* ============================================================================
-  ✅ NEW: bump “open” stats EVERY time book is opened
-  - Your rules currently allow stats write: if true; so this works for guests too.
-  - This will increment totals on EVERY open (even repeat). That matches your request.
-============================================================================ */
-export async function bumpBookOpenStats(bookId = "book1", uid = null){
+// ---------------- stats ----------------
+function statsRef(bookId){
+  return doc(db, "stats", bookId);
+}
+
+/**
+ * ✅ UNIQUE reader bump (call "once" from caller)
+ * - "totalReaders" = unique readers (as your UI expects)
+ */
+export async function bumpReaderCountOnce({ bookId = "book1", uid = null } = {}){
   const isSignedIn = !!uid;
-  const ref = doc(db, "stats", bookId);
 
   try{
-    await setDoc(ref, {
-      // every open counts
+    await setDoc(statsRef(bookId), {
       totalReaders: increment(1),
       signedInReaders: increment(isSignedIn ? 1 : 0),
       guestReaders: increment(isSignedIn ? 0 : 1),
-      // extra metric (optional)
-      totalOpens: increment(1),
       updatedAt: serverTimestamp()
     }, { merge:true });
   }catch{
@@ -66,12 +70,33 @@ export async function bumpBookOpenStats(bookId = "book1", uid = null){
   }
 }
 
-/* ============================================================================
-  ✅ NEW: get latest chapter number for “NEW” badge
-============================================================================ */
-export async function getLatestChapterNumber(bookId="book1"){
+/**
+ * ✅ EVERY open bump (per page-load)
+ * - "totalOpens" is a separate metric
+ */
+export async function bumpBookOpenStats(bookId = "book1", uid = null){
+  const isSignedIn = !!uid;
+
   try{
-    const qy = query(collection(db, "books", bookId, "chapters"), orderBy("chapterNumber","desc"), limit(1));
+    await setDoc(statsRef(bookId), {
+      totalOpens: increment(1),
+      signedInOpens: increment(isSignedIn ? 1 : 0),
+      guestOpens: increment(isSignedIn ? 0 : 1),
+      updatedAt: serverTimestamp()
+    }, { merge:true });
+  }catch{
+    // ignore
+  }
+}
+
+// ---------------- chapters ----------------
+export async function getLatestChapterNumber(bookId = "book1"){
+  try{
+    const qy = query(
+      collection(db, "books", bookId, "chapters"),
+      orderBy("chapterNumber","desc"),
+      limit(1)
+    );
     const snap = await getDocs(qy);
     if(snap.empty) return 0;
     const d = snap.docs[0].data() || {};
@@ -81,10 +106,7 @@ export async function getLatestChapterNumber(bookId="book1"){
   }
 }
 
-/* ============================================================================
-  ✅ NEW: signed-in last seen chapter stored in Firestore progress doc
-============================================================================ */
-export async function getLastSeenChapterSignedIn(bookId="book1", uid=null){
+export async function getLastSeenChapterSignedIn(bookId = "book1", uid = null){
   if(!uid) return 0;
   try{
     const snap = await getDoc(doc(db, "users", uid, "progress", bookId));
@@ -96,7 +118,7 @@ export async function getLastSeenChapterSignedIn(bookId="book1", uid=null){
   }
 }
 
-export async function markLatestSeen(bookId="book1", uid=null, latestChapter=0){
+export async function markLatestSeen(bookId = "book1", uid = null, latestChapter = 0){
   if(!uid) return;
   const n = Number(latestChapter || 0) || 0;
   try{
@@ -109,11 +131,8 @@ export async function markLatestSeen(bookId="book1", uid=null, latestChapter=0){
   }
 }
 
-/* ============================================================================
-  ANNOUNCEMENTS (your backward-compatible renderer)
-============================================================================ */
+// ---------------- announcements ----------------
 function isAnnouncementActive(d){
-  // Compatibility layer for multiple shapes:
   const now = Date.now();
 
   const startMs =
@@ -138,22 +157,28 @@ function pickBody(d){
   return clampStr(d.body ?? d.message ?? d.text ?? "", 340);
 }
 
-export async function renderAnnouncements({ mountId="announceMount", max=4 } = {}){
+export async function renderAnnouncements({ mountId = "announceMount", max = 4 } = {}){
   const mount = document.getElementById(mountId);
   if(!mount) return;
 
   mount.textContent = "Loading…";
 
   try{
-    const qy = query(collection(db,"announcements"), orderBy("createdAt","desc"), limit(Math.max(1, max*4)));
+    const qy = query(
+      collection(db,"announcements"),
+      orderBy("createdAt","desc"),
+      limit(Math.max(1, max * 4))
+    );
     const snap = await getDocs(qy);
 
     const rows = [];
     snap.forEach(s=>{
       const d = s.data() || {};
       if(!isAnnouncementActive(d)) return;
+
       const title = escapeHtml(pickTitle(d));
-      const body = escapeHtml(pickBody(d));
+      const body  = escapeHtml(pickBody(d));
+
       rows.push(`
         <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.12);">
           <div style="font-weight:950">${title}</div>
@@ -168,15 +193,13 @@ export async function renderAnnouncements({ mountId="announceMount", max=4 } = {
     }
 
     mount.innerHTML = rows.slice(0, max).join("");
-  }catch(e){
+  }catch{
     mount.textContent = "Could not load announcements.";
   }
 }
 
-/* ============================================================================
-  SUBSCRIBERS (works if rules allow create for guests OR if signed-in)
-============================================================================ */
-export async function submitSubscriber({ email, source="library" } = {}){
+// ---------------- subscribers ----------------
+export async function submitSubscriber({ email, source = "library" } = {}){
   const em = String(email ?? "").trim();
   const lower = normalizeEmail(em);
 
@@ -185,7 +208,9 @@ export async function submitSubscriber({ email, source="library" } = {}){
   }
 
   try{
-    const existing = await getDocs(query(collection(db,"subscribers"), where("emailLower","==", lower), limit(1)));
+    const existing = await getDocs(
+      query(collection(db,"subscribers"), where("emailLower","==", lower), limit(1))
+    );
     if(!existing.empty) return { ok:true, msg:"You’re already subscribed ✅" };
 
     const u = auth.currentUser;
@@ -196,8 +221,9 @@ export async function submitSubscriber({ email, source="library" } = {}){
       uid: u?.uid || null,
       createdAt: serverTimestamp()
     });
+
     return { ok:true, msg:"Subscribed ✅" };
-  }catch(e){
+  }catch{
     return { ok:false, msg:"Could not subscribe. (If you require sign-in, please sign in first.)" };
   }
 }
