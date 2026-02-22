@@ -1375,29 +1375,63 @@
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-    // ✅ NEW badge logic (FIXED)
-    // Priority:
-    // 1) If admin set a release badge in releases/book1 and it's active -> show it + label.
-    // 2) Else fallback to latest>seen logic (basic NEW)
-    async function updateNewBadges(){
-      const badge = document.getElementById("newBadge_book1");
-      if(!badge) return;
+   // ✅ NEW badge logic (reads releases/{bookId})
+async function updateNewBadges(){
+  // helper
+  const tsToMs = (v)=>{
+    if(!v) return null;
+    if(typeof v === "number") return v;
+    if(v?.toMillis) return v.toMillis();
+    if(v?.seconds) return v.seconds * 1000;
+    const ms = new Date(v).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  };
 
-      // (1) releases controller
-      const rel = await getActiveReleaseBadge("book1");
-      if(rel){
-        badge.textContent = rel.label;
-        badge.style.display = "block";
-        return;
+  async function applyReleaseBadge(bookId){
+    const el = document.getElementById(`newBadge_${bookId}`);
+    if(!el) return;
+
+    // default hidden
+    el.style.display = "none";
+    el.textContent = "NEW";
+
+    try{
+      const snap = await getDoc(doc(db, "releases", bookId));
+      if(!snap.exists()) return;
+
+      const d = snap.data() || {};
+      const now = Date.now();
+
+      const startMs = tsToMs(d.startAt);
+      const endMs   = tsToMs(d.endAt);
+
+      const okStart = (startMs == null) ? true : (now >= startMs);
+      const okEnd   = (endMs == null) ? true : (now <= endMs);
+      const activeFlag = (d.active === false) ? false : true;
+
+      const active = activeFlag && okStart && okEnd;
+
+      if(active){
+        el.textContent = (String(d.label || "NEW").trim()) || "NEW";
+        el.style.display = "block";
       }
+    }catch(e){
+      // If rules were wrong you'd see this in console:
+      // console.warn("release badge read failed", e);
+    }
+  }
 
-      // (2) fallback chapter comparison
-      const latest = await getLatestChapterNumber("book1");
-      if(latest <= 0){
-        badge.style.display = "none";
-        return;
-      }
+  // ✅ Apply for each book that has a NEW badge element
+  await applyReleaseBadge("book1");
+  // If you later add: <div class="badge new" id="newBadge_coming">NEW</div>
+  // then uncomment:
+  // await applyReleaseBadge("coming");
 
+  // ✅ OPTIONAL fallback: also show NEW if latest chapter > last seen (your old behavior)
+  // (keeps old feature alive even if releases doc is missing)
+  try{
+    const latest = await getLatestChapterNumber("book1");
+    if(latest > 0){
       let seen = 0;
       if(UID){
         seen = await getLastSeenChapterSignedIn("book1", UID);
@@ -1405,10 +1439,16 @@
         seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
       }
 
-      badge.textContent = "NEW";
-      badge.style.display = (latest > seen) ? "block" : "none";
+      const el = document.getElementById("newBadge_book1");
+      if(el && el.style.display !== "block"){
+        el.style.display = (latest > seen) ? "block" : "none";
+        if(latest > seen && (!el.textContent || el.textContent === "NEW")){
+          el.textContent = "NEW CHAPTER";
+        }
+      }
     }
-
+  }catch{}
+}
     // Favorites + History (signed-in only)
     const favStrip = document.getElementById("favStrip");
     const favRow = document.getElementById("favRow");
