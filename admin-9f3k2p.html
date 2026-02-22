@@ -126,6 +126,15 @@
     .kpi .k{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:900}
     .kpi .v{font-weight:950;font-size:16px;margin-top:6px}
     .kpi .s{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.3}
+
+    /* ✅ FIX: UID text wraps + smaller so it never breaks layout */
+    #uidLine{
+      font-size:12px !important;
+      line-height:1.2;
+      word-break: break-all;
+      white-space: normal;
+    }
+
     @media (max-width:980px){
       .row3{grid-template-columns:1fr}
       .row2{grid-template-columns:1fr}
@@ -1291,6 +1300,8 @@ Use BCC for subscribers so emails stay private.`;
         relBody.value = `Chapter ${chapterNumber} (${title}) is out now. Tap to read.`;
 
       }catch(e){
+        // ✅ FIX: show "not published" message in the UI
+        publishMsg.textContent = "Not published: " + (e?.message || String(e));
         toast("Denied: " + (e?.message || String(e)));
       }
     };
