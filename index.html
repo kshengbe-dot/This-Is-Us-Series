@@ -290,9 +290,6 @@
       flex-wrap:wrap;
     }
 
-    /* ===========================
-       ✅ Comment Preview Carousel
-       =========================== */
     .cWrap{
       border:1px solid var(--stroke);
       border-radius:18px;
@@ -493,7 +490,6 @@
     .note{color:var(--muted); font-size:12px; line-height:1.45; font-family: ui-sans-serif, system-ui;}
     .hrSoft{ border:0; border-top:1px solid var(--stroke); margin: 12px 0; opacity:.9; }
 
-    /* Terms modal bits */
     .termsBox{
       border:1px solid var(--stroke);
       border-radius:18px;
@@ -841,6 +837,12 @@
 
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
+    // ==============
+    // ✅ DEBUG (safe)
+    // ==============
+    const DEBUG_NEW_BADGE = true; // set false when done
+    function dbg(...args){ if(DEBUG_NEW_BADGE) console.log("[NEW_BADGE]", ...args); }
+
     // scroll lock helpers
     let __scrollY = 0;
     function lockScroll(){
@@ -1069,7 +1071,7 @@
       }
 
       // ✅ IMPORTANT: update NEW badge after auth state known
-      await updateNewBadges().catch(()=>{});
+      await updateNewBadges().catch((e)=> dbg("updateNewBadges failed", e));
     });
 
     btnSignIn.addEventListener("click", async ()=>{
@@ -1171,29 +1173,18 @@
     }
 
     // ===========================
-    // ✅ Comment Preview Carousel (ONE AT A TIME)
+    // ✅ Comment Preview Carousel
     // ===========================
     let __cTimer = null;
-
-    function stopCarousel(){
-      if(__cTimer) clearInterval(__cTimer);
-      __cTimer = null;
-    }
-
+    function stopCarousel(){ if(__cTimer) clearInterval(__cTimer); __cTimer = null; }
     function startCarousel(nextFn, intervalMs){
       stopCarousel();
       __cTimer = setInterval(nextFn, Math.max(1800, Number(intervalMs || 4200)));
     }
-
     function fmtWhen(ms){
-      try{
-        const d = new Date(ms);
-        return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
-      }catch{
-        return "";
-      }
+      try{ return new Date(ms).toLocaleDateString(undefined, { month:"short", day:"numeric" }); }
+      catch{ return ""; }
     }
-
     function tsToMs(ts){
       if(!ts) return 0;
       if(typeof ts === "number") return ts;
@@ -1233,15 +1224,15 @@
             Couldn’t load comments right now.
             <div class="small" style="margin-top:8px;">${escapeHtml(e?.message || "")}</div>
             <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn primary" id="openCommunityFromTab" type="button">Open Community</button>
-              <button class="btn" id="openBookFromTab" type="button">Open Book I</button>
+              <button class="btn primary" id="openCommunityFromTabX" type="button">Open Community</button>
+              <button class="btn" id="openBookFromTabX" type="button">Open Book I</button>
             </div>
           </div>
         `;
-        mount.querySelector("#openCommunityFromTab")?.addEventListener("click", ()=>{
+        mount.querySelector("#openCommunityFromTabX")?.addEventListener("click", ()=>{
           location.href = "read.html?book=book1&open=community";
         });
-        mount.querySelector("#openBookFromTab")?.addEventListener("click", ()=> openBook("book1"));
+        mount.querySelector("#openBookFromTabX")?.addEventListener("click", ()=> openBook("book1"));
         return;
       }
 
@@ -1302,7 +1293,6 @@
       const track = document.getElementById("cTrack");
       const viewport = document.getElementById("cViewport");
       const dots = Array.from(document.querySelectorAll(".cDot"));
-
       let idx = 0;
 
       function apply(){
@@ -1310,16 +1300,11 @@
         track.style.transform = `translateX(${-idx * w}px)`;
         dots.forEach((d,i)=> d.classList.toggle("on", i === idx));
       }
-
       function prev(){ idx = (idx - 1 + items.length) % items.length; apply(); }
       function next(){ idx = (idx + 1) % items.length; apply(); }
 
-      document.getElementById("cPrev")?.addEventListener("click", ()=>{
-        prev(); startCarousel(next, 4200);
-      });
-      document.getElementById("cNext")?.addEventListener("click", ()=>{
-        next(); startCarousel(next, 4200);
-      });
+      document.getElementById("cPrev")?.addEventListener("click", ()=>{ prev(); startCarousel(next, 4200); });
+      document.getElementById("cNext")?.addEventListener("click", ()=>{ next(); startCarousel(next, 4200); });
 
       dots.forEach((d)=>{
         d.addEventListener("click", ()=>{
@@ -1355,9 +1340,7 @@
       viewport.addEventListener("touchend",()=>{
         if(!dragging) return;
         dragging = false;
-        if(Math.abs(dx) > 45){
-          if(dx > 0) prev(); else next();
-        }
+        if(Math.abs(dx) > 45){ if(dx > 0) prev(); else next(); }
         startCarousel(next, 4200);
       });
 
@@ -1372,35 +1355,64 @@
     // ===========================
     // ✅ NEW BADGE: releases/{bookId} FIRST, fallback to latest>seen
     // ===========================
-    function msFromTs(v){
+    function msFromAny(v){
       if(!v) return null;
       if(typeof v === "number") return v;
       if(v?.toMillis) return v.toMillis();
-      if(v?.seconds) return v.seconds * 1000;
-      const d = new Date(v);
-      const ms = d.getTime();
-      return Number.isFinite(ms) ? ms : null;
+      if(v?.seconds) return Number(v.seconds) * 1000;
+      if(typeof v === "string"){
+        const ms = Date.parse(v);
+        return Number.isFinite(ms) ? ms : null;
+      }
+      try{
+        const ms = new Date(v).getTime();
+        return Number.isFinite(ms) ? ms : null;
+      }catch{
+        return null;
+      }
+    }
+
+    function pickFirst(obj, keys){
+      for(const k of keys){
+        if(obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null){
+          return obj[k];
+        }
+      }
+      return null;
     }
 
     async function getActiveRelease(bookId){
       try{
-        const snap = await getDoc(doc(db,"releases",bookId));
+        const ref = doc(db, "releases", bookId);
+        const snap = await getDoc(ref);
+
+        dbg("checking releases doc", bookId, "exists?", snap.exists());
         if(!snap.exists()) return null;
 
         const d = snap.data() || {};
-        const now = Date.now();
+        dbg("release data", bookId, d);
 
-        const startMs = msFromTs(d.startAt);
-        const endMs   = msFromTs(d.endAt);
+        const now = Date.now();
+        const startRaw = pickFirst(d, ["startAt","start","startsAt","postedAt","publishAt"]);
+        const endRaw   = pickFirst(d, ["endAt","end","endsAt","expiresAt","expireAt"]);
+
+        const startMs = msFromAny(startRaw);
+        const endMs   = msFromAny(endRaw);
 
         const okStart = (startMs == null) ? true : (now >= startMs);
         const okEnd   = (endMs == null) ? true : (now <= endMs);
 
-        if(!(okStart && okEnd)) return null;
+        const activeFlag = (typeof d.active === "boolean") ? d.active : null;
+        const okFlag = (activeFlag == null) ? true : activeFlag;
 
-        const label = String(d.label || "").trim();
+        dbg("window check", { startMs, endMs, okStart, okEnd, activeFlag, okFlag });
+
+        if(!(okStart && okEnd && okFlag)) return null;
+
+        const label = String(pickFirst(d, ["label","text","badge","title"]) || "").trim();
         return { label: label || "NEW" };
-      }catch{
+      }catch(e){
+        dbg("getActiveRelease error", e);
         return null;
       }
     }
@@ -1409,33 +1421,45 @@
       const badge = document.getElementById("newBadge_book1");
       if(!badge) return;
 
-      // 1) Try releases/book1
+      // 1) releases/book1
       const rel = await getActiveRelease("book1");
       if(rel){
         badge.textContent = rel.label;
         badge.style.display = "block";
+        dbg("badge SHOWN via releases", rel.label);
         return;
       }
 
-      // 2) Fallback: latest > seen
-      const latest = await getLatestChapterNumber("book1");
-      if(latest <= 0){
-        badge.style.display = "none";
-        return;
-      }
+      // 2) Fallback: latest > seen (optional)
+      try{
+        const latest = await getLatestChapterNumber("book1");
+        dbg("fallback latest chapter", latest);
 
-      let seen = 0;
-      if(UID){
-        seen = await getLastSeenChapterSignedIn("book1", UID);
-      }else{
-        seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
-      }
+        if(latest <= 0){
+          badge.style.display = "none";
+          return;
+        }
 
-      if(latest > seen){
-        badge.textContent = "NEW";
-        badge.style.display = "block";
-      }else{
+        let seen = 0;
+        if(UID){
+          seen = await getLastSeenChapterSignedIn("book1", UID);
+        }else{
+          seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
+        }
+
+        dbg("fallback seen", seen);
+
+        if(latest > seen){
+          badge.textContent = "NEW";
+          badge.style.display = "block";
+          dbg("badge SHOWN via fallback");
+        }else{
+          badge.style.display = "none";
+          dbg("badge hidden (no new)");
+        }
+      }catch(e){
         badge.style.display = "none";
+        dbg("fallback failed", e);
       }
     }
 
@@ -1572,7 +1596,7 @@
       await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
       await loadReadersTotal().catch(()=>{});
-      await updateNewBadges().catch(()=>{});
+      await updateNewBadges().catch((e)=> dbg("updateNewBadges init failed", e));
       maybeShowSubscribePopup();
 
       document.addEventListener("visibilitychange", ()=>{
