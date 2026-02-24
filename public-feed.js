@@ -1,8 +1,8 @@
-// public-feed.js (FULL FILE — CLEANED + FIXED)
+// public-feed.js (FULL FILE — UPDATED: releases badge support + safer subscribe)
 // - bumpReaderCountOnce(): increments unique readers (caller controls "once")
 // - bumpBookOpenStats(): increments opens per page-load (caller can use sessionStorage)
 // - announcements + subscriber submit
-// ✅ NEW: getActiveReleaseBadge(): reads releases/{bookId} for the Library NEW badge
+// - releases/{bookId} support for NEW badge controller
 
 import { firebaseConfig } from "./firebase-config.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -12,7 +12,7 @@ import {
   getDocs, query, orderBy, limit, where,
   doc, getDoc, setDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -45,6 +45,22 @@ function tsToMs(v){
 
 function normalizeEmail(email){
   return String(email ?? "").trim().toLowerCase();
+}
+
+// Wait for auth state once (fixes “signed in but currentUser null” on fast clicks)
+async function waitForAuthOnce(timeoutMs = 1200){
+  if(auth.currentUser) return auth.currentUser;
+  return await new Promise((resolve)=>{
+    let done = false;
+    const t = setTimeout(()=>{ if(!done){ done = true; resolve(auth.currentUser || null); } }, Math.max(300, timeoutMs));
+    const unsub = onAuthStateChanged(auth, (u)=>{
+      if(done) return;
+      done = true;
+      clearTimeout(t);
+      unsub();
+      resolve(u || null);
+    });
+  });
 }
 
 // ---------------- stats ----------------
@@ -132,38 +148,35 @@ export async function markLatestSeen(bookId = "book1", uid = null, latestChapter
   }
 }
 
-// ---------------- releases (NEW badge) ----------------
-function isActiveWindow(d){
+// ---------------- releases (NEW badge controller) ----------------
+function isReleaseActive(d){
   const now = Date.now();
-  const startMs = tsToMs(d.startAt) ?? tsToMs(d.startsAt) ?? tsToMs(d.start) ?? null;
-  const endMs   = tsToMs(d.endAt)   ?? tsToMs(d.expiresAt) ?? tsToMs(d.end) ?? null;
-
+  const startMs = tsToMs(d.startAt) ?? null;
+  const endMs   = tsToMs(d.endAt) ?? null;
   const okStart = (startMs == null) ? true : (now >= startMs);
   const okEnd   = (endMs == null) ? true : (now <= endMs);
-
-  const activeFlag = (d.active === false) ? false : true;
-  return activeFlag && okStart && okEnd;
+  return okStart && okEnd;
 }
 
 /**
- * ✅ Reads releases/{bookId}
- * Returns null if no active badge
+ * Reads releases/{bookId} and returns active badge info or null.
+ * { label, chapterNumber, startMs, endMs }
  */
 export async function getActiveReleaseBadge(bookId = "book1"){
   try{
     const snap = await getDoc(doc(db, "releases", bookId));
     if(!snap.exists()) return null;
     const d = snap.data() || {};
-    if(!isActiveWindow(d)) return null;
+    if(!isReleaseActive(d)) return null;
 
     const label = String(d.label || "NEW").trim() || "NEW";
-    const chapterNumber = Number(d.chapterNumber || 0) || 0;
+    const chapterNumber = (d.chapterNumber != null) ? (Number(d.chapterNumber) || null) : null;
 
     return {
       label,
       chapterNumber,
-      startAtMs: tsToMs(d.startAt) ?? null,
-      endAtMs: tsToMs(d.endAt) ?? null
+      startMs: tsToMs(d.startAt) ?? null,
+      endMs: tsToMs(d.endAt) ?? null
     };
   }catch{
     return null;
@@ -239,11 +252,6 @@ export async function renderAnnouncements({ mountId = "announceMount", max = 4 }
 
 // ---------------- subscribers ----------------
 export async function submitSubscriber({ email, source = "library" } = {}){
-  const u = auth.currentUser; // must be signed-in per rules
-  if(!u){
-    return { ok:false, msg:"Please sign in first, then subscribe." };
-  }
-
   const em = String(email ?? "").trim();
   const lower = normalizeEmail(em);
 
@@ -251,10 +259,18 @@ export async function submitSubscriber({ email, source = "library" } = {}){
     return { ok:false, msg:"Enter a valid email." };
   }
 
+  // ✅ Your rules require sign-in, so enforce it here (prevents confusing permission errors)
+  const u = await waitForAuthOnce(1200);
+  if(!u){
+    return { ok:false, msg:"Please sign in first, then subscribe." };
+  }
+
   try{
-    // ✅ IMPORTANT:
-    // Do NOT read/query subscribers here (rules block reads for non-admin).
-    // Just write. Admin tools dedupe emails anyway.
+    const existing = await getDocs(
+      query(collection(db,"subscribers"), where("emailLower","==", lower), limit(1))
+    );
+    if(!existing.empty) return { ok:true, msg:"You’re already subscribed ✅" };
+
     await addDoc(collection(db,"subscribers"), {
       email: em,
       emailLower: lower,
@@ -264,7 +280,7 @@ export async function submitSubscriber({ email, source = "library" } = {}){
     });
 
     return { ok:true, msg:"Subscribed ✅" };
-  }catch{
-    return { ok:false, msg:"Could not subscribe. Please try again." };
+  }catch(e){
+    return { ok:false, msg:`Could not subscribe. ${e?.message ? "(" + e.message + ")" : ""}`.trim() };
   }
 }
