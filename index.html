@@ -421,6 +421,10 @@
       left:auto; right:12px;
       border-color: rgba(255,130,130,.35);
       background: rgba(255,100,100,.10);
+      max-width: 70%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .favBtn{
@@ -581,7 +585,6 @@
           <div class="small" style="margin-top:6px;opacity:.85">Unique readers.</div>
         </div>
 
-        <!-- ✅ Subscriber total is private (admin only). Non-admin sees "Private". -->
         <div class="stat">
           <div class="k">Subscribers</div>
           <div class="v" id="subsTotal">Private</div>
@@ -599,7 +602,6 @@
       </div>
     </div>
 
-    <!-- Favorites (Signed-in only) -->
     <div class="favStrip" id="favStrip">
       <div class="favHead">
         <div style="font-weight:950;letter-spacing:.08em;text-transform:uppercase;font-size:12px;color:var(--muted)">Favorites</div>
@@ -620,7 +622,6 @@
       <div class="tabInner">
         <div class="tabPanel show" id="tabComments">
           <div id="commentPreview">
-            <!-- JS will replace this with a 1-at-a-time carousel -->
             <div style="opacity:.85;line-height:1.6">
               Loading comment preview…
               <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
@@ -674,7 +675,6 @@
         <button class="favBtn" id="favBtn_coming" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
-      <!-- book3/book4 point to the same placeholder "coming" to avoid broken read mapping -->
       <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book" data-book="coming" data-title="THIS IS US Book III Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
@@ -759,7 +759,7 @@
           <button class="btn" id="subModalLater" type="button">Maybe later</button>
         </div>
         <div class="note" style="opacity:.85">
-          Subscribe requires sign-in (for privacy). Sign in first — then subscribe.
+          If subscribe is set to “sign-in required”, sign in first — then subscribe.
         </div>
       </div>
     </div>
@@ -837,18 +837,11 @@
     } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
     import { wireTermsGate } from "./terms-gate.js";
-    import {
-      renderAnnouncements,
-      submitSubscriber,
-      getLatestChapterNumber,
-      getLastSeenChapterSignedIn,
-      getActiveReleaseBadge
-    } from "./public-feed.js";
+    import { renderAnnouncements, submitSubscriber, getLatestChapterNumber, getLastSeenChapterSignedIn } from "./public-feed.js";
 
-    // ✅ your admin UID
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
-    // scroll lock helpers (for modals + terms)
+    // scroll lock helpers
     let __scrollY = 0;
     function lockScroll(){
       __scrollY = window.scrollY || 0;
@@ -869,14 +862,13 @@
       window.scrollTo(0, __scrollY);
     }
 
-    // ✅ Terms enforcement on library too
     wireTermsGate({ lockScroll, unlockScroll });
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    // Firebase init (safe)
+    // Firebase init
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -898,7 +890,6 @@
       }
     });
 
-    // Quick nav
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
 
     const openAuthQuick = document.getElementById("openAuthQuick");
@@ -1031,7 +1022,6 @@
 
         setFavoritesUI(null);
 
-        // subscribers count stays private
         subsTotal.textContent = "Private";
         document.getElementById("subsHint").textContent = "Visible to admin only.";
       }else{
@@ -1069,7 +1059,6 @@
 
         await loadFavorites().catch(()=>{});
 
-        // ✅ admin-only subscriber count
         if(user.uid === ADMIN_UID){
           await loadSubscribersCount().catch(()=>{});
           document.getElementById("subsHint").textContent = "Admin view.";
@@ -1079,6 +1068,7 @@
         }
       }
 
+      // ✅ IMPORTANT: update NEW badge after auth state known
       await updateNewBadges().catch(()=>{});
     });
 
@@ -1114,7 +1104,6 @@
     const subsTotal = document.getElementById("subsTotal");
 
     async function loadSubscribersCount(){
-      // admin-only call
       const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
       subsTotal.textContent = `${snap.size} Total`;
     }
@@ -1322,15 +1311,8 @@
         dots.forEach((d,i)=> d.classList.toggle("on", i === idx));
       }
 
-      function prev(){
-        idx = (idx - 1 + items.length) % items.length;
-        apply();
-      }
-
-      function next(){
-        idx = (idx + 1) % items.length;
-        apply();
-      }
+      function prev(){ idx = (idx - 1 + items.length) % items.length; apply(); }
+      function next(){ idx = (idx + 1) % items.length; apply(); }
 
       document.getElementById("cPrev")?.addEventListener("click", ()=>{
         prev(); startCarousel(next, 4200);
@@ -1387,22 +1369,55 @@
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-    // ✅ NEW badge logic:
-    // 1) releases/{bookId} active window => show badge + label
-    // 2) fallback: latest chapter > lastSeen logic
+    // ===========================
+    // ✅ NEW BADGE: releases/{bookId} FIRST, fallback to latest>seen
+    // ===========================
+    function msFromTs(v){
+      if(!v) return null;
+      if(typeof v === "number") return v;
+      if(v?.toMillis) return v.toMillis();
+      if(v?.seconds) return v.seconds * 1000;
+      const d = new Date(v);
+      const ms = d.getTime();
+      return Number.isFinite(ms) ? ms : null;
+    }
+
+    async function getActiveRelease(bookId){
+      try{
+        const snap = await getDoc(doc(db,"releases",bookId));
+        if(!snap.exists()) return null;
+
+        const d = snap.data() || {};
+        const now = Date.now();
+
+        const startMs = msFromTs(d.startAt);
+        const endMs   = msFromTs(d.endAt);
+
+        const okStart = (startMs == null) ? true : (now >= startMs);
+        const okEnd   = (endMs == null) ? true : (now <= endMs);
+
+        if(!(okStart && okEnd)) return null;
+
+        const label = String(d.label || "").trim();
+        return { label: label || "NEW" };
+      }catch{
+        return null;
+      }
+    }
+
     async function updateNewBadges(){
       const badge = document.getElementById("newBadge_book1");
       if(!badge) return;
 
-      // 1) Admin-controlled badge (releases/book1)
-      const rel = await getActiveReleaseBadge("book1");
+      // 1) Try releases/book1
+      const rel = await getActiveRelease("book1");
       if(rel){
-        badge.textContent = rel.label || "NEW";
+        badge.textContent = rel.label;
         badge.style.display = "block";
         return;
       }
 
-      // 2) Fallback: auto NEW if latest chapter > last seen
+      // 2) Fallback: latest > seen
       const latest = await getLatestChapterNumber("book1");
       if(latest <= 0){
         badge.style.display = "none";
@@ -1416,8 +1431,12 @@
         seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
       }
 
-      badge.textContent = "NEW";
-      badge.style.display = (latest > seen) ? "block" : "none";
+      if(latest > seen){
+        badge.textContent = "NEW";
+        badge.style.display = "block";
+      }else{
+        badge.style.display = "none";
+      }
     }
 
     // Favorites + History (signed-in only)
@@ -1556,7 +1575,6 @@
       await updateNewBadges().catch(()=>{});
       maybeShowSubscribePopup();
 
-      // If user switches away and back, keep carousel smooth
       document.addEventListener("visibilitychange", ()=>{
         if(document.hidden) stopCarousel();
       });
