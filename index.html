@@ -620,6 +620,7 @@
       <div class="tabInner">
         <div class="tabPanel show" id="tabComments">
           <div id="commentPreview">
+            <!-- JS will replace this with a 1-at-a-time carousel -->
             <div style="opacity:.85;line-height:1.6">
               Loading comment preview…
               <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
@@ -673,6 +674,7 @@
         <button class="favBtn" id="favBtn_coming" type="button" title="Favorite">☆ Favorite</button>
       </div>
 
+      <!-- book3/book4 point to the same placeholder "coming" to avoid broken read mapping -->
       <div class="bookCard" id="book3Card" role="button" aria-label="Coming soon book" data-book="coming" data-title="THIS IS US Book III Coming Soon">
         <div class="badge soon">Coming Soon</div>
         <div class="cover"><img src="./assets/back-book1.png" alt="Coming Soon"></div>
@@ -757,7 +759,7 @@
           <button class="btn" id="subModalLater" type="button">Maybe later</button>
         </div>
         <div class="note" style="opacity:.85">
-          Subscribe requires sign-in — sign in first, then subscribe.
+          Subscribe requires sign-in (for privacy). Sign in first — then subscribe.
         </div>
       </div>
     </div>
@@ -774,6 +776,7 @@
       <div class="termsBox" id="termsText">
         <div style="font-weight:950;letter-spacing:.10em;text-transform:uppercase">THE KOKER ARCHIVES — Terms</div>
         <p class="note" style="margin-top:10px">Last updated: February 15, 2026</p>
+
         <p><strong>1) Acceptance</strong><br>
           By accessing or using THE KOKER ARCHIVES (the “Site”), you agree to these Terms. If you do not agree, you may not use the Site.
         </p>
@@ -842,9 +845,10 @@
       getActiveReleaseBadge
     } from "./public-feed.js";
 
+    // ✅ your admin UID
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
-    // scroll lock helpers
+    // scroll lock helpers (for modals + terms)
     let __scrollY = 0;
     function lockScroll(){
       __scrollY = window.scrollY || 0;
@@ -865,12 +869,14 @@
       window.scrollTo(0, __scrollY);
     }
 
+    // ✅ Terms enforcement on library too
     wireTermsGate({ lockScroll, unlockScroll });
 
     // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
+    // Firebase init (safe)
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -892,6 +898,7 @@
       }
     });
 
+    // Quick nav
     document.getElementById("settingsBtn").addEventListener("click", ()=> location.href = "settings.html");
 
     const openAuthQuick = document.getElementById("openAuthQuick");
@@ -931,7 +938,7 @@
     }
     tabBtns.forEach(btn=> btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab"))) );
 
-    // Auth modal
+    // Auth modal wiring
     const authModal = document.getElementById("authModal");
     const authBtn = document.getElementById("authBtn");
     const authClose = document.getElementById("authClose");
@@ -955,7 +962,7 @@
     authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuth(); });
     goSettings.addEventListener("click", ()=> location.href = "settings.html");
 
-    // Subscribe popup modal
+    // Subscribe popup modal wiring
     const subModal = document.getElementById("subModal");
     const subClose = document.getElementById("subClose");
     const subModalBtn = document.getElementById("subModalBtn");
@@ -1024,6 +1031,7 @@
 
         setFavoritesUI(null);
 
+        // subscribers count stays private
         subsTotal.textContent = "Private";
         document.getElementById("subsHint").textContent = "Visible to admin only.";
       }else{
@@ -1061,6 +1069,7 @@
 
         await loadFavorites().catch(()=>{});
 
+        // ✅ admin-only subscriber count
         if(user.uid === ADMIN_UID){
           await loadSubscribersCount().catch(()=>{});
           document.getElementById("subsHint").textContent = "Admin view.";
@@ -1105,6 +1114,7 @@
     const subsTotal = document.getElementById("subsTotal");
 
     async function loadSubscribersCount(){
+      // admin-only call
       const snap = await getDocs(query(collection(db,"subscribers"), limit(1000)));
       subsTotal.textContent = `${snap.size} Total`;
     }
@@ -1173,7 +1183,6 @@
 
     // ===========================
     // ✅ Comment Preview Carousel (ONE AT A TIME)
-    // (unchanged from your file)
     // ===========================
     let __cTimer = null;
 
@@ -1181,10 +1190,12 @@
       if(__cTimer) clearInterval(__cTimer);
       __cTimer = null;
     }
+
     function startCarousel(nextFn, intervalMs){
       stopCarousel();
       __cTimer = setInterval(nextFn, Math.max(1800, Number(intervalMs || 4200)));
     }
+
     function fmtWhen(ms){
       try{
         const d = new Date(ms);
@@ -1193,6 +1204,7 @@
         return "";
       }
     }
+
     function tsToMs(ts){
       if(!ts) return 0;
       if(typeof ts === "number") return ts;
@@ -1375,63 +1387,28 @@
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-   // ✅ NEW badge logic (reads releases/{bookId})
-async function updateNewBadges(){
-  // helper
-  const tsToMs = (v)=>{
-    if(!v) return null;
-    if(typeof v === "number") return v;
-    if(v?.toMillis) return v.toMillis();
-    if(v?.seconds) return v.seconds * 1000;
-    const ms = new Date(v).getTime();
-    return Number.isFinite(ms) ? ms : null;
-  };
+    // ✅ NEW badge logic:
+    // 1) releases/{bookId} active window => show badge + label
+    // 2) fallback: latest chapter > lastSeen logic
+    async function updateNewBadges(){
+      const badge = document.getElementById("newBadge_book1");
+      if(!badge) return;
 
-  async function applyReleaseBadge(bookId){
-    const el = document.getElementById(`newBadge_${bookId}`);
-    if(!el) return;
-
-    // default hidden
-    el.style.display = "none";
-    el.textContent = "NEW";
-
-    try{
-      const snap = await getDoc(doc(db, "releases", bookId));
-      if(!snap.exists()) return;
-
-      const d = snap.data() || {};
-      const now = Date.now();
-
-      const startMs = tsToMs(d.startAt);
-      const endMs   = tsToMs(d.endAt);
-
-      const okStart = (startMs == null) ? true : (now >= startMs);
-      const okEnd   = (endMs == null) ? true : (now <= endMs);
-      const activeFlag = (d.active === false) ? false : true;
-
-      const active = activeFlag && okStart && okEnd;
-
-      if(active){
-        el.textContent = (String(d.label || "NEW").trim()) || "NEW";
-        el.style.display = "block";
+      // 1) Admin-controlled badge (releases/book1)
+      const rel = await getActiveReleaseBadge("book1");
+      if(rel){
+        badge.textContent = rel.label || "NEW";
+        badge.style.display = "block";
+        return;
       }
-    }catch(e){
-      // If rules were wrong you'd see this in console:
-      // console.warn("release badge read failed", e);
-    }
-  }
 
-  // ✅ Apply for each book that has a NEW badge element
-  await applyReleaseBadge("book1");
-  // If you later add: <div class="badge new" id="newBadge_coming">NEW</div>
-  // then uncomment:
-  // await applyReleaseBadge("coming");
+      // 2) Fallback: auto NEW if latest chapter > last seen
+      const latest = await getLatestChapterNumber("book1");
+      if(latest <= 0){
+        badge.style.display = "none";
+        return;
+      }
 
-  // ✅ OPTIONAL fallback: also show NEW if latest chapter > last seen (your old behavior)
-  // (keeps old feature alive even if releases doc is missing)
-  try{
-    const latest = await getLatestChapterNumber("book1");
-    if(latest > 0){
       let seen = 0;
       if(UID){
         seen = await getLastSeenChapterSignedIn("book1", UID);
@@ -1439,16 +1416,10 @@ async function updateNewBadges(){
         seen = Number(localStorage.getItem("lastSeenChapter:book1") || "0") || 0;
       }
 
-      const el = document.getElementById("newBadge_book1");
-      if(el && el.style.display !== "block"){
-        el.style.display = (latest > seen) ? "block" : "none";
-        if(latest > seen && (!el.textContent || el.textContent === "NEW")){
-          el.textContent = "NEW CHAPTER";
-        }
-      }
+      badge.textContent = "NEW";
+      badge.style.display = (latest > seen) ? "block" : "none";
     }
-  }catch{}
-}
+
     // Favorites + History (signed-in only)
     const favStrip = document.getElementById("favStrip");
     const favRow = document.getElementById("favRow");
@@ -1585,6 +1556,7 @@ async function updateNewBadges(){
       await updateNewBadges().catch(()=>{});
       maybeShowSubscribePopup();
 
+      // If user switches away and back, keep carousel smooth
       document.addEventListener("visibilitychange", ()=>{
         if(document.hidden) stopCarousel();
       });
