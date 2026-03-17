@@ -593,7 +593,11 @@
           <div class="btn" id="openCommunityQuick">💬 Community</div>
           <div class="btn" id="openAuthQuick">👤 Sign in / Sign up</div>
           <div class="btn" id="openSubscribeQuick">🔔 Subscribe</div>
-          <button class="btn" id="installAppBtn" type="button" style="display:none">📲 Install App</button>
+          <button class="btn" id="installAppBtn" type="button" title="Install The Koker Archives">📲 Install App</button>
+        </div>
+
+        <div class="small" id="installHint" style="margin-top:10px;display:none">
+          Add THE KOKER ARCHIVES to your home screen for a real app experience.
         </div>
 
         <div class="mini">
@@ -798,7 +802,7 @@
     </div>
   </div>
 
-  <!-- ✅ TERMS MODAL (LIBRARY TOO) -->
+  <!-- TERMS MODAL -->
   <div class="modal" id="termsModal">
     <div class="modalCard">
       <div class="modalHead">
@@ -1630,31 +1634,49 @@
   <script>
     let deferredPrompt = null;
     const installBtn = document.getElementById("installAppBtn");
+    const installHint = document.getElementById("installHint");
+
+    function showInstallMessage(msg){
+      if (installHint){
+        installHint.textContent = msg;
+        installHint.style.display = "block";
+      }
+    }
 
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      if (installBtn) installBtn.style.display = "inline-flex";
+      showInstallMessage("Install THE KOKER ARCHIVES for faster access and an app-like experience.");
     });
 
     if (installBtn) {
       installBtn.addEventListener("click", async () => {
-        if (!deferredPrompt) return;
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          try {
+            await deferredPrompt.userChoice;
+          } catch {}
+          deferredPrompt = null;
+          return;
+        }
 
-        deferredPrompt.prompt();
-        try {
-          await deferredPrompt.userChoice;
-        } catch {}
+        const ua = navigator.userAgent || "";
+        const isIOS = /iPhone|iPad|iPod/i.test(ua);
+        const isAndroid = /Android/i.test(ua);
 
-        deferredPrompt = null;
-        installBtn.style.display = "none";
+        if (isIOS) {
+          showInstallMessage("On iPhone: tap Share, then tap 'Add to Home Screen'.");
+        } else if (isAndroid) {
+          showInstallMessage("On Android: open the browser menu and tap 'Add to Home screen' or 'Install app'.");
+        } else {
+          showInstallMessage("If install is available, use your browser menu or address bar install option.");
+        }
       });
     }
 
     window.addEventListener("appinstalled", () => {
       deferredPrompt = null;
-      if (installBtn) installBtn.style.display = "none";
-      console.log("PWA installed");
+      showInstallMessage("THE KOKER ARCHIVES was installed successfully.");
     });
   </script>
 </body>
