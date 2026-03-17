@@ -110,6 +110,26 @@
         radial-gradient(520px 320px at 90% 20%, rgba(0,255,198,.10), transparent 65%);
       pointer-events:none;
     }
+
+    .heroBrandRow{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      position:relative;
+      margin-bottom:8px;
+    }
+    .heroLogo{
+      width:72px;
+      height:72px;
+      border-radius:20px;
+      object-fit:cover;
+      border:1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      flex:none;
+      display:block;
+      background: rgba(255,255,255,.06);
+    }
+
     h1{
       margin:0 0 10px;
       font-size:44px;
@@ -509,32 +529,6 @@
     }
     .checkRow input{ width:auto; margin-top:3px; }
 
-    .installFab{
-      position:fixed;
-      right:16px;
-      bottom:calc(16px + var(--safeBot));
-      z-index:9999;
-      display:none;
-      align-items:center;
-      gap:8px;
-      border:1px solid rgba(124,92,255,.55);
-      background: linear-gradient(180deg, rgba(124,92,255,.26), rgba(124,92,255,.16));
-      color:var(--ink);
-      padding:12px 14px;
-      border-radius:999px;
-      box-shadow: 0 16px 40px rgba(0,0,0,.28);
-      backdrop-filter: blur(12px);
-      font: 900 13px ui-sans-serif, system-ui;
-      cursor:pointer;
-      user-select:none;
-    }
-    .installFab.show{ display:inline-flex; }
-    .installFab:hover{ transform: translateY(-1px); }
-    .installFab .i{ font-size:15px; line-height:1; }
-    [data-theme="light"] .installFab{
-      background: linear-gradient(180deg, rgba(124,92,255,.16), rgba(124,92,255,.10));
-    }
-
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
@@ -551,11 +545,14 @@
       .meta .desc{font-size:12px}
       .badge{font-size:11px; padding:6px 8px}
       .favBtn{padding:7px 9px; font-size:12px}
-      .installFab{
-        right:12px;
-        bottom:calc(12px + var(--safeBot));
-        padding:11px 13px;
-        font-size:12px;
+      .heroBrandRow{
+        align-items:flex-start;
+        gap:10px;
+      }
+      .heroLogo{
+        width:56px;
+        height:56px;
+        border-radius:16px;
       }
     }
   </style>
@@ -580,17 +577,23 @@
   <div class="wrap">
     <div class="hero">
       <div class="card heroMain">
-        <h1>THE KOKER ARCHIVES</h1>
-        <p class="subtitle">
-          A premium novel-reader: smooth pages, saved progress, light/dark mode,
-          and Firebase sync so your reading follows you across devices.
-        </p>
+        <div class="heroBrandRow">
+          <img src="./icons/icon-192.png" alt="The Koker Archives Icon" class="heroLogo">
+          <div>
+            <h1>THE KOKER ARCHIVES</h1>
+            <p class="subtitle">
+              A premium novel-reader: smooth pages, saved progress, light/dark mode,
+              and Firebase sync so your reading follows you across devices.
+            </p>
+          </div>
+        </div>
 
         <div class="ctaRow">
           <div class="btn primary" id="openBook1">📖 Read This is US (Book I)</div>
           <div class="btn" id="openCommunityQuick">💬 Community</div>
           <div class="btn" id="openAuthQuick">👤 Sign in / Sign up</div>
           <div class="btn" id="openSubscribeQuick">🔔 Subscribe</div>
+          <button class="btn" id="installAppBtn" type="button" style="display:none">📲 Install App</button>
         </div>
 
         <div class="mini">
@@ -854,11 +857,6 @@
     </div>
   </div>
 
-  <button class="installFab" id="installAppBtn" type="button" aria-label="Install app">
-    <span class="i">📲</span>
-    <span>Install App</span>
-  </button>
-
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -876,13 +874,9 @@
 
     const ADMIN_UID = "He8L6OfKude0nLHXQcTAjJohK2k1";
 
-    // ==============
-    // ✅ DEBUG (safe)
-    // ==============
-    const DEBUG_NEW_BADGE = true; // set false when done
+    const DEBUG_NEW_BADGE = true;
     function dbg(...args){ if(DEBUG_NEW_BADGE) console.log("[NEW_BADGE]", ...args); }
 
-    // scroll lock helpers
     let __scrollY = 0;
     function lockScroll(){
       __scrollY = window.scrollY || 0;
@@ -905,11 +899,9 @@
 
     wireTermsGate({ lockScroll, unlockScroll });
 
-    // Theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
 
-    // Firebase init
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
@@ -920,7 +912,6 @@
         .replaceAll('"',"&quot;").replaceAll("'","&#039;");
     }
 
-    // Theme btn
     const themeBtn = document.getElementById("themeBtn");
     themeBtn.addEventListener("click", async ()=>{
       const next = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
@@ -956,7 +947,6 @@
       location.href = `read.html?book=${encodeURIComponent(bookId)}`;
     }
 
-    // Tabs wiring
     const tabBtns = Array.from(document.querySelectorAll(".tabBtn"));
     const tabPanels = {
       tabComments: document.getElementById("tabComments"),
@@ -970,7 +960,6 @@
     }
     tabBtns.forEach(btn=> btn.addEventListener("click", ()=> setTab(btn.getAttribute("data-tab"))) );
 
-    // Auth modal wiring
     const authModal = document.getElementById("authModal");
     const authBtn = document.getElementById("authBtn");
     const authClose = document.getElementById("authClose");
@@ -994,7 +983,6 @@
     authModal.addEventListener("click",(e)=>{ if(e.target === authModal) closeAuth(); });
     goSettings.addEventListener("click", ()=> location.href = "settings.html");
 
-    // Subscribe popup modal wiring
     const subModal = document.getElementById("subModal");
     const subClose = document.getElementById("subClose");
     const subModalBtn = document.getElementById("subModalBtn");
@@ -1024,7 +1012,6 @@
       closeSub();
     });
 
-    // Auth bits
     const authHint = document.getElementById("authHint");
     const authEmail = document.getElementById("authEmail");
     const authPass  = document.getElementById("authPass");
@@ -1647,7 +1634,7 @@
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      if (installBtn) installBtn.classList.add("show");
+      if (installBtn) installBtn.style.display = "inline-flex";
     });
 
     if (installBtn) {
@@ -1660,13 +1647,13 @@
         } catch {}
 
         deferredPrompt = null;
-        installBtn.classList.remove("show");
+        installBtn.style.display = "none";
       });
     }
 
     window.addEventListener("appinstalled", () => {
       deferredPrompt = null;
-      if (installBtn) installBtn.classList.remove("show");
+      if (installBtn) installBtn.style.display = "none";
       console.log("PWA installed");
     });
   </script>
