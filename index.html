@@ -509,6 +509,32 @@
     }
     .checkRow input{ width:auto; margin-top:3px; }
 
+    .installFab{
+      position:fixed;
+      right:16px;
+      bottom:calc(16px + var(--safeBot));
+      z-index:9999;
+      display:none;
+      align-items:center;
+      gap:8px;
+      border:1px solid rgba(124,92,255,.55);
+      background: linear-gradient(180deg, rgba(124,92,255,.26), rgba(124,92,255,.16));
+      color:var(--ink);
+      padding:12px 14px;
+      border-radius:999px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.28);
+      backdrop-filter: blur(12px);
+      font: 900 13px ui-sans-serif, system-ui;
+      cursor:pointer;
+      user-select:none;
+    }
+    .installFab.show{ display:inline-flex; }
+    .installFab:hover{ transform: translateY(-1px); }
+    .installFab .i{ font-size:15px; line-height:1; }
+    [data-theme="light"] .installFab{
+      background: linear-gradient(180deg, rgba(124,92,255,.16), rgba(124,92,255,.10));
+    }
+
     @media (max-width:980px){
       .hero{grid-template-columns:1fr}
       .shelf{grid-template-columns: repeat(2, minmax(0, 1fr));}
@@ -525,6 +551,12 @@
       .meta .desc{font-size:12px}
       .badge{font-size:11px; padding:6px 8px}
       .favBtn{padding:7px 9px; font-size:12px}
+      .installFab{
+        right:12px;
+        bottom:calc(12px + var(--safeBot));
+        padding:11px 13px;
+        font-size:12px;
+      }
     }
   </style>
 </head>
@@ -822,6 +854,11 @@
     </div>
   </div>
 
+  <button class="installFab" id="installAppBtn" type="button" aria-label="Install app">
+    <span class="i">📲</span>
+    <span>Install App</span>
+  </button>
+
   <script type="module">
     import { firebaseConfig } from "./firebase-config.js";
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
@@ -1072,7 +1109,6 @@
         }
       }
 
-      // ✅ IMPORTANT: update NEW badge after auth state known
       await updateNewBadges().catch((e)=> dbg("updateNewBadges failed", e));
     });
 
@@ -1101,7 +1137,6 @@
       catch(e){ authMsg.textContent = (e?.message || "Could not sign out."); }
     });
 
-    // Subscribers
     const subEmail = document.getElementById("subEmail");
     const subBtn = document.getElementById("subBtn");
     const subMsg = document.getElementById("subMsg");
@@ -1159,7 +1194,6 @@
       }
     }
 
-    // Readers total (public)
     const readersTotal = document.getElementById("readersTotal");
     async function loadReadersTotal(){
       try{
@@ -1174,9 +1208,6 @@
       readersTotal.textContent = "— Total";
     }
 
-    // ===========================
-    // ✅ Comment Preview Carousel
-    // ===========================
     let __cTimer = null;
     function stopCarousel(){ if(__cTimer) clearInterval(__cTimer); __cTimer = null; }
     function startCarousel(nextFn, intervalMs){
@@ -1354,9 +1385,6 @@
       await renderAnnouncements({ mountId:"announceMount", max: 4 });
     }
 
-    // ===========================
-    // ✅ NEW BADGE: releases/{bookId} FIRST, fallback to latest>seen
-    // ===========================
     function msFromAny(v){
       if(!v) return null;
       if(typeof v === "number") return v;
@@ -1423,7 +1451,6 @@
       const badge = document.getElementById("newBadge_book1");
       if(!badge) return;
 
-      // 1) releases/book1
       const rel = await getActiveRelease("book1");
       if(rel){
         badge.textContent = rel.label;
@@ -1432,7 +1459,6 @@
         return;
       }
 
-      // 2) Fallback: latest > seen (optional)
       try{
         const latest = await getLatestChapterNumber("book1");
         dbg("fallback latest chapter", latest);
@@ -1465,7 +1491,6 @@
       }
     }
 
-    // Favorites + History (signed-in only)
     const favStrip = document.getElementById("favStrip");
     const favRow = document.getElementById("favRow");
 
@@ -1576,7 +1601,6 @@
       }
     });
 
-    // Search filter
     const shelf = document.getElementById("shelf");
     const searchBooks = document.getElementById("searchBooks");
     const showAllBtn = document.getElementById("showAllBtn");
@@ -1593,7 +1617,6 @@
     searchBooks.addEventListener("input", applySearch);
     showAllBtn.addEventListener("click", ()=>{ searchBooks.value=""; applySearch(); });
 
-    // Init
     (async ()=>{
       await loadPreview().catch(()=>{});
       await loadAnnouncementsTab().catch(()=>{});
@@ -1606,14 +1629,46 @@
       });
     })();
   </script>
+
   <script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js")
-      .then(() => console.log("Service Worker Registered"))
-      .catch(err => console.log("SW failed:", err));
-  });
-}
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(() => console.log("Service Worker Registered"))
+          .catch(err => console.log("SW failed:", err));
+      });
+    }
+  </script>
+
+  <script>
+    let deferredPrompt = null;
+    const installBtn = document.getElementById("installAppBtn");
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) installBtn.classList.add("show");
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) return;
+
+        deferredPrompt.prompt();
+        try {
+          await deferredPrompt.userChoice;
+        } catch {}
+
+        deferredPrompt = null;
+        installBtn.classList.remove("show");
+      });
+    }
+
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      if (installBtn) installBtn.classList.remove("show");
+      console.log("PWA installed");
+    });
   </script>
 </body>
 </html>
