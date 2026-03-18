@@ -6,7 +6,7 @@
   <title>THE KOKER — Archives</title>
   <meta name="description" content="The Koker Archives — premium novel reader library with sync, community, ratings, and achievements." />
   <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#7c5cff">
+<meta name="theme-color" content="#7c5cff">
   
   <style>
     :root{
@@ -1622,14 +1622,14 @@
   </script>
 
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js")
-          .then(() => console.log("Service Worker Registered"))
-          .catch(err => console.log("SW failed:", err));
-      });
-    }
-  </script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .then(() => console.log("Service Worker Registered"))
+        .catch(err => console.log("SW failed:", err));
+    });
+  }
+</script>
 
   <script>
     let deferredPrompt = null;
