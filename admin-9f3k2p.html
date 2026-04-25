@@ -236,6 +236,50 @@
       </div>
     </div>
 
+  <!-- ✅ Create Book --> 
+
+  <div class="card">
+    <h1>Publish Chapter (paste text → auto-format)</h1>
+    <div class="card">
+  <h1>Create Book</h1>
+
+  <div class="small">
+    Create a new book with front and back covers. This will appear in your Library page.
+  </div>
+
+  <div class="row2" style="margin-top:12px;">
+    <div>
+      <label>Book Title</label>
+      <input id="newBookTitle" placeholder="This is Us" />
+    </div>
+    <div>
+      <label>Book ID (slug)</label>
+      <input id="newBookId" placeholder="this-is-us" />
+    </div>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Description</label>
+    <textarea id="newBookDesc" placeholder="Short description..."></textarea>
+  </div>
+
+  <div class="row2" style="margin-top:10px;">
+    <div>
+      <label>Front Cover</label>
+      <input type="file" id="frontCoverFile" accept="image/*">
+    </div>
+    <div>
+      <label>Back Cover</label>
+      <input type="file" id="backCoverFile" accept="image/*">
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <button class="btn primary" id="createBookBtn">📘 Create Book</button>
+    <div class="small" id="createBookMsg"></div>
+  </div>
+</div>
+    
     <div class="locked" id="adminApp">
 
       <!-- ✅ NEW BADGE CONTROLLER -->
