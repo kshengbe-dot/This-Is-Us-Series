@@ -1683,6 +1683,76 @@ Thank you for reading and supporting the story.
       await loadBadgeState().catch(()=>{});
       toast("Done ✅");
     };
+
+// =========================
+// 📘 CREATE BOOK SYSTEM
+// =========================
+
+const createBookBtn = document.getElementById("createBookBtn");
+const createBookMsg = document.getElementById("createBookMsg");
+
+createBookBtn.onclick = async () => {
+  createBookMsg.textContent = "";
+
+  if (UID !== ADMIN_UID) {
+    toast("Access denied");
+    return;
+  }
+
+  const title = document.getElementById("newBookTitle").value.trim();
+  const bookId = document.getElementById("newBookId").value.trim();
+  const desc = document.getElementById("newBookDesc").value.trim();
+  const frontFile = document.getElementById("frontCoverFile").files[0];
+  const backFile = document.getElementById("backCoverFile").files[0];
+
+  if (!title || !bookId) {
+    createBookMsg.textContent = "Title and Book ID required";
+    return;
+  }
+
+  try {
+    // 🔥 Upload FRONT cover
+    let frontURL = "";
+    if (frontFile) {
+      const frontRef = ref(storage, `covers/${bookId}/front.jpg`);
+      await uploadBytes(frontRef, frontFile);
+      frontURL = await getDownloadURL(frontRef);
+    }
+
+    // 🔥 Upload BACK cover
+    let backURL = "";
+    if (backFile) {
+      const backRef = ref(storage, `covers/${bookId}/back.jpg`);
+      await uploadBytes(backRef, backFile);
+      backURL = await getDownloadURL(backRef);
+    }
+
+    // 🔥 Save book in Firestore
+    await setDoc(doc(db, "books", bookId), {
+      title,
+      description: desc,
+      frontCover: frontURL,
+      backCover: backURL,
+      createdAt: serverTimestamp(),
+      createdBy: UID
+    });
+
+    createBookMsg.textContent = "Book created ✅";
+    toast("Book created ✅");
+
+    // reset form
+    document.getElementById("newBookTitle").value = "";
+    document.getElementById("newBookId").value = "";
+    document.getElementById("newBookDesc").value = "";
+    document.getElementById("frontCoverFile").value = "";
+    document.getElementById("backCoverFile").value = "";
+
+  } catch (e) {
+    console.error(e);
+    createBookMsg.textContent = "Error: " + (e.message || e);
+  }
+};
+    
   </script>
 </body>
 </html>
